@@ -21,5 +21,5 @@ vec_push(struct vec *v, void *elem)
 		v->ptr = realloc(v->ptr, v->cap * v->elemsize);
 	}
 	memcpy(v->ptr + v->len * v->elemsize, elem, v->elemsize);
-	v->len += 1;
+	v->len++;
 }
