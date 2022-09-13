@@ -9,7 +9,7 @@ struct bump {
 };
 
 struct bump
-bump_new();
+bump_new(void);
 
 void *
 bump_alloc(struct bump *b, size_t bytes);

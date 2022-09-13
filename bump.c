@@ -6,7 +6,7 @@
 #define CHUNKSIZE 2048
 
 struct bump
-bump_new()
+bump_new(void)
 {
 	char *head = malloc(CHUNKSIZE);
 	struct bump b = {.head = head, .end = head + CHUNKSIZE};
