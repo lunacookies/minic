@@ -1,5 +1,8 @@
+#include "bump.h"
+#include "vec.h"
+
 #include <stdbool.h>
-#include <stdint.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +24,9 @@ getext(char *path)
 int
 main(void)
 {
+	struct bump b = bump_new();
+	struct vec files = vec_new(sizeof(void *));
+
 	DIR *dirstream = opendir(".");
 
 	while (true) {
@@ -34,8 +40,15 @@ main(void)
 		if (ext == NULL || strcmp(ext, "minic") != 0)
 			continue;
 
-		printf("%s\n", entry->d_name);
+		void *filename = bump_alloc(&b, entry->d_namlen + 1);
+		memcpy(filename, &entry->d_name, entry->d_namlen + 1);
+		vec_push(&files, &filename);
 	}
 
 	closedir(dirstream);
+
+	for (char **file = (char **)files.ptr;
+	     file < (char **)files.ptr + files.len; file++) {
+		printf("%s\n", *file);
+	}
 }

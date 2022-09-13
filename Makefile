@@ -1,7 +1,15 @@
+CFLAGS = -W -Wall -Wextra -Wpedantic -std=c99
+
 all: tidy minic
 
-tidy: minic.c
-	clang-format --dry-run minic.c
+tidy:
+	clang-format --dry-run *.h *.c
 
-minic: minic.c
-	$(CC) -W -Wall -Wextra -Wpedantic -std=c99 -o minic minic.c
+%.o: %.c %.h
+	$(CC) $(CFLAGS) -c $^
+
+minic: minic.c vec.o bump.o
+	$(CC) $(CFLAGS) -o $@ $^
+
+clean:
+	rm *.o *.gch minic
