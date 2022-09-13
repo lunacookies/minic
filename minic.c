@@ -1,12 +1,15 @@
 #include "bump.h"
 #include "vec.h"
 
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/dir.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 char *
 getext(char *path)
@@ -49,6 +52,11 @@ main(void)
 
 	for (char **file = (char **)files.ptr;
 	     file < (char **)files.ptr + files.len; file++) {
-		printf("%s\n", *file);
+		struct stat s;
+		stat(*file, &s);
+		char *content = malloc(s.st_size + 1);
+		int fd = open(*file, O_RDONLY);
+		read(fd, content, s.st_size);
+		printf("%s\n", content);
 	}
 }
