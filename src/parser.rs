@@ -1,7 +1,7 @@
-use crate::ast::{Expr, LocalDef};
+use crate::ast::{Expr, Stmt};
 use crate::lexer::{Token, TokenKind};
 
-pub(crate) fn parse(tokens: &[Token], input: &str) -> Vec<LocalDef> {
+pub(crate) fn parse(tokens: &[Token], input: &str) -> Vec<Stmt> {
 	Parser { tokens, cursor: 0, input }.parse()
 }
 
@@ -12,20 +12,39 @@ struct Parser<'a> {
 }
 
 impl Parser<'_> {
-	fn parse(mut self) -> Vec<LocalDef> {
-		let mut local_defs = Vec::new();
+	fn parse(mut self) -> Vec<Stmt> {
+		let mut stmts = Vec::new();
 		while self.cursor < self.tokens.len() {
-			local_defs.push(self.local_def());
+			stmts.push(self.stmt());
 		}
-		local_defs
+		stmts
 	}
 
-	fn local_def(&mut self) -> LocalDef {
+	fn stmt(&mut self) -> Stmt {
+		match self.current().kind {
+			TokenKind::Var => self.local_def(),
+			TokenKind::Loop => self.loop_(),
+			_ => self.error("statement"),
+		}
+	}
+
+	fn local_def(&mut self) -> Stmt {
 		self.expect(TokenKind::Var);
 		let name = self.expect(TokenKind::Ident);
 		self.expect(TokenKind::Eq);
 		let value = self.expr();
-		LocalDef { name, value }
+		Stmt::LocalDef { name, value }
+	}
+
+	fn loop_(&mut self) -> Stmt {
+		self.expect(TokenKind::Loop);
+		self.expect(TokenKind::LBrace);
+		let mut stmts = Vec::new();
+		while self.current().kind != TokenKind::RBrace {
+			stmts.push(self.stmt());
+		}
+		self.expect(TokenKind::RBrace);
+		Stmt::Loop { stmts }
 	}
 
 	fn expr(&mut self) -> Expr {

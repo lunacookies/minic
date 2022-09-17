@@ -31,6 +31,9 @@ pub(crate) enum TokenKind {
 	#[token("var")]
 	Var,
 
+	#[token("loop")]
+	Loop,
+
 	#[regex("[a-z][a-zA-Z0-9_]*")]
 	Ident,
 
@@ -42,6 +45,12 @@ pub(crate) enum TokenKind {
 
 	#[token("+")]
 	Plus,
+
+	#[token("{")]
+	LBrace,
+
+	#[token("}")]
+	RBrace,
 
 	#[error]
 	#[regex("[ \t\n]*", logos::skip)]

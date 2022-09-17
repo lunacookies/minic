@@ -1,7 +1,7 @@
 #[derive(Debug)]
-pub(crate) struct LocalDef {
-	pub(crate) name: String,
-	pub(crate) value: Expr,
+pub(crate) enum Stmt {
+	LocalDef { name: String, value: Expr },
+	Loop { stmts: Vec<Stmt> },
 }
 
 #[derive(Debug)]
