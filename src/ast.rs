@@ -12,4 +12,5 @@ pub(crate) enum Expr {
 	Local(String),
 	Int(u64),
 	Add(Box<Expr>, Box<Expr>),
+	Equal(Box<Expr>, Box<Expr>),
 }

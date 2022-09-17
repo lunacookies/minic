@@ -84,6 +84,12 @@ impl Parser<'_> {
 				let rhs = self.expr();
 				Expr::Add(Box::new(lhs), Box::new(rhs))
 			}
+			TokenKind::Eq => {
+				self.expect(TokenKind::Eq);
+				let lhs = self.expr();
+				let rhs = self.expr();
+				Expr::Equal(Box::new(lhs), Box::new(rhs))
+			}
 			_ => self.error("expression"),
 		}
 	}

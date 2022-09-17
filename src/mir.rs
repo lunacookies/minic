@@ -14,6 +14,7 @@ pub(crate) enum Instr {
 	Store { dst: Reg, src: Reg },
 	Br { label: Label },
 	Add { dst: Reg, lhs: Reg, rhs: Reg },
+	CmpEq { dst: Reg, lhs: Reg, rhs: Reg },
 }
 
 #[derive(Clone, Copy)]
@@ -148,6 +149,13 @@ impl LowerCtx {
 				self.emit(Instr::Add { dst, lhs, rhs });
 				LowerExprResult::AllocateNew(dst)
 			}
+			Expr::Equal(lhs, rhs) => {
+				let lhs = self.lower_expr(lhs).reg();
+				let rhs = self.lower_expr(rhs).reg();
+				let dst = self.next_reg();
+				self.emit(Instr::CmpEq { dst, lhs, rhs });
+				LowerExprResult::AllocateNew(dst)
+			}
 		}
 	}
 
@@ -218,6 +226,9 @@ impl fmt::Debug for Instr {
 			Self::Br { label } => write!(f, "\x1b[32mbr\x1b[0m {label:?}"),
 			Self::Add { dst, lhs, rhs } => {
 				write!(f, "{dst:?} = \x1b[32madd\x1b[0m {lhs:?}, {rhs:?}")
+			}
+			Self::CmpEq { dst, lhs, rhs } => {
+				write!(f, "{dst:?} = \x1b[32mcmp_eq\x1b[0m {lhs:?}, {rhs:?}")
 			}
 		}
 	}
