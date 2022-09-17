@@ -229,7 +229,9 @@ impl fmt::Debug for Mir {
 		for (i, instr) in self.instrs.iter().enumerate() {
 			write!(f, "    ")?;
 			match self.labels.get(&i) {
-				Some(label) => write!(f, "{:?}:", label)?,
+				// this alignment width is larger than you’d expect
+				// due to coloring escape codes
+				Some(label) => write!(f, "{:>13}:", format!("{label:?}"))?,
 				None => write!(f, "     ")?,
 			}
 			writeln!(f, " {instr:?}")?;
@@ -285,6 +287,6 @@ impl fmt::Debug for Reg {
 
 impl fmt::Debug for Label {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "\x1b[35m#{:03}\x1b[0m", self.0)
+		write!(f, "\x1b[35m#{}\x1b[0m", self.0)
 	}
 }
