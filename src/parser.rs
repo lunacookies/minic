@@ -57,7 +57,7 @@ impl Parser<'_> {
 			return self.input[range].to_string();
 		}
 
-		self.error(&format!("{actual_kind:?}"))
+		self.error(&format!("{kind:?}"))
 	}
 
 	fn error(&self, message: &str) -> ! {
