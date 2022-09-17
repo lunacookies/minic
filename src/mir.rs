@@ -290,12 +290,12 @@ impl fmt::Debug for Reg {
 
 impl fmt::Debug for Label {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "\x1b[35m#{}\x1b[0m", self.0)
+		write!(f, "\x1b[33m#{}\x1b[0m", self.0)
 	}
 }
 
 impl fmt::Debug for Const {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "\x1b[36m{}\x1b[0m", self.0)
+		write!(f, "\x1b[35m{}\x1b[0m", self.0)
 	}
 }
