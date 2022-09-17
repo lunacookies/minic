@@ -34,6 +34,9 @@ pub(crate) enum TokenKind {
 	#[token("loop")]
 	Loop,
 
+	#[token("break")]
+	Break,
+
 	#[regex("[a-z][a-zA-Z0-9_]*")]
 	Ident,
 

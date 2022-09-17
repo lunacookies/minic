@@ -18,8 +18,12 @@ pub(crate) enum Instr {
 #[derive(Clone, Copy)]
 pub(crate) struct Reg(u32);
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Label(u32);
+
+impl Label {
+	const PLACEHOLDER: Label = Label(u32::MAX);
+}
 
 pub(crate) fn lower(ast: &[Stmt]) -> Mir {
 	LowerCtx {
@@ -27,6 +31,7 @@ pub(crate) fn lower(ast: &[Stmt]) -> Mir {
 		scope: HashMap::new(),
 		current_reg: Reg(0),
 		current_label: Label(0),
+		break_fixups: Vec::new(),
 	}
 	.lower(ast)
 }
@@ -36,6 +41,7 @@ struct LowerCtx {
 	scope: HashMap<String, Reg>,
 	current_reg: Reg,
 	current_label: Label,
+	break_fixups: Vec<Vec<usize>>,
 }
 
 impl LowerCtx {
@@ -50,6 +56,10 @@ impl LowerCtx {
 		match stmt {
 			Stmt::LocalDef { name, value } => self.lower_local_def(name, value),
 			Stmt::Loop { stmts } => self.lower_loop(stmts),
+			Stmt::Break => {
+				self.break_fixups.last_mut().unwrap().push(self.mir.instrs.len());
+				self.emit(Instr::Br { label: Label::PLACEHOLDER })
+			}
 		}
 	}
 
@@ -59,11 +69,31 @@ impl LowerCtx {
 	}
 
 	fn lower_loop(&mut self, stmts: &[Stmt]) {
-		let label = self.next_label();
+		self.break_fixups.push(Vec::new());
+
+		let top = self.next_label();
 		for stmt in stmts {
 			self.lower_stmt(stmt);
 		}
-		self.emit(Instr::Br { label });
+		self.emit(Instr::Br { label: top });
+
+		let fixups = self.break_fixups.pop().unwrap();
+
+		// avoid generating label at bottom of loop if we don’t have any breaks
+		if fixups.is_empty() {
+			return;
+		}
+		let bottom = self.next_label();
+
+		for idx in fixups {
+			match &mut self.mir.instrs[idx] {
+				Instr::Br { label } => {
+					assert_eq!(*label, Label::PLACEHOLDER);
+					*label = bottom;
+				}
+				_ => unreachable!(),
+			}
+		}
 	}
 
 	fn lower_expr(&mut self, expr: &Expr) -> Reg {
@@ -116,6 +146,7 @@ impl LowerCtx {
 impl fmt::Debug for Mir {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		writeln!(f, "MIR[[")?;
+
 		for (i, instr) in self.instrs.iter().enumerate() {
 			write!(f, "    ")?;
 			match self.labels.get(&i) {
@@ -124,6 +155,11 @@ impl fmt::Debug for Mir {
 			}
 			writeln!(f, " {instr:?}")?;
 		}
+
+		if let Some(label) = self.labels.get(&self.instrs.len()) {
+			writeln!(f, "    {label:?}:")?;
+		}
+
 		write!(f, "]]")?;
 		Ok(())
 	}
