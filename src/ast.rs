@@ -3,6 +3,7 @@ pub(crate) enum Stmt {
 	LocalDef { name: String, value: Expr },
 	Loop { stmts: Vec<Stmt> },
 	Break,
+	Continue,
 }
 
 #[derive(Debug)]

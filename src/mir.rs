@@ -31,6 +31,7 @@ pub(crate) fn lower(ast: &[Stmt]) -> Mir {
 		scope: HashMap::new(),
 		current_reg: Reg(0),
 		current_label: Label(0),
+		loop_tops: Vec::new(),
 		break_fixups: Vec::new(),
 	}
 	.lower(ast)
@@ -41,6 +42,7 @@ struct LowerCtx {
 	scope: HashMap<String, Reg>,
 	current_reg: Reg,
 	current_label: Label,
+	loop_tops: Vec<Label>,
 	break_fixups: Vec<Vec<usize>>,
 }
 
@@ -60,6 +62,7 @@ impl LowerCtx {
 				self.break_fixups.last_mut().unwrap().push(self.mir.instrs.len());
 				self.emit(Instr::Br { label: Label::PLACEHOLDER })
 			}
+			Stmt::Continue => self.emit(Instr::Br { label: *self.loop_tops.last().unwrap() }),
 		}
 	}
 
@@ -69,14 +72,17 @@ impl LowerCtx {
 	}
 
 	fn lower_loop(&mut self, stmts: &[Stmt]) {
+		let top = self.next_label();
+
+		self.loop_tops.push(top);
 		self.break_fixups.push(Vec::new());
 
-		let top = self.next_label();
 		for stmt in stmts {
 			self.lower_stmt(stmt);
 		}
 		self.emit(Instr::Br { label: top });
 
+		self.loop_tops.pop();
 		let fixups = self.break_fixups.pop().unwrap();
 
 		// avoid generating label at bottom of loop if we don’t have any breaks

@@ -25,6 +25,7 @@ impl Parser<'_> {
 			TokenKind::Var => self.local_def(),
 			TokenKind::Loop => self.loop_(),
 			TokenKind::Break => self.break_(),
+			TokenKind::Continue => self.continue_(),
 			_ => self.error("statement"),
 		}
 	}
@@ -51,6 +52,11 @@ impl Parser<'_> {
 	fn break_(&mut self) -> Stmt {
 		self.expect(TokenKind::Break);
 		Stmt::Break
+	}
+
+	fn continue_(&mut self) -> Stmt {
+		self.expect(TokenKind::Continue);
+		Stmt::Continue
 	}
 
 	fn expr(&mut self) -> Expr {
