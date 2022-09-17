@@ -10,7 +10,8 @@ pub(crate) struct Mir {
 }
 
 pub(crate) enum Instr {
-	StoreConst { reg: Reg, value: u64 },
+	StoreConst { dst: Reg, value: u64 },
+	Store { dst: Reg, src: Reg },
 	Br { label: Label },
 	Add { dst: Reg, lhs: Reg, rhs: Reg },
 }
@@ -67,7 +68,18 @@ impl LowerCtx {
 	}
 
 	fn lower_local_def(&mut self, name: &str, value: &Expr) {
-		let reg = self.lower_expr(value);
+		// every local gets its own register in case we want to mutate its value later
+		let reg = match self.lower_expr(value) {
+			// if lowering the local’s value resulted in just referencing an existing register,
+			// we make sure to allocate a new register
+			LowerExprResult::ReferenceExisting(r) => {
+				let new_reg = self.next_reg();
+				self.emit(Instr::Store { dst: new_reg, src: r });
+				new_reg
+			}
+			LowerExprResult::AllocateNew(r) => r,
+		};
+
 		self.scope.insert(name.to_string(), reg);
 	}
 
@@ -102,26 +114,26 @@ impl LowerCtx {
 		}
 	}
 
-	fn lower_expr(&mut self, expr: &Expr) -> Reg {
+	fn lower_expr(&mut self, expr: &Expr) -> LowerExprResult {
 		match expr {
 			Expr::Local(name) => match self.scope.get(name) {
-				Some(r) => *r,
+				Some(r) => LowerExprResult::ReferenceExisting(*r),
 				None => {
 					eprintln!("error: undefined variable `{name}`");
 					std::process::exit(1)
 				}
 			},
 			Expr::Int(n) => {
-				let reg = self.next_reg();
-				self.emit(Instr::StoreConst { reg, value: *n });
-				reg
+				let dst = self.next_reg();
+				self.emit(Instr::StoreConst { dst, value: *n });
+				LowerExprResult::AllocateNew(dst)
 			}
 			Expr::Add(lhs, rhs) => {
-				let lhs = self.lower_expr(lhs);
-				let rhs = self.lower_expr(rhs);
+				let lhs = self.lower_expr(lhs).reg();
+				let rhs = self.lower_expr(rhs).reg();
 				let dst = self.next_reg();
 				self.emit(Instr::Add { dst, lhs, rhs });
-				dst
+				LowerExprResult::AllocateNew(dst)
 			}
 		}
 	}
@@ -171,10 +183,25 @@ impl fmt::Debug for Mir {
 	}
 }
 
+enum LowerExprResult {
+	ReferenceExisting(Reg),
+	AllocateNew(Reg),
+}
+
+impl LowerExprResult {
+	fn reg(self) -> Reg {
+		match self {
+			LowerExprResult::ReferenceExisting(r) => r,
+			LowerExprResult::AllocateNew(r) => r,
+		}
+	}
+}
+
 impl fmt::Debug for Instr {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Self::StoreConst { reg, value } => write!(f, "{reg:?} = \x1b[36m{value}\x1b[0m"),
+			Self::StoreConst { dst, value } => write!(f, "{dst:?} = \x1b[36m{value}\x1b[0m"),
+			Self::Store { dst, src } => write!(f, "{dst:?} = {src:?}"),
 			Self::Br { label } => write!(f, "\x1b[32mbr\x1b[0m {label:?}"),
 			Self::Add { dst, lhs, rhs } => {
 				write!(f, "{dst:?} = \x1b[32madd\x1b[0m {lhs:?}, {rhs:?}")
