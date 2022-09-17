@@ -25,6 +25,7 @@ impl Parser<'_> {
 			TokenKind::Var => self.local_def(),
 			TokenKind::Set => self.local_set(),
 			TokenKind::Loop => self.loop_(),
+			TokenKind::If => self.if_(),
 			TokenKind::Break => self.break_(),
 			TokenKind::Continue => self.continue_(),
 			_ => self.error("statement"),
@@ -49,13 +50,17 @@ impl Parser<'_> {
 
 	fn loop_(&mut self) -> Stmt {
 		self.expect(TokenKind::Loop);
-		self.expect(TokenKind::LBrace);
-		let mut stmts = Vec::new();
-		while self.current().kind != TokenKind::RBrace {
-			stmts.push(self.stmt());
-		}
-		self.expect(TokenKind::RBrace);
+		let stmts = self.block();
 		Stmt::Loop { stmts }
+	}
+
+	fn if_(&mut self) -> Stmt {
+		self.expect(TokenKind::If);
+		let condition = self.expr();
+		let true_branch = self.block();
+		self.expect(TokenKind::Else);
+		let false_branch = self.block();
+		Stmt::If { condition, true_branch, false_branch }
 	}
 
 	fn break_(&mut self) -> Stmt {
@@ -66,6 +71,16 @@ impl Parser<'_> {
 	fn continue_(&mut self) -> Stmt {
 		self.expect(TokenKind::Continue);
 		Stmt::Continue
+	}
+
+	fn block(&mut self) -> Vec<Stmt> {
+		let mut stmts = Vec::new();
+		self.expect(TokenKind::LBrace);
+		while self.current().kind != TokenKind::RBrace {
+			stmts.push(self.stmt());
+		}
+		self.expect(TokenKind::RBrace);
+		stmts
 	}
 
 	fn expr(&mut self) -> Expr {

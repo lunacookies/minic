@@ -37,6 +37,12 @@ pub(crate) enum TokenKind {
 	#[token("loop")]
 	Loop,
 
+	#[token("if")]
+	If,
+
+	#[token("else")]
+	Else,
+
 	#[token("break")]
 	Break,
 

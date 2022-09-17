@@ -13,6 +13,7 @@ pub(crate) enum Instr {
 	StoreConst { dst: Reg, value: u64 },
 	Store { dst: Reg, src: Reg },
 	Br { label: Label },
+	CondBr { label: Label, condition: Reg },
 	Add { dst: Reg, lhs: Reg, rhs: Reg },
 	CmpEq { dst: Reg, lhs: Reg, rhs: Reg },
 }
@@ -61,6 +62,9 @@ impl LowerCtx {
 			Stmt::LocalDef { name, value } => self.lower_local_def(name, value),
 			Stmt::LocalSet { name, new_value } => self.lower_local_set(name, new_value),
 			Stmt::Loop { stmts } => self.lower_loop(stmts),
+			Stmt::If { condition, true_branch, false_branch } => {
+				self.lower_if(condition, true_branch, false_branch)
+			}
 			Stmt::Break => {
 				self.break_fixups.last_mut().unwrap().push(self.mir.instrs.len());
 				self.emit(Instr::Br { label: Label::PLACEHOLDER })
@@ -125,6 +129,40 @@ impl LowerCtx {
 				}
 				_ => unreachable!(),
 			}
+		}
+	}
+
+	fn lower_if(&mut self, condition: &Expr, true_branch: &[Stmt], false_branch: &[Stmt]) {
+		let condition = self.lower_expr(condition).reg();
+		let br_idx = self.mir.instrs.len();
+		self.emit(Instr::CondBr { label: Label::PLACEHOLDER, condition });
+
+		for stmt in false_branch {
+			self.lower_stmt(stmt);
+		}
+		let skip_br_idx = self.mir.instrs.len();
+		self.emit(Instr::Br { label: Label::PLACEHOLDER });
+
+		let true_branch_top = self.next_label();
+		for stmt in true_branch {
+			self.lower_stmt(stmt);
+		}
+		let true_branch_bottom = self.next_label();
+
+		match &mut self.mir.instrs[br_idx] {
+			Instr::CondBr { label, .. } => {
+				assert_eq!(*label, Label::PLACEHOLDER);
+				*label = true_branch_top;
+			}
+			_ => unreachable!(),
+		}
+
+		match &mut self.mir.instrs[skip_br_idx] {
+			Instr::Br { label } => {
+				assert_eq!(*label, Label::PLACEHOLDER);
+				*label = true_branch_bottom;
+			}
+			_ => unreachable!(),
 		}
 	}
 
@@ -224,6 +262,9 @@ impl fmt::Debug for Instr {
 			Self::StoreConst { dst, value } => write!(f, "{dst:?} = \x1b[36m{value}\x1b[0m"),
 			Self::Store { dst, src } => write!(f, "{dst:?} = {src:?}"),
 			Self::Br { label } => write!(f, "\x1b[32mbr\x1b[0m {label:?}"),
+			Self::CondBr { label, condition } => {
+				write!(f, "\x1b[32mcond_br\x1b[0m {label:?}, {condition:?}")
+			}
 			Self::Add { dst, lhs, rhs } => {
 				write!(f, "{dst:?} = \x1b[32madd\x1b[0m {lhs:?}, {rhs:?}")
 			}
