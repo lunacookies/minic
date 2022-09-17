@@ -1,4 +1,7 @@
+mod ast;
 mod lexer;
+mod mir;
+mod parser;
 
 use std::{ffi, fs, io};
 
@@ -11,7 +14,11 @@ fn main() -> io::Result<()> {
 		}
 
 		let content = fs::read_to_string(path)?;
-		dbg!(lexer::lex(&content));
+		let tokens = lexer::lex(&content);
+		let ast = parser::parse(&tokens, &content);
+		dbg!(&ast);
+		let mir = mir::lower(&ast);
+		dbg!(&mir);
 	}
 
 	Ok(())

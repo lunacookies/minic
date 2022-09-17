@@ -28,8 +28,20 @@ impl std::fmt::Debug for Token {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Logos)]
 pub(crate) enum TokenKind {
+	#[token("var")]
+	Var,
+
 	#[regex("[a-z][a-zA-Z0-9_]*")]
 	Ident,
+
+	#[regex("[0-9]+")]
+	Int,
+
+	#[token("=")]
+	Eq,
+
+	#[token("+")]
+	Plus,
 
 	#[error]
 	#[regex("[ \t\n]*", logos::skip)]
