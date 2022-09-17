@@ -10,7 +10,7 @@ pub(crate) struct Mir {
 }
 
 pub(crate) enum Instr {
-	StoreConst { dst: Reg, value: u64 },
+	StoreConst { dst: Reg, value: Const },
 	Store { dst: Reg, src: Reg },
 	Br { label: Label },
 	CondBr { label: Label, condition: Reg },
@@ -23,6 +23,9 @@ pub(crate) struct Reg(u32);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Label(u32);
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Const(u64);
 
 impl Label {
 	const PLACEHOLDER: Label = Label(u32::MAX);
@@ -165,7 +168,7 @@ impl LowerCtx {
 			Expr::Local(name) => LowerExprResult::ReferenceExisting(self.lookup_in_scope(name)),
 			Expr::Int(n) => {
 				let dst = self.next_reg();
-				self.emit(Instr::StoreConst { dst, value: *n });
+				self.emit(Instr::StoreConst { dst, value: Const(*n) });
 				LowerExprResult::AllocateNew(dst)
 			}
 			Expr::Add(lhs, rhs) => {
@@ -263,7 +266,7 @@ impl LowerExprResult {
 impl fmt::Debug for Instr {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Self::StoreConst { dst, value } => write!(f, "{dst:?} = \x1b[36m{value}\x1b[0m"),
+			Self::StoreConst { dst, value } => write!(f, "{dst:?} = {value:?}"),
 			Self::Store { dst, src } => write!(f, "{dst:?} = {src:?}"),
 			Self::Br { label } => write!(f, "\x1b[32mbr\x1b[0m {label:?}"),
 			Self::CondBr { label, condition } => {
@@ -288,5 +291,11 @@ impl fmt::Debug for Reg {
 impl fmt::Debug for Label {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "\x1b[35m#{}\x1b[0m", self.0)
+	}
+}
+
+impl fmt::Debug for Const {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "\x1b[36m{}\x1b[0m", self.0)
 	}
 }
