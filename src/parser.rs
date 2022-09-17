@@ -23,6 +23,7 @@ impl Parser<'_> {
 	fn stmt(&mut self) -> Stmt {
 		match self.current().kind {
 			TokenKind::Var => self.local_def(),
+			TokenKind::Set => self.local_set(),
 			TokenKind::Loop => self.loop_(),
 			TokenKind::Break => self.break_(),
 			TokenKind::Continue => self.continue_(),
@@ -36,6 +37,14 @@ impl Parser<'_> {
 		self.expect(TokenKind::Eq);
 		let value = self.expr();
 		Stmt::LocalDef { name, value }
+	}
+
+	fn local_set(&mut self) -> Stmt {
+		self.expect(TokenKind::Set);
+		let name = self.expect(TokenKind::Ident);
+		self.expect(TokenKind::Eq);
+		let new_value = self.expr();
+		Stmt::LocalSet { name, new_value }
 	}
 
 	fn loop_(&mut self) -> Stmt {

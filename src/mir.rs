@@ -58,6 +58,7 @@ impl LowerCtx {
 	fn lower_stmt(&mut self, stmt: &Stmt) {
 		match stmt {
 			Stmt::LocalDef { name, value } => self.lower_local_def(name, value),
+			Stmt::LocalSet { name, new_value } => self.lower_local_set(name, new_value),
 			Stmt::Loop { stmts } => self.lower_loop(stmts),
 			Stmt::Break => {
 				self.break_fixups.last_mut().unwrap().push(self.mir.instrs.len());
@@ -81,6 +82,18 @@ impl LowerCtx {
 		};
 
 		self.scope.insert(name.to_string(), reg);
+	}
+
+	fn lower_local_set(&mut self, name: &str, new_value: &Expr) {
+		let local_reg = match self.scope.get(name) {
+			Some(reg) => *reg,
+			None => {
+				eprintln!("error: undefined variable `{name}`");
+				std::process::exit(1)
+			}
+		};
+		let new_value_reg = self.lower_expr(new_value).reg();
+		self.emit(Instr::Store { dst: local_reg, src: new_value_reg });
 	}
 
 	fn lower_loop(&mut self, stmts: &[Stmt]) {

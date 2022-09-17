@@ -31,6 +31,9 @@ pub(crate) enum TokenKind {
 	#[token("var")]
 	Var,
 
+	#[token("set")]
+	Set,
+
 	#[token("loop")]
 	Loop,
 
