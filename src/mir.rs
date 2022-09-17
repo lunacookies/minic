@@ -31,7 +31,7 @@ impl Label {
 pub(crate) fn lower(ast: &[Stmt]) -> Mir {
 	LowerCtx {
 		mir: Mir::default(),
-		scope: HashMap::new(),
+		scopes: Vec::new(),
 		current_reg: Reg(0),
 		current_label: Label(0),
 		loop_tops: Vec::new(),
@@ -42,7 +42,7 @@ pub(crate) fn lower(ast: &[Stmt]) -> Mir {
 
 struct LowerCtx {
 	mir: Mir,
-	scope: HashMap<String, Reg>,
+	scopes: Vec<HashMap<String, Reg>>,
 	current_reg: Reg,
 	current_label: Label,
 	loop_tops: Vec<Label>,
@@ -51,9 +51,7 @@ struct LowerCtx {
 
 impl LowerCtx {
 	fn lower(mut self, ast: &[Stmt]) -> Mir {
-		for stmt in ast {
-			self.lower_stmt(stmt);
-		}
+		self.lower_block(ast);
 		self.mir
 	}
 
@@ -86,17 +84,11 @@ impl LowerCtx {
 			LowerExprResult::AllocateNew(r) => r,
 		};
 
-		self.scope.insert(name.to_string(), reg);
+		self.insert_in_scope(name.to_string(), reg);
 	}
 
 	fn lower_local_set(&mut self, name: &str, new_value: &Expr) {
-		let local_reg = match self.scope.get(name) {
-			Some(reg) => *reg,
-			None => {
-				eprintln!("error: undefined variable `{name}`");
-				std::process::exit(1)
-			}
-		};
+		let local_reg = self.lookup_in_scope(name);
 		let new_value_reg = self.lower_expr(new_value).reg();
 		self.emit(Instr::Store { dst: local_reg, src: new_value_reg });
 	}
@@ -107,9 +99,7 @@ impl LowerCtx {
 		self.loop_tops.push(top);
 		self.break_fixups.push(Vec::new());
 
-		for stmt in stmts {
-			self.lower_stmt(stmt);
-		}
+		self.lower_block(stmts);
 		self.emit(Instr::Br { label: top });
 
 		self.loop_tops.pop();
@@ -137,16 +127,12 @@ impl LowerCtx {
 		let br_idx = self.mir.instrs.len();
 		self.emit(Instr::CondBr { label: Label::PLACEHOLDER, condition });
 
-		for stmt in false_branch {
-			self.lower_stmt(stmt);
-		}
+		self.lower_block(false_branch);
 		let skip_br_idx = self.mir.instrs.len();
 		self.emit(Instr::Br { label: Label::PLACEHOLDER });
 
 		let true_branch_top = self.next_label();
-		for stmt in true_branch {
-			self.lower_stmt(stmt);
-		}
+		self.lower_block(true_branch);
 		let true_branch_bottom = self.next_label();
 
 		match &mut self.mir.instrs[br_idx] {
@@ -166,15 +152,17 @@ impl LowerCtx {
 		}
 	}
 
+	fn lower_block(&mut self, block: &[Stmt]) {
+		self.scopes.push(HashMap::new());
+		for stmt in block {
+			self.lower_stmt(stmt);
+		}
+		self.scopes.pop();
+	}
+
 	fn lower_expr(&mut self, expr: &Expr) -> LowerExprResult {
 		match expr {
-			Expr::Local(name) => match self.scope.get(name) {
-				Some(r) => LowerExprResult::ReferenceExisting(*r),
-				None => {
-					eprintln!("error: undefined variable `{name}`");
-					std::process::exit(1)
-				}
-			},
+			Expr::Local(name) => LowerExprResult::ReferenceExisting(self.lookup_in_scope(name)),
 			Expr::Int(n) => {
 				let dst = self.next_reg();
 				self.emit(Instr::StoreConst { dst, value: *n });
@@ -199,6 +187,20 @@ impl LowerCtx {
 
 	fn emit(&mut self, instr: Instr) {
 		self.mir.instrs.push(instr);
+	}
+
+	fn insert_in_scope(&mut self, name: String, reg: Reg) {
+		self.scopes.last_mut().unwrap().insert(name, reg);
+	}
+
+	fn lookup_in_scope(&mut self, name: &str) -> Reg {
+		for scope in self.scopes.iter().rev() {
+			if let Some(reg) = scope.get(name) {
+				return *reg;
+			}
+		}
+		eprintln!("error: undefined variable `{name}`");
+		std::process::exit(1)
 	}
 
 	fn next_reg(&mut self) -> Reg {
