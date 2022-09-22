@@ -1,10 +1,15 @@
-use crate::ast::{Expr, Stmt};
+use crate::ast::{Expr, Item, Stmt};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt;
 
 #[derive(Default)]
 pub(crate) struct Mir {
+	pub(crate) bodies: HashMap<String, Body>,
+}
+
+#[derive(Default)]
+pub(crate) struct Body {
 	pub(crate) instrs: Vec<Instr>,
 	pub(crate) labels: HashMap<usize, Label>,
 }
@@ -31,20 +36,31 @@ impl Label {
 	const PLACEHOLDER: Label = Label(u32::MAX);
 }
 
-pub(crate) fn lower(ast: &[Stmt]) -> Mir {
-	LowerCtx {
-		mir: Mir::default(),
-		scopes: Vec::new(),
-		current_reg: Reg(0),
-		current_label: Label(0),
-		loop_tops: Vec::new(),
-		break_fixups: Vec::new(),
+pub(crate) fn lower(ast: &[Item]) -> Mir {
+	let mut mir = Mir::default();
+
+	for item in ast {
+		match item {
+			Item::Proc { name, body } => {
+				let body = LowerCtx {
+					body: Body::default(),
+					scopes: Vec::new(),
+					current_reg: Reg(0),
+					current_label: Label(0),
+					loop_tops: Vec::new(),
+					break_fixups: Vec::new(),
+				}
+				.lower_proc(body);
+				mir.bodies.insert(name.clone(), body);
+			}
+		}
 	}
-	.lower(ast)
+
+	mir
 }
 
 struct LowerCtx {
-	mir: Mir,
+	body: Body,
 	scopes: Vec<HashMap<String, Reg>>,
 	current_reg: Reg,
 	current_label: Label,
@@ -53,9 +69,9 @@ struct LowerCtx {
 }
 
 impl LowerCtx {
-	fn lower(mut self, ast: &[Stmt]) -> Mir {
-		self.lower_block(ast);
-		self.mir
+	fn lower_proc(mut self, stmts: &[Stmt]) -> Body {
+		self.lower_block(stmts);
+		self.body
 	}
 
 	fn lower_stmt(&mut self, stmt: &Stmt) {
@@ -67,7 +83,7 @@ impl LowerCtx {
 				self.lower_if(condition, true_branch, false_branch)
 			}
 			Stmt::Break => {
-				self.break_fixups.last_mut().unwrap().push(self.mir.instrs.len());
+				self.break_fixups.last_mut().unwrap().push(self.body.instrs.len());
 				self.emit(Instr::Br { label: Label::PLACEHOLDER })
 			}
 			Stmt::Continue => self.emit(Instr::Br { label: *self.loop_tops.last().unwrap() }),
@@ -115,7 +131,7 @@ impl LowerCtx {
 		let bottom = self.next_label();
 
 		for idx in fixups {
-			match &mut self.mir.instrs[idx] {
+			match &mut self.body.instrs[idx] {
 				Instr::Br { label } => {
 					assert_eq!(*label, Label::PLACEHOLDER);
 					*label = bottom;
@@ -127,18 +143,18 @@ impl LowerCtx {
 
 	fn lower_if(&mut self, condition: &Expr, true_branch: &[Stmt], false_branch: &[Stmt]) {
 		let condition = self.lower_expr(condition).reg();
-		let br_idx = self.mir.instrs.len();
+		let br_idx = self.body.instrs.len();
 		self.emit(Instr::CondBr { label: Label::PLACEHOLDER, condition });
 
 		self.lower_block(false_branch);
-		let skip_br_idx = self.mir.instrs.len();
+		let skip_br_idx = self.body.instrs.len();
 		self.emit(Instr::Br { label: Label::PLACEHOLDER });
 
 		let true_branch_top = self.next_label();
 		self.lower_block(true_branch);
 		let true_branch_bottom = self.next_label();
 
-		match &mut self.mir.instrs[br_idx] {
+		match &mut self.body.instrs[br_idx] {
 			Instr::CondBr { label, .. } => {
 				assert_eq!(*label, Label::PLACEHOLDER);
 				*label = true_branch_top;
@@ -146,7 +162,7 @@ impl LowerCtx {
 			_ => unreachable!(),
 		}
 
-		match &mut self.mir.instrs[skip_br_idx] {
+		match &mut self.body.instrs[skip_br_idx] {
 			Instr::Br { label } => {
 				assert_eq!(*label, Label::PLACEHOLDER);
 				*label = true_branch_bottom;
@@ -189,7 +205,7 @@ impl LowerCtx {
 	}
 
 	fn emit(&mut self, instr: Instr) {
-		self.mir.instrs.push(instr);
+		self.body.instrs.push(instr);
 	}
 
 	fn insert_in_scope(&mut self, name: String, reg: Reg) {
@@ -213,7 +229,7 @@ impl LowerCtx {
 	}
 
 	fn next_label(&mut self) -> Label {
-		match self.mir.labels.entry(self.mir.instrs.len()) {
+		match self.body.labels.entry(self.body.instrs.len()) {
 			Entry::Occupied(e) => *e.get(),
 			Entry::Vacant(e) => {
 				let l = self.current_label;
@@ -229,19 +245,23 @@ impl fmt::Debug for Mir {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		writeln!(f, "MIR[[")?;
 
-		for (i, instr) in self.instrs.iter().enumerate() {
-			write!(f, "    ")?;
-			match self.labels.get(&i) {
-				// this alignment width is larger than you’d expect
-				// due to coloring escape codes
-				Some(label) => write!(f, "{:>13}:", format!("{label:?}"))?,
-				None => write!(f, "     ")?,
-			}
-			writeln!(f, " {instr:?}")?;
-		}
+		for (name, body) in &self.bodies {
+			writeln!(f, "    {name}:")?;
 
-		if let Some(label) = self.labels.get(&self.instrs.len()) {
-			writeln!(f, "    {label:?}:")?;
+			for (i, instr) in body.instrs.iter().enumerate() {
+				write!(f, "    ")?;
+				match body.labels.get(&i) {
+					// this alignment width is larger than you’d expect
+					// due to coloring escape codes
+					Some(label) => write!(f, "{:>13}:", format!("{label:?}"))?,
+					None => write!(f, "     ")?,
+				}
+				writeln!(f, " {instr:?}")?;
+			}
+
+			if let Some(label) = body.labels.get(&body.instrs.len()) {
+				writeln!(f, "    {label:?}:")?;
+			}
 		}
 
 		write!(f, "]]")?;

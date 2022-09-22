@@ -1,4 +1,9 @@
 #[derive(Debug)]
+pub(crate) enum Item {
+	Proc { name: String, body: Vec<Stmt> },
+}
+
+#[derive(Debug)]
 pub(crate) enum Stmt {
 	LocalDef { name: String, value: Expr },
 	LocalSet { name: String, new_value: Expr },

@@ -1,7 +1,7 @@
-use crate::ast::{Expr, Stmt};
+use crate::ast::{Expr, Item, Stmt};
 use crate::lexer::{Token, TokenKind};
 
-pub(crate) fn parse(tokens: &[Token], input: &str) -> Vec<Stmt> {
+pub(crate) fn parse(tokens: &[Token], input: &str) -> Vec<Item> {
 	Parser { tokens, cursor: 0, input }.parse()
 }
 
@@ -12,12 +12,28 @@ struct Parser<'a> {
 }
 
 impl Parser<'_> {
-	fn parse(mut self) -> Vec<Stmt> {
-		let mut stmts = Vec::new();
+	fn parse(mut self) -> Vec<Item> {
+		let mut items = Vec::new();
 		while self.cursor < self.tokens.len() {
-			stmts.push(self.stmt());
+			items.push(self.item());
 		}
-		stmts
+		items
+	}
+
+	fn item(&mut self) -> Item {
+		match self.current().kind {
+			TokenKind::Proc => self.proc(),
+			_ => self.error("item"),
+		}
+	}
+
+	fn proc(&mut self) -> Item {
+		self.expect(TokenKind::Proc);
+		let name = self.expect(TokenKind::Ident);
+		self.expect(TokenKind::LParen);
+		self.expect(TokenKind::RParen);
+		let body = self.block();
+		Item::Proc { name, body }
 	}
 
 	fn stmt(&mut self) -> Stmt {

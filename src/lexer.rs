@@ -28,6 +28,9 @@ impl std::fmt::Debug for Token {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Logos)]
 pub(crate) enum TokenKind {
+	#[token("proc")]
+	Proc,
+
 	#[token("var")]
 	Var,
 
@@ -66,6 +69,12 @@ pub(crate) enum TokenKind {
 
 	#[token("}")]
 	RBrace,
+
+	#[token("(")]
+	LParen,
+
+	#[token(")")]
+	RParen,
 
 	#[error]
 	#[regex("[ \t\n]*", logos::skip)]
