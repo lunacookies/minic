@@ -1,6 +1,7 @@
 #[derive(Debug)]
 pub(crate) enum Item {
 	Proc { name: String, body: Vec<Stmt> },
+	Struct { name: String, fields: Vec<(String, Type)> },
 }
 
 #[derive(Debug)]

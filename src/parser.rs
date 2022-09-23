@@ -23,6 +23,7 @@ impl Parser<'_> {
 	fn item(&mut self) -> Item {
 		match self.current().kind {
 			TokenKind::Proc => self.proc(),
+			TokenKind::Struct => self.strukt(),
 			_ => self.error("item"),
 		}
 	}
@@ -34,6 +35,20 @@ impl Parser<'_> {
 		self.expect(TokenKind::RParen);
 		let body = self.block();
 		Item::Proc { name, body }
+	}
+
+	fn strukt(&mut self) -> Item {
+		self.expect(TokenKind::Struct);
+		let name = self.expect(TokenKind::Ident);
+		self.expect(TokenKind::LBrace);
+		let mut fields = Vec::new();
+		while self.current().kind != TokenKind::RBrace {
+			let name = self.expect(TokenKind::Ident);
+			let ty = self.ty();
+			fields.push((name, ty));
+		}
+		self.expect(TokenKind::RBrace);
+		Item::Struct { name, fields }
 	}
 
 	fn stmt(&mut self) -> Stmt {
