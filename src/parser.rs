@@ -1,4 +1,4 @@
-use crate::ast::{Expr, Item, Stmt};
+use crate::ast::{Expr, Item, Stmt, Type};
 use crate::lexer::{Token, TokenKind};
 
 pub(crate) fn parse(tokens: &[Token], input: &str) -> Vec<Item> {
@@ -51,9 +51,10 @@ impl Parser<'_> {
 	fn local_def(&mut self) -> Stmt {
 		self.expect(TokenKind::Var);
 		let name = self.expect(TokenKind::Ident);
+		let ty = self.ty();
 		self.expect(TokenKind::Eq);
 		let value = self.expr();
-		Stmt::LocalDef { name, value }
+		Stmt::LocalDef { name, value, ty }
 	}
 
 	fn local_set(&mut self) -> Stmt {
@@ -122,6 +123,16 @@ impl Parser<'_> {
 				Expr::Equal(Box::new(lhs), Box::new(rhs))
 			}
 			_ => self.error("expression"),
+		}
+	}
+
+	fn ty(&mut self) -> Type {
+		match self.current().kind {
+			TokenKind::U64 => {
+				self.expect(TokenKind::U64);
+				Type::U64
+			}
+			_ => self.error("type"),
 		}
 	}
 

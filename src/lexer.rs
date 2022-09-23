@@ -52,6 +52,9 @@ pub(crate) enum TokenKind {
 	#[token("continue")]
 	Continue,
 
+	#[token("u64")]
+	U64,
+
 	#[regex("[a-z][a-zA-Z0-9_]*")]
 	Ident,
 

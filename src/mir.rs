@@ -1,4 +1,4 @@
-use crate::ast::{Expr, Item, Stmt};
+use crate::ast::{Expr, Item, Stmt, Type};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt;
@@ -61,7 +61,7 @@ pub(crate) fn lower(ast: &[Item]) -> Mir {
 
 struct LowerCtx {
 	body: Body,
-	scopes: Vec<HashMap<String, Reg>>,
+	scopes: Vec<HashMap<String, (Reg, Type)>>,
 	current_reg: Reg,
 	current_label: Label,
 	loop_tops: Vec<Label>,
@@ -76,7 +76,7 @@ impl LowerCtx {
 
 	fn lower_stmt(&mut self, stmt: &Stmt) {
 		match stmt {
-			Stmt::LocalDef { name, value } => self.lower_local_def(name, value),
+			Stmt::LocalDef { name, value, ty } => self.lower_local_def(name, value, ty),
 			Stmt::LocalSet { name, new_value } => self.lower_local_set(name, new_value),
 			Stmt::Loop { stmts } => self.lower_loop(stmts),
 			Stmt::If { condition, true_branch, false_branch } => {
@@ -90,26 +90,30 @@ impl LowerCtx {
 		}
 	}
 
-	fn lower_local_def(&mut self, name: &str, value: &Expr) {
+	fn lower_local_def(&mut self, name: &str, value: &Expr, ty: &Type) {
+		let lower_result = self.lower_expr(value);
+
+		self.expect_types_match(ty, &lower_result.ty);
+
 		// every local gets its own register in case we want to mutate its value later
-		let reg = match self.lower_expr(value) {
+		let reg = if lower_result.did_allocate_new_reg {
+			lower_result.reg
+		} else {
 			// if lowering the local’s value resulted in just referencing an existing register,
 			// we make sure to allocate a new register
-			LowerExprResult::ReferenceExisting(r) => {
-				let new_reg = self.next_reg();
-				self.emit(Instr::Store { dst: new_reg, src: r });
-				new_reg
-			}
-			LowerExprResult::AllocateNew(r) => r,
+			let new_reg = self.next_reg();
+			self.emit(Instr::Store { dst: new_reg, src: lower_result.reg });
+			new_reg
 		};
 
-		self.insert_in_scope(name.to_string(), reg);
+		self.insert_in_scope(name.to_string(), reg, lower_result.ty);
 	}
 
 	fn lower_local_set(&mut self, name: &str, new_value: &Expr) {
-		let local_reg = self.lookup_in_scope(name);
-		let new_value_reg = self.lower_expr(new_value).reg();
-		self.emit(Instr::Store { dst: local_reg, src: new_value_reg });
+		let (local_reg, ty) = self.lookup_in_scope(name);
+		let new_value = self.lower_expr(new_value);
+		self.expect_types_match(&ty, &new_value.ty);
+		self.emit(Instr::Store { dst: local_reg, src: new_value.reg });
 	}
 
 	fn lower_loop(&mut self, stmts: &[Stmt]) {
@@ -142,9 +146,10 @@ impl LowerCtx {
 	}
 
 	fn lower_if(&mut self, condition: &Expr, true_branch: &[Stmt], false_branch: &[Stmt]) {
-		let condition = self.lower_expr(condition).reg();
+		let condition = self.lower_expr(condition);
+		self.expect_types_match(&Type::U64, &condition.ty);
 		let br_idx = self.body.instrs.len();
-		self.emit(Instr::CondBr { label: Label::PLACEHOLDER, condition });
+		self.emit(Instr::CondBr { label: Label::PLACEHOLDER, condition: condition.reg });
 
 		self.lower_block(false_branch);
 		let skip_br_idx = self.body.instrs.len();
@@ -181,25 +186,28 @@ impl LowerCtx {
 
 	fn lower_expr(&mut self, expr: &Expr) -> LowerExprResult {
 		match expr {
-			Expr::Local(name) => LowerExprResult::ReferenceExisting(self.lookup_in_scope(name)),
+			Expr::Local(name) => {
+				let (reg, ty) = self.lookup_in_scope(name);
+				LowerExprResult { reg, ty, did_allocate_new_reg: false }
+			}
 			Expr::Int(n) => {
 				let dst = self.next_reg();
 				self.emit(Instr::StoreConst { dst, value: Const(*n) });
-				LowerExprResult::AllocateNew(dst)
+				LowerExprResult { reg: dst, ty: Type::U64, did_allocate_new_reg: true }
 			}
 			Expr::Add(lhs, rhs) => {
-				let lhs = self.lower_expr(lhs).reg();
-				let rhs = self.lower_expr(rhs).reg();
+				let lhs = self.lower_expr(lhs).reg;
+				let rhs = self.lower_expr(rhs).reg;
 				let dst = self.next_reg();
 				self.emit(Instr::Add { dst, lhs, rhs });
-				LowerExprResult::AllocateNew(dst)
+				LowerExprResult { reg: dst, ty: Type::U64, did_allocate_new_reg: true }
 			}
 			Expr::Equal(lhs, rhs) => {
-				let lhs = self.lower_expr(lhs).reg();
-				let rhs = self.lower_expr(rhs).reg();
+				let lhs = self.lower_expr(lhs).reg;
+				let rhs = self.lower_expr(rhs).reg;
 				let dst = self.next_reg();
 				self.emit(Instr::CmpEq { dst, lhs, rhs });
-				LowerExprResult::AllocateNew(dst)
+				LowerExprResult { reg: dst, ty: Type::U64, did_allocate_new_reg: true }
 			}
 		}
 	}
@@ -208,14 +216,14 @@ impl LowerCtx {
 		self.body.instrs.push(instr);
 	}
 
-	fn insert_in_scope(&mut self, name: String, reg: Reg) {
-		self.scopes.last_mut().unwrap().insert(name, reg);
+	fn insert_in_scope(&mut self, name: String, reg: Reg, ty: Type) {
+		self.scopes.last_mut().unwrap().insert(name, (reg, ty));
 	}
 
-	fn lookup_in_scope(&mut self, name: &str) -> Reg {
+	fn lookup_in_scope(&mut self, name: &str) -> (Reg, Type) {
 		for scope in self.scopes.iter().rev() {
-			if let Some(reg) = scope.get(name) {
-				return *reg;
+			if let Some((reg, ty)) = scope.get(name) {
+				return (*reg, ty.clone());
 			}
 		}
 		eprintln!("error: undefined variable `{name}`");
@@ -238,6 +246,10 @@ impl LowerCtx {
 				l
 			}
 		}
+	}
+
+	fn expect_types_match(&self, ty_1: &Type, ty_2: &Type) {
+		assert_eq!(ty_1, ty_2)
 	}
 }
 
@@ -269,18 +281,10 @@ impl fmt::Debug for Mir {
 	}
 }
 
-enum LowerExprResult {
-	ReferenceExisting(Reg),
-	AllocateNew(Reg),
-}
-
-impl LowerExprResult {
-	fn reg(self) -> Reg {
-		match self {
-			LowerExprResult::ReferenceExisting(r) => r,
-			LowerExprResult::AllocateNew(r) => r,
-		}
-	}
+struct LowerExprResult {
+	reg: Reg,
+	ty: Type,
+	did_allocate_new_reg: bool,
 }
 
 impl fmt::Debug for Instr {
