@@ -1,0 +1,11 @@
+AlignTrailingComments: false
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterReturnType: AllDefinitions
+BreakBeforeBraces: Linux
+Cpp11BracedListStyle: false
+IndentWidth: 8
+UseTab: AlignWithSpaces

@@ -1,1 +1,3 @@
-/target
+minic
+*.o
+*.swp
