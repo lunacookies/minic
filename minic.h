@@ -62,6 +62,7 @@ enum token_kind {
 	TK_EOF,
 	TK__LAST,
 };
+u8 *TokenKindToString(enum token_kind TokenKind);
 void DebugTokenKind(enum token_kind TokenKind);
 
 struct token {
@@ -73,3 +74,25 @@ void DebugToken(struct token Token);
 void DebugTokens(struct token *Tokens);
 
 struct token *Tokenize(u8 *Input);
+
+// -------
+// parse.c
+// -------
+
+struct ast {
+	struct func *Functions;
+	usize NumFunctions;
+};
+void DebugFunction(struct func Function);
+void DebugAst(struct ast Ast);
+
+struct func {
+	u8 *Name;
+	struct statement *Body;
+};
+
+struct statement {
+	u32 ballast;
+};
+
+struct ast Parse(struct token *Tokens);

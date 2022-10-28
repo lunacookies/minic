@@ -1,5 +1,18 @@
 #include "minic.h"
 
+u8 *
+TokenKindToString(enum token_kind TokenKind)
+{
+	local_persist char *Strings[] = {
+		"a number", "an identifier", "`func`", "`struct`", "`if`",
+		"`else`",   "`while`",       "`var`",  "`{`",      "`}`",
+		"`(`",      "`)`",           "`.`",    "`,`",      "`;`",
+		"`+`",      "`-`",           "`*`",    "`/`",      "EOF",
+	};
+	Assert(ArrayLength(Strings) == TK__LAST);
+	return (u8 *)Strings[TokenKind];
+}
+
 void
 DebugTokenKind(enum token_kind TokenKind)
 {
@@ -24,7 +37,7 @@ internal struct token_buf
 CreateTokenBuf(void)
 {
 	struct token_buf T = {
-		.Tokens = malloc(sizeof(struct token) * 8),
+		.Tokens = calloc(8, sizeof(struct token)),
 		.Length = 0,
 		.Capacity = 8,
 	};
@@ -46,7 +59,7 @@ PushToken(struct token_buf *B, enum token_kind Kind, u8 *Start, u8 *End)
 		    realloc(B->Tokens, sizeof(struct token) * B->Capacity);
 	}
 	B->Tokens[B->Length] = T;
-	B->Length += 1;
+	B->Length++;
 }
 
 internal void

@@ -7,7 +7,8 @@ main(int NumberOfArguments, char **Arguments)
 		Error("invalid number of arguments");
 
 	struct token *Tokens = Tokenize((u8 *)Arguments[1]);
-	DebugTokens(Tokens);
+	struct ast Ast = Parse(Tokens);
+	DebugAst(Ast);
 
 	return 0;
 }
