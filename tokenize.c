@@ -4,8 +4,11 @@ void
 DebugTokenKind(enum token_kind TokenKind)
 {
 	local_persist char *Strings[] = {
-		"TK_NUMBER", "TK_IDENT", "TK_FUNC", "TK_STRUCT", "TK_IF",
-		"TK_ELSE",   "TK_WHILE", "TK_VAR",  "TK_EOF",
+		"TK_NUMBER", "TK_IDENT",  "TK_FUNC",      "TK_STRUCT",
+		"TK_IF",     "TK_ELSE",   "TK_WHILE",     "TK_VAR",
+		"TK_LBRACE", "TK_RBRACE", "TK_LPAREN",    "TK_RPAREN",
+		"TK_DOT",    "TK_COMMA",  "TK_SEMICOLON", "TK_PLUS",
+		"TK_MINUS",  "TK_STAR",   "TK_SLASH",     "TK_EOF",
 	};
 	Assert(ArrayLength(Strings) == TK__LAST);
 	fprintf(stderr, "%s", Strings[TokenKind]);
@@ -103,6 +106,23 @@ ConvertKeywords(struct token *Tokens)
 	}
 }
 
+internal bool
+SimpleToken(struct token_buf *TokenBuf, char *Text, enum token_kind Kind,
+            u8 **Input)
+{
+	u8 *Start = *Input;
+	for (;;) {
+		if (*Text == '\0')
+			break;
+		if (*Text != **Input)
+			return false;
+		Text++;
+		(*Input)++;
+	}
+	PushToken(TokenBuf, Kind, Start, *Input);
+	return true;
+}
+
 struct token *
 Tokenize(u8 *Input)
 {
@@ -114,12 +134,36 @@ Tokenize(u8 *Input)
 			continue;
 		}
 
+		if (SimpleToken(&TokenBuf, "{", TK_LBRACE, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "}", TK_RBRACE, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "(", TK_LPAREN, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, ")", TK_RPAREN, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, ".", TK_DOT, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, ",", TK_COMMA, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, ";", TK_SEMICOLON, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "+", TK_PLUS, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "-", TK_MINUS, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "*", TK_STAR, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "/", TK_SLASH, &Input))
+			continue;
+
 		if (IsDigit(*Input)) {
 			u8 *Start = Input;
 			do {
 				Input++;
 			} while (IsDigit(*Input));
 			PushToken(&TokenBuf, TK_NUMBER, Start, Input);
+			continue;
 		}
 
 		if (IsIdentStart(*Input)) {
@@ -128,7 +172,10 @@ Tokenize(u8 *Input)
 				Input++;
 			} while (IsIdentContinue(*Input));
 			PushToken(&TokenBuf, TK_IDENT, Start, Input);
+			continue;
 		}
+
+		Error("invalid token");
 	}
 
 	PushToken(&TokenBuf, TK_EOF, Input, Input);
