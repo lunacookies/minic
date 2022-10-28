@@ -96,8 +96,8 @@ IsIdentContinue(u8 C)
 internal bool
 IsEqual(struct token Token, char *Text)
 {
-	return memcmp(Token.Text, Text, Token.Length) == 0 &&
-	       Text[Token.Length] == '\0';
+	return Token.Length == strlen(Text) &&
+	       strncmp((char *)Token.Text, Text, Token.Length) == 0;
 }
 
 internal void
@@ -204,8 +204,8 @@ DebugToken(struct token Token)
 	DebugTokenKind(Token.Kind);
 	fprintf(stderr, "\033[0m:");
 	fprintf(stderr, "\033[32m\"\033[92m");
-	for (usize i = 0; i < Token.Length; i++)
-		fprintf(stderr, "%c", Token.Text[i]);
+	for (usize I = 0; I < Token.Length; I++)
+		fprintf(stderr, "%c", Token.Text[I]);
 	fprintf(stderr, "\033[32m\"\033[0m");
 }
 

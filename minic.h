@@ -32,7 +32,7 @@ typedef ssize_t isize;
 // util.c
 // ------
 
-void Error(char *Fmt, ...);
+_Noreturn void Error(char *Fmt, ...);
 
 // ----------
 // tokenize.c
@@ -86,13 +86,25 @@ struct ast {
 void DebugFunction(struct func Function);
 void DebugAst(struct ast Ast);
 
-struct func {
-	u8 *Name;
-	struct statement *Body;
+enum statement_kind {
+	SK_VAR,
+	SK_BLOCK,
 };
 
 struct statement {
-	u32 ballast;
+	enum statement_kind Kind;
+
+	// var
+	u8 *Name;
+
+	// block
+	struct statement *Statements;
+	usize NumStatements;
+};
+
+struct func {
+	u8 *Name;
+	struct statement Body;
 };
 
 struct ast Parse(struct token *Tokens);

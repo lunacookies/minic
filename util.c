@@ -2,7 +2,7 @@
 
 // We take char instead of u8 to allow for
 // the passing of unadorned string literals.
-void
+_Noreturn void
 Error(char *Fmt, ...)
 {
 	va_list Ap;
