@@ -90,6 +90,7 @@ void DebugAst(struct ast Ast);
 enum expression_kind {
 	EK_NUMBER,
 	EK_VARIABLE,
+	EK_CALL,
 };
 
 enum statement_kind {
@@ -105,8 +106,12 @@ struct expression {
 	// number
 	usize Value;
 
-	// variable
+	// variable and call
 	u8 *Name;
+
+	// call
+	struct expression *Arguments;
+	usize NumArguments;
 };
 
 struct statement {

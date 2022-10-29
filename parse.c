@@ -20,6 +20,16 @@ DebugExpression(struct expression Expression)
 	case EK_VARIABLE:
 		fprintf(stderr, "%s", Expression.Name);
 		return;
+	case EK_CALL:
+		fprintf(stderr, "\033[93m%s\033[0m", Expression.Name);
+		fprintf(stderr, "(");
+		for (usize I = 0; I < Expression.NumArguments; I++) {
+			if (I != 0)
+				fprintf(stderr, ", ");
+			DebugExpression(Expression.Arguments[I]);
+		}
+		fprintf(stderr, ")");
+		return;
 	}
 }
 
@@ -73,6 +83,7 @@ DebugAst(struct ast Ast)
 	}
 }
 
+internal struct expression ParseExpression(void);
 internal struct statement ParseStatement(void);
 
 global_variable struct token *Current;
@@ -96,6 +107,36 @@ ExpectIdent(void)
 }
 
 internal struct expression
+ParseCall(void)
+{
+	struct expression Expression;
+	Expression.Kind = EK_CALL;
+	Expression.Name = ExpectIdent();
+
+	usize Capacity = 2;
+	Expression.Arguments = calloc(Capacity, sizeof(struct expression));
+	Expression.NumArguments = 0;
+	Expect(TK_LPAREN);
+	while (Current->Kind != TK_RPAREN) {
+		if (Expression.NumArguments == Capacity) {
+			Capacity *= 2;
+			Expression.Arguments =
+			    realloc(Expression.Arguments,
+			            sizeof(struct expression) * Capacity);
+		}
+		Expression.Arguments[Expression.NumArguments] =
+		    ParseExpression();
+		Expression.NumArguments++;
+
+		if (Current->Kind != TK_RPAREN)
+			Expect(TK_COMMA);
+	}
+	Expect(TK_RPAREN);
+
+	return Expression;
+}
+
+internal struct expression
 ParseExpression(void)
 {
 	switch (Current->Kind) {
@@ -107,6 +148,8 @@ ParseExpression(void)
 		return Expression;
 	}
 	case TK_IDENT: {
+		if ((Current + 1)->Kind == TK_LPAREN)
+			return ParseCall();
 		struct expression Expression;
 		Expression.Kind = EK_VARIABLE;
 		Expression.Name = ExpectIdent();
