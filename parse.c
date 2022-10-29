@@ -11,6 +11,19 @@ Newline(void)
 }
 
 void
+DebugExpression(struct expression Expression)
+{
+	switch (Expression.Kind) {
+	case EK_NUMBER:
+		fprintf(stderr, "\033[91m%zu\033[0m", Expression.Value);
+		return;
+	case EK_VARIABLE:
+		fprintf(stderr, "%s", Expression.Name);
+		return;
+	}
+}
+
+void
 DebugStatement(struct statement Statement)
 {
 	switch (Statement.Kind) {
@@ -28,6 +41,9 @@ DebugStatement(struct statement Statement)
 		Newline();
 		fprintf(stderr, "}");
 		return;
+	case SK_EXPRESSION:
+		DebugExpression(Statement.Expression);
+		fprintf(stderr, ";");
 	}
 }
 
@@ -73,6 +89,29 @@ ExpectIdent(void)
 	return (u8 *)strndup((char *)IdentToken.Text, IdentToken.Length);
 }
 
+internal struct expression
+ParseExpression(void)
+{
+	switch (Current->Kind) {
+	case TK_NUMBER: {
+		struct expression Expression;
+		Expression.Kind = EK_NUMBER;
+		Expression.Value = strtol((char *)Current->Text, NULL, 10);
+		Current++;
+		return Expression;
+	}
+	case TK_IDENT: {
+		struct expression Expression;
+		Expression.Kind = EK_VARIABLE;
+		Expression.Name = ExpectIdent();
+		return Expression;
+	}
+	default:
+		Error("expected expression but found %s",
+		      TokenKindToString(Current->Kind));
+	}
+}
+
 internal struct statement
 ParseBlock(void)
 {
@@ -115,8 +154,13 @@ ParseStatement(void)
 	}
 	case TK_LBRACE:
 		return ParseBlock();
-	default:
-		Error("expected a statement");
+	default: {
+		struct statement Statement;
+		Statement.Kind = SK_EXPRESSION;
+		Statement.Expression = ParseExpression();
+		Expect(TK_SEMICOLON);
+		return Statement;
+	}
 	}
 }
 

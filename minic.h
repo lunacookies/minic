@@ -86,9 +86,25 @@ struct ast {
 void DebugFunction(struct func Function);
 void DebugAst(struct ast Ast);
 
+enum expression_kind {
+	EK_NUMBER,
+	EK_VARIABLE,
+};
+
 enum statement_kind {
 	SK_VAR,
 	SK_BLOCK,
+	SK_EXPRESSION,
+};
+
+struct expression {
+	enum expression_kind Kind;
+
+	// number
+	usize Value;
+
+	// variable
+	u8 *Name;
 };
 
 struct statement {
@@ -100,6 +116,9 @@ struct statement {
 	// block
 	struct statement *Statements;
 	usize NumStatements;
+
+	// expression statement
+	struct expression Expression;
 };
 
 struct func {
