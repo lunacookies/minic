@@ -48,6 +48,7 @@ enum token_kind {
 	TK_ELSE,
 	TK_WHILE,
 	TK_VAR,
+	TK_RETURN,
 	TK_LBRACE,
 	TK_RBRACE,
 	TK_LPAREN,
@@ -95,6 +96,7 @@ enum statement_kind {
 	SK_VAR,
 	SK_BLOCK,
 	SK_EXPRESSION,
+	SK_RETURN,
 };
 
 struct expression {
@@ -117,7 +119,7 @@ struct statement {
 	struct statement *Statements;
 	usize NumStatements;
 
-	// expression statement
+	// expression statement and return
 	struct expression Expression;
 };
 

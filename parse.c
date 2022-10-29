@@ -44,6 +44,12 @@ DebugStatement(struct statement Statement)
 	case SK_EXPRESSION:
 		DebugExpression(Statement.Expression);
 		fprintf(stderr, ";");
+		return;
+	case SK_RETURN:
+		fprintf(stderr, "\033[94mreturn\033[0m ");
+		DebugExpression(Statement.Expression);
+		fprintf(stderr, ";");
+		return;
 	}
 }
 
@@ -154,6 +160,14 @@ ParseStatement(void)
 	}
 	case TK_LBRACE:
 		return ParseBlock();
+	case TK_RETURN: {
+		struct statement Statement;
+		Statement.Kind = SK_RETURN;
+		Expect(TK_RETURN);
+		Statement.Expression = ParseExpression();
+		Expect(TK_SEMICOLON);
+		return Statement;
+	}
 	default: {
 		struct statement Statement;
 		Statement.Kind = SK_EXPRESSION;
