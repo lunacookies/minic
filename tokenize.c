@@ -9,8 +9,8 @@ TokenKindToString(enum token_kind TokenKind)
 		"`}`",      "`(`",           "`)`",    "`[`",      "`]`",
 		"`<=`",     "`>=`",          "`<`",    "`>`",      "`.`",
 		"`,`",      "`;`",           "`+`",    "`-`",      "`*`",
-		"`/`",      "`&`",           "`|`",    "`==`",     "`=`",
-		"`!=`",     "EOF",
+		"`/`",      "`&`",           "`|`",    "`~`",      "`==`",
+		"`=`",      "`!=`",          "EOF",
 	};
 	Assert(ArrayLength(Strings) == TK__LAST);
 	return (u8 *)Strings[TokenKind];
@@ -29,8 +29,8 @@ DebugTokenKind(enum token_kind TokenKind)
 		"TK_RANGLE",       "TK_DOT",          "TK_COMMA",
 		"TK_SEMICOLON",    "TK_PLUS",         "TK_MINUS",
 		"TK_STAR",         "TK_SLASH",        "TK_PRETZEL",
-		"TK_PIPE",         "TK_EQUAL_EQUAL",  "TK_EQUAL",
-		"TK_BANG_EQUAL",   "TK_EOF",
+		"TK_PIPE",         "TK_SQUIGGLE",     "TK_EQUAL_EQUAL",
+		"TK_EQUAL",        "TK_BANG_EQUAL",   "TK_EOF",
 	};
 	Assert(ArrayLength(Strings) == TK__LAST);
 	fprintf(stderr, "%s", Strings[TokenKind]);
@@ -197,6 +197,8 @@ Tokenize(u8 *Input)
 		if (SimpleToken(&TokenBuf, "&", TK_PRETZEL, &Input))
 			continue;
 		if (SimpleToken(&TokenBuf, "|", TK_PIPE, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "~", TK_SQUIGGLE, &Input))
 			continue;
 		if (SimpleToken(&TokenBuf, "==", TK_EQUAL_EQUAL, &Input))
 			continue;

@@ -77,6 +77,11 @@ DebugExpression(struct expression Expression)
 		fprintf(stderr, " ");
 		DebugExpression(*Expression.Rhs);
 		fprintf(stderr, ")");
+		return;
+	case EK_NOT:
+		fprintf(stderr, "\033[94m~\033[0m");
+		DebugExpression(*Expression.Lhs);
+		return;
 	}
 }
 
@@ -207,6 +212,13 @@ ParseLhs(void)
 		struct expression Inner = ParseExpression();
 		Expect(TK_RPAREN);
 		return Inner;
+	case TK_SQUIGGLE:
+		Expect(TK_SQUIGGLE);
+		struct expression Expression;
+		Expression.Kind = EK_NOT;
+		Expression.Lhs = malloc(sizeof(struct expression));
+		*Expression.Lhs = ParseLhs();
+		return Expression;
 	default:
 		Error("expected expression but found %s",
 		      TokenKindToString(Current->Kind));

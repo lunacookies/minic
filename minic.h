@@ -68,6 +68,7 @@ enum token_kind {
 	TK_SLASH,
 	TK_PRETZEL,
 	TK_PIPE,
+	TK_SQUIGGLE,
 	TK_EQUAL_EQUAL,
 	TK_EQUAL,
 	TK_BANG_EQUAL,
@@ -103,6 +104,7 @@ enum expression_kind {
 	EK_VARIABLE,
 	EK_CALL,
 	EK_BINARY,
+	EK_NOT,
 };
 
 enum statement_kind {
@@ -138,7 +140,7 @@ struct expression {
 	struct expression *Arguments;
 	usize NumArguments;
 
-	// binary operations
+	// binary operations and not operator
 	struct expression *Lhs;
 	struct expression *Rhs;
 	enum binary_operator Operator;
