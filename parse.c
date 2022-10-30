@@ -525,7 +525,7 @@ ParseFunction(void)
 		Function.Parameters[Function.NumParameters] = ExpectIdent();
 		Function.NumParameters++;
 
-		ExpectIdent(); // skip over type for now
+		Expect(TK_I64); // skip over type for now
 
 		if (Current->Kind != TK_RPAREN)
 			Expect(TK_COMMA);
@@ -534,7 +534,7 @@ ParseFunction(void)
 
 	GenerateParameterLocals(&Function);
 
-	ExpectIdent(); // skip over return type for now
+	Expect(TK_I64); // skip over return type for now
 
 	Function.Body = ParseStatement();
 

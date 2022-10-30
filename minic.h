@@ -50,6 +50,7 @@ enum token_kind {
 	TK_VAR,
 	TK_SET,
 	TK_RETURN,
+	TK_I64,
 	TK_LBRACE,
 	TK_RBRACE,
 	TK_LPAREN,
