@@ -6,9 +6,11 @@ TokenKindToString(enum token_kind TokenKind)
 	local_persist char *Strings[] = {
 		"a number", "an identifier", "`func`", "`struct`", "`if`",
 		"`else`",   "`while`",       "`var`",  "`return`", "`{`",
-		"`}`",      "`(`",           "`)`",    "`.`",      "`,`",
-		"`;`",      "`+`",           "`-`",    "`*`",      "`/`",
-		"EOF",
+		"`}`",      "`(`",           "`)`",    "`[`",      "`]`",
+		"`<=`",     "`>=`",          "`<`",    "`>`",      "`.`",
+		"`,`",      "`;`",           "`+`",    "`-`",      "`*`",
+		"`/`",      "`&`",           "`|`",    "`==`",     "`=`",
+		"`!=`",     "EOF",
 	};
 	Assert(ArrayLength(Strings) == TK__LAST);
 	return (u8 *)Strings[TokenKind];
@@ -18,12 +20,17 @@ void
 DebugTokenKind(enum token_kind TokenKind)
 {
 	local_persist char *Strings[] = {
-		"TK_NUMBER", "TK_IDENT",  "TK_FUNC",   "TK_STRUCT",
-		"TK_IF",     "TK_ELSE",   "TK_WHILE",  "TK_VAR",
-		"TK_RETURN", "TK_LBRACE", "TK_RBRACE", "TK_LPAREN",
-		"TK_RPAREN", "TK_DOT",    "TK_COMMA",  "TK_SEMICOLON",
-		"TK_PLUS",   "TK_MINUS",  "TK_STAR",   "TK_SLASH",
-		"TK_EOF",
+		"TK_NUMBER",       "TK_IDENT",        "TK_FUNC",
+		"TK_STRUCT",       "TK_IF",           "TK_ELSE",
+		"TK_WHILE",        "TK_VAR",          "TK_RETURN",
+		"TK_LBRACE",       "TK_RBRACE",       "TK_LPAREN",
+		"TK_RPAREN",       "TK_LSQUARE",      "TK_RSQUARE",
+		"TK_LANGLE_EQUAL", "TK_RANGLE_EQUAL", "TK_LANGLE",
+		"TK_RANGLE",       "TK_DOT",          "TK_COMMA",
+		"TK_SEMICOLON",    "TK_PLUS",         "TK_MINUS",
+		"TK_STAR",         "TK_SLASH",        "TK_PRETZEL",
+		"TK_PIPE",         "TK_EQUAL_EQUAL",  "TK_EQUAL",
+		"TK_BANG_EQUAL",   "TK_EOF",
 	};
 	Assert(ArrayLength(Strings) == TK__LAST);
 	fprintf(stderr, "%s", Strings[TokenKind]);
@@ -128,15 +135,17 @@ SimpleToken(struct token_buf *TokenBuf, char *Text, enum token_kind Kind,
             u8 **Input)
 {
 	u8 *Start = *Input;
+	u8 *End = *Input;
 	for (;;) {
 		if (*Text == '\0')
 			break;
-		if (*Text != **Input)
+		if (*Text != *End)
 			return false;
 		Text++;
-		(*Input)++;
+		End++;
 	}
-	PushToken(TokenBuf, Kind, Start, *Input);
+	PushToken(TokenBuf, Kind, Start, End);
+	*Input = End;
 	return true;
 }
 
@@ -159,6 +168,18 @@ Tokenize(u8 *Input)
 			continue;
 		if (SimpleToken(&TokenBuf, ")", TK_RPAREN, &Input))
 			continue;
+		if (SimpleToken(&TokenBuf, "[", TK_LSQUARE, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "]", TK_RSQUARE, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "<=", TK_LANGLE_EQUAL, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, ">=", TK_RANGLE_EQUAL, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "<", TK_LANGLE, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, ">", TK_RANGLE, &Input))
+			continue;
 		if (SimpleToken(&TokenBuf, ".", TK_DOT, &Input))
 			continue;
 		if (SimpleToken(&TokenBuf, ",", TK_COMMA, &Input))
@@ -172,6 +193,16 @@ Tokenize(u8 *Input)
 		if (SimpleToken(&TokenBuf, "*", TK_STAR, &Input))
 			continue;
 		if (SimpleToken(&TokenBuf, "/", TK_SLASH, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "&", TK_PRETZEL, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "|", TK_PIPE, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "==", TK_EQUAL_EQUAL, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "=", TK_EQUAL, &Input))
+			continue;
+		if (SimpleToken(&TokenBuf, "!=", TK_BANG_EQUAL, &Input))
 			continue;
 
 		if (IsDigit(*Input)) {

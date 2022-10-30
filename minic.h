@@ -53,6 +53,12 @@ enum token_kind {
 	TK_RBRACE,
 	TK_LPAREN,
 	TK_RPAREN,
+	TK_LSQUARE,
+	TK_RSQUARE,
+	TK_LANGLE_EQUAL,
+	TK_RANGLE_EQUAL,
+	TK_LANGLE,
+	TK_RANGLE,
 	TK_DOT,
 	TK_COMMA,
 	TK_SEMICOLON,
@@ -60,6 +66,11 @@ enum token_kind {
 	TK_MINUS,
 	TK_STAR,
 	TK_SLASH,
+	TK_PRETZEL,
+	TK_PIPE,
+	TK_EQUAL_EQUAL,
+	TK_EQUAL,
+	TK_BANG_EQUAL,
 	TK_EOF,
 	TK__LAST,
 };
@@ -91,6 +102,7 @@ enum expression_kind {
 	EK_NUMBER,
 	EK_VARIABLE,
 	EK_CALL,
+	EK_BINARY,
 };
 
 enum statement_kind {
@@ -98,6 +110,19 @@ enum statement_kind {
 	SK_BLOCK,
 	SK_EXPRESSION,
 	SK_RETURN,
+};
+
+enum binary_operator {
+	OP_ADD,
+	OP_SUBTRACT,
+	OP_MULTIPLY,
+	OP_DIVIDE,
+	OP_AND,
+	OP_OR,
+	OP_EQUAL,
+	OP_NOT_EQUAL,
+	OP_LESS_THAN,
+	OP_LESS_THAN_EQUAL,
 };
 
 struct expression {
@@ -112,6 +137,11 @@ struct expression {
 	// call
 	struct expression *Arguments;
 	usize NumArguments;
+
+	// binary operations
+	struct expression *Lhs;
+	struct expression *Rhs;
+	enum binary_operator Operator;
 };
 
 struct statement {

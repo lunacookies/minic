@@ -2,7 +2,7 @@
 
 global_variable u32 Indentation = 0;
 
-void
+internal void
 Newline(void)
 {
 	fprintf(stderr, "\n");
@@ -10,7 +10,46 @@ Newline(void)
 		fprintf(stderr, "\t");
 }
 
-void
+internal void
+DebugBinaryOperator(enum binary_operator Operator)
+{
+	fprintf(stderr, "\033[94m");
+	switch (Operator) {
+	case OP_ADD:
+		fprintf(stderr, "+");
+		break;
+	case OP_SUBTRACT:
+		fprintf(stderr, "-");
+		break;
+	case OP_MULTIPLY:
+		fprintf(stderr, "*");
+		break;
+	case OP_DIVIDE:
+		fprintf(stderr, "/");
+		break;
+	case OP_AND:
+		fprintf(stderr, "&");
+		break;
+	case OP_OR:
+		fprintf(stderr, "|");
+		break;
+	case OP_EQUAL:
+		fprintf(stderr, "==");
+		break;
+	case OP_NOT_EQUAL:
+		fprintf(stderr, "!=");
+		break;
+	case OP_LESS_THAN:
+		fprintf(stderr, "<");
+		break;
+	case OP_LESS_THAN_EQUAL:
+		fprintf(stderr, "<=");
+		break;
+	}
+	fprintf(stderr, "\033[0m");
+}
+
+internal void
 DebugExpression(struct expression Expression)
 {
 	switch (Expression.Kind) {
@@ -30,10 +69,18 @@ DebugExpression(struct expression Expression)
 		}
 		fprintf(stderr, ")");
 		return;
+	case EK_BINARY:
+		fprintf(stderr, "(");
+		DebugExpression(*Expression.Lhs);
+		fprintf(stderr, " ");
+		DebugBinaryOperator(Expression.Operator);
+		fprintf(stderr, " ");
+		DebugExpression(*Expression.Rhs);
+		fprintf(stderr, ")");
 	}
 }
 
-void
+internal void
 DebugStatement(struct statement Statement)
 {
 	switch (Statement.Kind) {
@@ -137,7 +184,7 @@ ParseCall(void)
 }
 
 internal struct expression
-ParseExpression(void)
+ParseLhs(void)
 {
 	switch (Current->Kind) {
 	case TK_NUMBER: {
@@ -155,10 +202,124 @@ ParseExpression(void)
 		Expression.Name = ExpectIdent();
 		return Expression;
 	}
+	case TK_LPAREN:
+		Expect(TK_LPAREN);
+		struct expression Inner = ParseExpression();
+		Expect(TK_RPAREN);
+		return Inner;
 	default:
 		Error("expected expression but found %s",
 		      TokenKindToString(Current->Kind));
 	}
+}
+
+internal u8
+OperatorBindingPower(enum binary_operator Operator)
+{
+	switch (Operator) {
+	case OP_ADD:
+	case OP_SUBTRACT:
+		return 3;
+	case OP_MULTIPLY:
+	case OP_DIVIDE:
+		return 4;
+	case OP_AND:
+	case OP_OR:
+		return 1;
+	case OP_EQUAL:
+	case OP_NOT_EQUAL:
+	case OP_LESS_THAN:
+	case OP_LESS_THAN_EQUAL:
+		return 2;
+	}
+}
+
+internal struct expression
+ParseExpressionBindingPower(u8 MinBindingPower)
+{
+	struct expression Lhs = ParseLhs();
+
+	for (;;) {
+		bool FlipOperands = false;
+		enum binary_operator Operator;
+		switch (Current->Kind) {
+		case TK_PLUS:
+			Operator = OP_ADD;
+			break;
+		case TK_MINUS:
+			Operator = OP_SUBTRACT;
+			break;
+		case TK_STAR:
+			Operator = OP_MULTIPLY;
+			break;
+		case TK_SLASH:
+			Operator = OP_DIVIDE;
+			break;
+		case TK_PRETZEL:
+			Operator = OP_AND;
+			break;
+		case TK_PIPE:
+			Operator = OP_OR;
+			break;
+		case TK_EQUAL_EQUAL:
+			Operator = OP_EQUAL;
+			break;
+		case TK_BANG_EQUAL:
+			Operator = OP_NOT_EQUAL;
+			break;
+		case TK_LANGLE:
+			Operator = OP_LESS_THAN;
+			break;
+		case TK_RANGLE:
+			Operator = OP_LESS_THAN;
+			FlipOperands = true;
+			break;
+		case TK_LANGLE_EQUAL:
+			Operator = OP_LESS_THAN_EQUAL;
+			break;
+		case TK_RANGLE_EQUAL:
+			Operator = OP_LESS_THAN_EQUAL;
+			FlipOperands = true;
+			break;
+		default:
+			goto ExitLoop;
+		}
+
+		u8 BindingPower = OperatorBindingPower(Operator);
+		if (BindingPower < MinBindingPower)
+			break;
+
+		Current++;
+
+		struct expression Rhs =
+		    ParseExpressionBindingPower(BindingPower + 1);
+
+		if (FlipOperands) {
+			struct expression Tmp = Rhs;
+			Rhs = Lhs;
+			Lhs = Tmp;
+		}
+
+		struct expression NewLhs;
+		NewLhs.Kind = EK_BINARY;
+		NewLhs.Operator = Operator;
+		NewLhs.Lhs = malloc(sizeof(struct expression));
+		*NewLhs.Lhs = Lhs;
+		NewLhs.Rhs = malloc(sizeof(struct expression));
+		*NewLhs.Rhs = Rhs;
+
+		Lhs = NewLhs;
+	}
+
+ExitLoop:
+
+	return Lhs;
+}
+
+internal struct expression
+ParseExpression(void)
+{
+	return ParseExpressionBindingPower(0);
 }
 
 internal struct statement
