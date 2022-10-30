@@ -82,6 +82,14 @@ DebugExpression(struct expression Expression)
 		fprintf(stderr, "\033[94m~\033[0m");
 		DebugExpression(*Expression.Lhs);
 		return;
+	case EK_ADDRESS_OF:
+		fprintf(stderr, "\033[94m&\033[0m");
+		DebugExpression(*Expression.Lhs);
+		return;
+	case EK_DEREFERENCE:
+		fprintf(stderr, "\033[94m*\033[0m");
+		DebugExpression(*Expression.Lhs);
+		return;
 	}
 }
 
@@ -207,18 +215,36 @@ ParseLhs(void)
 		Expression.Name = ExpectIdent();
 		return Expression;
 	}
-	case TK_LPAREN:
+	case TK_LPAREN: {
 		Expect(TK_LPAREN);
 		struct expression Inner = ParseExpression();
 		Expect(TK_RPAREN);
 		return Inner;
-	case TK_SQUIGGLE:
+	}
+	case TK_SQUIGGLE: {
 		Expect(TK_SQUIGGLE);
 		struct expression Expression;
 		Expression.Kind = EK_NOT;
 		Expression.Lhs = malloc(sizeof(struct expression));
 		*Expression.Lhs = ParseLhs();
 		return Expression;
+	}
+	case TK_PRETZEL: {
+		Expect(TK_PRETZEL);
+		struct expression Expression;
+		Expression.Kind = EK_ADDRESS_OF;
+		Expression.Lhs = malloc(sizeof(struct expression));
+		*Expression.Lhs = ParseLhs();
+		return Expression;
+	}
+	case TK_STAR: {
+		Expect(TK_STAR);
+		struct expression Expression;
+		Expression.Kind = EK_DEREFERENCE;
+		Expression.Lhs = malloc(sizeof(struct expression));
+		*Expression.Lhs = ParseLhs();
+		return Expression;
+	}
 	default:
 		Error("expected expression but found %s",
 		      TokenKindToString(Current->Kind));

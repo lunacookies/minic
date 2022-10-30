@@ -105,6 +105,8 @@ enum expression_kind {
 	EK_CALL,
 	EK_BINARY,
 	EK_NOT,
+	EK_ADDRESS_OF,
+	EK_DEREFERENCE,
 };
 
 enum statement_kind {
@@ -140,7 +142,7 @@ struct expression {
 	struct expression *Arguments;
 	usize NumArguments;
 
-	// binary operations and not operator
+	// binary operations and unary operations (just Lhs)
 	struct expression *Lhs;
 	struct expression *Rhs;
 	enum binary_operator Operator;
