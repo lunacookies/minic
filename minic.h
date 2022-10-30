@@ -92,13 +92,6 @@ struct token *Tokenize(u8 *Input);
 // parse.c
 // -------
 
-struct ast {
-	struct func *Functions;
-	usize NumFunctions;
-};
-void DebugFunction(struct func Function);
-void DebugAst(struct ast Ast);
-
 enum expression_kind {
 	EK_NUMBER,
 	EK_VARIABLE,
@@ -129,13 +122,21 @@ enum binary_operator {
 	OP_LESS_THAN_EQUAL,
 };
 
+struct local {
+	u8 *Name;
+	usize Size;
+};
+
 struct expression {
 	enum expression_kind Kind;
 
 	// number
 	usize Value;
 
-	// variable and call
+	// variable
+	struct local *Local;
+
+	// call
 	u8 *Name;
 
 	// call
@@ -152,7 +153,7 @@ struct statement {
 	enum statement_kind Kind;
 
 	// var
-	u8 *Name;
+	struct local *Local;
 
 	// block
 	struct statement *Statements;
@@ -165,6 +166,15 @@ struct statement {
 struct func {
 	u8 *Name;
 	struct statement Body;
+	struct local *Locals;
+	usize NumLocals;
 };
 
+struct ast {
+	struct func *Functions;
+	usize NumFunctions;
+};
+
+void DebugFunction(struct func Function);
+void DebugAst(struct ast Ast);
 struct ast Parse(struct token *Tokens);

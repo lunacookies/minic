@@ -57,7 +57,7 @@ DebugExpression(struct expression Expression)
 		fprintf(stderr, "\033[91m%zu\033[0m", Expression.Value);
 		return;
 	case EK_VARIABLE:
-		fprintf(stderr, "%s", Expression.Name);
+		fprintf(stderr, "%s", Expression.Local->Name);
 		return;
 	case EK_CALL:
 		fprintf(stderr, "\033[93m%s\033[0m", Expression.Name);
@@ -98,7 +98,9 @@ DebugStatement(struct statement Statement)
 {
 	switch (Statement.Kind) {
 	case SK_VAR:
-		fprintf(stderr, "\033[94mvar\033[0m %s;", Statement.Name);
+		fprintf(stderr,
+		        "\033[94mvar\033[0m %s; \033[90m# size: %zu\033[0m",
+		        Statement.Local->Name, Statement.Local->Size);
 		return;
 	case SK_BLOCK:
 		fprintf(stderr, "{");
@@ -147,6 +149,42 @@ internal struct expression ParseExpression(void);
 internal struct statement ParseStatement(void);
 
 global_variable struct token *Current;
+global_variable struct local *Locals;
+global_variable usize NumLocals;
+global_variable usize LocalsCapacity;
+
+void
+InitLocals(void)
+{
+	LocalsCapacity = 8;
+	Locals = calloc(LocalsCapacity, sizeof(struct local));
+	NumLocals = 0;
+}
+
+struct local *
+PushLocal(struct local Local)
+{
+	if (NumLocals == LocalsCapacity) {
+		LocalsCapacity *= 2;
+		Locals = realloc(Locals, sizeof(struct local) * LocalsCapacity);
+	}
+	struct local *Ptr = Locals + NumLocals;
+	*Ptr = Local;
+	NumLocals++;
+	return Ptr;
+}
+
+struct local *
+LookupLocal(u8 *Name)
+{
+	for (usize I = 0; I < NumLocals; I++) {
+		struct local *Local = &Locals[I];
+		if (strcmp((char *)Local->Name, (char *)Name) == 0)
+			return Local;
+	}
+
+	Error("undefined variable `%s`", Name);
+}
 
 internal void
 Expect(enum token_kind Kind)
@@ -212,7 +250,7 @@ ParseLhs(void)
 			return ParseCall();
 		struct expression Expression;
 		Expression.Kind = EK_VARIABLE;
-		Expression.Name = ExpectIdent();
+		Expression.Local = LookupLocal(ExpectIdent());
 		return Expression;
 	}
 	case TK_LPAREN: {
@@ -393,11 +431,19 @@ ParseStatement(void)
 {
 	switch (Current->Kind) {
 	case TK_VAR: {
+		Expect(TK_VAR);
+		u8 *Name = ExpectIdent();
+		Expect(TK_SEMICOLON);
+
 		struct statement Statement;
 		Statement.Kind = SK_VAR;
-		Expect(TK_VAR);
-		Statement.Name = ExpectIdent();
-		Expect(TK_SEMICOLON);
+
+		struct local Local = {
+			.Name = Name,
+			.Size = 8,
+		};
+		Statement.Local = PushLocal(Local);
+
 		return Statement;
 	}
 	case TK_LBRACE:
@@ -423,12 +469,18 @@ ParseStatement(void)
 internal struct func
 ParseFunction(void)
 {
+	InitLocals();
+
 	struct func Function;
 	Expect(TK_FUNC);
 	Function.Name = ExpectIdent();
 	Expect(TK_LPAREN);
 	Expect(TK_RPAREN);
 	Function.Body = ParseStatement();
+
+	Function.Locals = Locals;
+	Function.NumLocals = NumLocals;
+
 	return Function;
 }
 
