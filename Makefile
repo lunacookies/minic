@@ -12,7 +12,7 @@ $(OBJS): minic.h
 tidy: *.c *.h
 	clang-format -i $^
 
-test: minic
+test: all
 	./test.sh
 
 clean:

@@ -21,11 +21,26 @@ Pop(char *arg)
 	Depth--;
 }
 
+static void
+Store(void)
+{
+	Pop("x9");
+	printf("\tstr\tx8, [x9]\n");
+}
 
 void
 GenAddress(struct expression Expression)
 {
-	abort();
+	switch (Expression.Kind) {
+	case EK_VARIABLE:
+		printf("\tadd\tx8, x29, #%zd\n", Expression.Local->Offset);
+		break;
+	case EK_DEREFERENCE:
+		GenExpression(*Expression.Lhs);
+		break;
+	default:
+		Error("not an lvalue");
+	}
 }
 
 void
@@ -92,26 +107,26 @@ GenExpression(struct expression Expression)
 		break;
 
 	case EK_VARIABLE:
-		printf("\tldr\tx8, [x29, #%zu]\n", Expression.Local->Offset);
+		printf("\tldr\tx8, [x29, #%zd]\n", Expression.Local->Offset);
 		break;
 
 	case EK_CALL:
-		abort();
+		Assert(false);
 
 	case EK_BINARY:
 		GenBinaryExpression(Expression);
 		break;
 
 	case EK_NOT:
-		abort();
+		Assert(false);
 		break;
 
 	case EK_ADDRESS_OF:
-		GenAddress(Expression);
+		GenAddress(*Expression.Lhs);
 		break;
 
 	case EK_DEREFERENCE:
-		GenAddress(Expression);
+		GenExpression(*Expression.Lhs);
 		printf("\tldr\tx8, [x8]\n");
 		break;
 	}
@@ -123,6 +138,13 @@ GenStatement(struct statement Statement)
 	switch (Statement.Kind) {
 	case SK_VAR:
 		// ST_VAR actually serves no purpose at the moment
+		break;
+
+	case SK_SET:
+		GenAddress(Statement.Destination);
+		Push();
+		GenExpression(Statement.Source);
+		Store();
 		break;
 
 	case SK_BLOCK:
@@ -180,7 +202,7 @@ AlignTo(usize N, usize Align)
 void
 StackAllocate(void)
 {
-	usize Offset = 0;
+	isize Offset = 0;
 	for (usize I = 0; I < CurrentFunction->NumLocals; I++) {
 		struct local *Local = &CurrentFunction->Locals[I];
 		Offset += Local->Size;

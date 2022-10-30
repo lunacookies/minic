@@ -49,16 +49,16 @@ DebugBinaryOperator(enum binary_operator Operator)
 	fprintf(stderr, "\033[0m");
 }
 
-internal void
+void
 DebugExpression(struct expression Expression)
 {
 	switch (Expression.Kind) {
 	case EK_NUMBER:
 		fprintf(stderr, "\033[91m%zu\033[0m", Expression.Value);
-		return;
+		break;
 	case EK_VARIABLE:
 		fprintf(stderr, "%s", Expression.Local->Name);
-		return;
+		break;
 	case EK_CALL:
 		fprintf(stderr, "\033[93m%s\033[0m", Expression.Name);
 		fprintf(stderr, "(");
@@ -68,7 +68,7 @@ DebugExpression(struct expression Expression)
 			DebugExpression(Expression.Arguments[I]);
 		}
 		fprintf(stderr, ")");
-		return;
+		break;
 	case EK_BINARY:
 		fprintf(stderr, "(");
 		DebugExpression(*Expression.Lhs);
@@ -77,23 +77,23 @@ DebugExpression(struct expression Expression)
 		fprintf(stderr, " ");
 		DebugExpression(*Expression.Rhs);
 		fprintf(stderr, ")");
-		return;
+		break;
 	case EK_NOT:
 		fprintf(stderr, "\033[94m~\033[0m");
 		DebugExpression(*Expression.Lhs);
-		return;
+		break;
 	case EK_ADDRESS_OF:
 		fprintf(stderr, "\033[94m&\033[0m");
 		DebugExpression(*Expression.Lhs);
-		return;
+		break;
 	case EK_DEREFERENCE:
 		fprintf(stderr, "\033[94m*\033[0m");
 		DebugExpression(*Expression.Lhs);
-		return;
+		break;
 	}
 }
 
-internal void
+void
 DebugStatement(struct statement Statement)
 {
 	switch (Statement.Kind) {
@@ -101,7 +101,14 @@ DebugStatement(struct statement Statement)
 		fprintf(stderr,
 		        "\033[94mvar\033[0m %s; \033[90m# size: %zu\033[0m",
 		        Statement.Local->Name, Statement.Local->Size);
-		return;
+		break;
+	case SK_SET:
+		fprintf(stderr, "\033[94mset\033[0m ");
+		DebugExpression(Statement.Destination);
+		fprintf(stderr, " = ");
+		DebugExpression(Statement.Source);
+		fprintf(stderr, ";");
+		break;
 	case SK_BLOCK:
 		fprintf(stderr, "{");
 		Indentation++;
@@ -112,16 +119,16 @@ DebugStatement(struct statement Statement)
 		Indentation--;
 		Newline();
 		fprintf(stderr, "}");
-		return;
+		break;
 	case SK_EXPRESSION:
 		DebugExpression(Statement.Expression);
 		fprintf(stderr, ";");
-		return;
+		break;
 	case SK_RETURN:
 		fprintf(stderr, "\033[94mreturn\033[0m ");
 		DebugExpression(Statement.Expression);
 		fprintf(stderr, ";");
-		return;
+		break;
 	}
 }
 
@@ -444,6 +451,16 @@ ParseStatement(void)
 		};
 		Statement.Local = PushLocal(Local);
 
+		return Statement;
+	}
+	case TK_SET: {
+		struct statement Statement;
+		Statement.Kind = SK_SET;
+		Expect(TK_SET);
+		Statement.Destination = ParseExpression();
+		Expect(TK_EQUAL);
+		Statement.Source = ParseExpression();
+		Expect(TK_SEMICOLON);
 		return Statement;
 	}
 	case TK_LBRACE:

@@ -48,6 +48,7 @@ enum token_kind {
 	TK_ELSE,
 	TK_WHILE,
 	TK_VAR,
+	TK_SET,
 	TK_RETURN,
 	TK_LBRACE,
 	TK_RBRACE,
@@ -104,6 +105,7 @@ enum expression_kind {
 
 enum statement_kind {
 	SK_VAR,
+	SK_SET,
 	SK_BLOCK,
 	SK_EXPRESSION,
 	SK_RETURN,
@@ -125,7 +127,7 @@ enum binary_operator {
 struct local {
 	u8 *Name;
 	usize Size;
-	usize Offset;
+	isize Offset;
 };
 
 struct expression {
@@ -156,6 +158,10 @@ struct statement {
 	// var
 	struct local *Local;
 
+	// set
+	struct expression Destination;
+	struct expression Source;
+
 	// block
 	struct statement *Statements;
 	usize NumStatements;
@@ -177,6 +183,8 @@ struct ast {
 	usize NumFunctions;
 };
 
+void DebugExpression(struct expression Expression);
+void DebugStatement(struct statement Statement);
 void DebugFunction(struct func Function);
 void DebugAst(struct ast Ast);
 struct ast Parse(struct token *Tokens);

@@ -5,12 +5,12 @@ TokenKindToString(enum token_kind TokenKind)
 {
 	local_persist char *Strings[] = {
 		"a number", "an identifier", "`func`", "`struct`", "`if`",
-		"`else`",   "`while`",       "`var`",  "`return`", "`{`",
-		"`}`",      "`(`",           "`)`",    "`[`",      "`]`",
-		"`<=`",     "`>=`",          "`<`",    "`>`",      "`.`",
-		"`,`",      "`;`",           "`+`",    "`-`",      "`*`",
-		"`/`",      "`&`",           "`|`",    "`~`",      "`==`",
-		"`=`",      "`!=`",          "EOF",
+		"`else`",   "`while`",       "`var`",  "`set`",    "`return`",
+		"`{`",      "`}`",           "`(`",    "`)`",      "`[`",
+		"`]`",      "`<=`",          "`>=`",   "`<`",      "`>`",
+		"`.`",      "`,`",           "`;`",    "`+`",      "`-`",
+		"`*`",      "`/`",           "`&`",    "`|`",      "`~`",
+		"`==`",     "`=`",           "`!=`",   "EOF",
 	};
 	Assert(ArrayLength(Strings) == TK__LAST);
 	return (u8 *)Strings[TokenKind];
@@ -20,17 +20,18 @@ void
 DebugTokenKind(enum token_kind TokenKind)
 {
 	local_persist char *Strings[] = {
-		"TK_NUMBER",       "TK_IDENT",        "TK_FUNC",
-		"TK_STRUCT",       "TK_IF",           "TK_ELSE",
-		"TK_WHILE",        "TK_VAR",          "TK_RETURN",
-		"TK_LBRACE",       "TK_RBRACE",       "TK_LPAREN",
-		"TK_RPAREN",       "TK_LSQUARE",      "TK_RSQUARE",
-		"TK_LANGLE_EQUAL", "TK_RANGLE_EQUAL", "TK_LANGLE",
-		"TK_RANGLE",       "TK_DOT",          "TK_COMMA",
-		"TK_SEMICOLON",    "TK_PLUS",         "TK_MINUS",
-		"TK_STAR",         "TK_SLASH",        "TK_PRETZEL",
-		"TK_PIPE",         "TK_SQUIGGLE",     "TK_EQUAL_EQUAL",
-		"TK_EQUAL",        "TK_BANG_EQUAL",   "TK_EOF",
+		"TK_NUMBER",      "TK_IDENT",        "TK_FUNC",
+		"TK_STRUCT",      "TK_IF",           "TK_ELSE",
+		"TK_WHILE",       "TK_VAR",          "TK_SET",
+		"TK_RETURN",      "TK_LBRACE",       "TK_RBRACE",
+		"TK_LPAREN",      "TK_RPAREN",       "TK_LSQUARE",
+		"TK_RSQUARE",     "TK_LANGLE_EQUAL", "TK_RANGLE_EQUAL",
+		"TK_LANGLE",      "TK_RANGLE",       "TK_DOT",
+		"TK_COMMA",       "TK_SEMICOLON",    "TK_PLUS",
+		"TK_MINUS",       "TK_STAR",         "TK_SLASH",
+		"TK_PRETZEL",     "TK_PIPE",         "TK_SQUIGGLE",
+		"TK_EQUAL_EQUAL", "TK_EQUAL",        "TK_BANG_EQUAL",
+		"TK_EOF",
 	};
 	Assert(ArrayLength(Strings) == TK__LAST);
 	fprintf(stderr, "%s", Strings[TokenKind]);
@@ -125,6 +126,8 @@ ConvertKeywords(struct token *Tokens)
 			T->Kind = TK_WHILE;
 		else if (IsEqual(*T, "var"))
 			T->Kind = TK_VAR;
+		else if (IsEqual(*T, "set"))
+			T->Kind = TK_SET;
 		else if (IsEqual(*T, "return"))
 			T->Kind = TK_RETURN;
 	}
