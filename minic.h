@@ -125,6 +125,7 @@ enum binary_operator {
 struct local {
 	u8 *Name;
 	usize Size;
+	usize Offset;
 };
 
 struct expression {
@@ -168,6 +169,7 @@ struct func {
 	struct statement Body;
 	struct local *Locals;
 	usize NumLocals;
+	usize StackSize;
 };
 
 struct ast {
@@ -178,3 +180,9 @@ struct ast {
 void DebugFunction(struct func Function);
 void DebugAst(struct ast Ast);
 struct ast Parse(struct token *Tokens);
+
+// ---------
+// codegen.c
+// ---------
+
+void Codegen(struct ast Ast);

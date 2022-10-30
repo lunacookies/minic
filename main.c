@@ -8,7 +8,7 @@ main(int NumberOfArguments, char **Arguments)
 
 	struct token *Tokens = Tokenize((u8 *)Arguments[1]);
 	struct ast Ast = Parse(Tokens);
-	DebugAst(Ast);
+	Codegen(Ast);
 
 	return 0;
 }

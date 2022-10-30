@@ -1,3 +1,4 @@
 minic
 *.o
 *.swp
+tmp*

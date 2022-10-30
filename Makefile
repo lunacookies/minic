@@ -16,6 +16,6 @@ test: minic
 	./test.sh
 
 clean:
-	rm minic *.o
+	rm minic *.o tmp*
 
 .PHONY: tidy test clean
