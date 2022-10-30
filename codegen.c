@@ -44,6 +44,34 @@ GenAddress(struct expression Expression)
 }
 
 void
+GenCall(struct expression Expression)
+{
+	if (Expression.NumArguments == 0)
+		goto PrintName;
+
+	for (usize I = 0; I < Expression.NumArguments; I++) {
+		GenExpression(Expression.Arguments[I]);
+		Push();
+	}
+
+	// we have to do this weird contorted do-while loop
+	// because I is unsigned and so “I > 0” in a for loop
+	// will always return true
+	usize I = Expression.NumArguments;
+	do {
+		I--;
+		// aarch64 passes parameters in x0 to x7
+		Assert(I <= 7);
+		char Register[3] = "x0";
+		Register[1] = '0' + I;
+		Pop(Register);
+	} while (I != 0);
+
+PrintName:
+	printf("\tbl\t_%s\n", Expression.Name);
+}
+
+void
 GenBinaryExpression(struct expression Expression)
 {
 	GenExpression(*Expression.Rhs);
@@ -111,7 +139,8 @@ GenExpression(struct expression Expression)
 		break;
 
 	case EK_CALL:
-		Assert(false);
+		GenCall(Expression);
+		break;
 
 	case EK_BINARY:
 		GenBinaryExpression(Expression);
@@ -224,6 +253,19 @@ GenFunction(struct func *Function)
 	printf(".align 2\n");
 	printf("_%s:\n", Function->Name);
 	GenPrologue();
+
+	// save passed-by-register arguments to the stack
+	// right next to other local variables
+	// so they can be treated as local variables
+	for (usize I = 0; I < Function->NumParameters; I++) {
+		// aarch64 passes parameters in x0 to x7
+		Assert(I <= 7);
+
+		// parameters are guaranteed to be pushed to the Locals vector
+		// before actual local variables
+		printf("\tstr\tx%zu, [x29, #%zd]\n", I,
+		       Function->Locals[I].Offset);
+	}
 
 	GenStatement(Function->Body);
 	Assert(Depth == 0); // all Push and Pop calls must be matched

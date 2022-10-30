@@ -172,6 +172,8 @@ struct statement {
 
 struct func {
 	u8 *Name;
+	u8 **Parameters;
+	usize NumParameters;
 	struct statement Body;
 	struct local *Locals;
 	usize NumLocals;

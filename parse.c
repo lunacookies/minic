@@ -137,7 +137,13 @@ DebugFunction(struct func Function)
 {
 	fprintf(stderr, "\033[94mfunc\033[0m ");
 	fprintf(stderr, "\033[93m%s\033[0m", Function.Name);
-	fprintf(stderr, "() ");
+	fprintf(stderr, "(");
+	for (usize I = 0; I < Function.NumParameters; I++) {
+		if (I != 0)
+			fprintf(stderr, ", ");
+		fprintf(stderr, "%s i64", Function.Parameters[I]);
+	}
+	fprintf(stderr, ") i64 ");
 	DebugStatement(Function.Body);
 	Newline();
 }
@@ -483,6 +489,19 @@ ParseStatement(void)
 	}
 }
 
+internal void
+GenerateParameterLocals(struct func *Function)
+{
+	for (usize I = 0; I < Function->NumParameters; I++) {
+		u8 *Parameter = Function->Parameters[I];
+		struct local Local = {
+			.Name = Parameter,
+			.Size = 8,
+		};
+		PushLocal(Local);
+	}
+}
+
 internal struct func
 ParseFunction(void)
 {
@@ -491,8 +510,32 @@ ParseFunction(void)
 	struct func Function;
 	Expect(TK_FUNC);
 	Function.Name = ExpectIdent();
+
+	usize ParametersCapacity = 2;
+	Function.Parameters = calloc(ParametersCapacity, sizeof(u8 *));
+	Function.NumParameters = 0;
 	Expect(TK_LPAREN);
+	while (Current->Kind != TK_RPAREN) {
+		if (Function.NumParameters == ParametersCapacity) {
+			ParametersCapacity *= 2;
+			Function.Parameters =
+			    realloc(Function.Parameters,
+			            sizeof(u8 *) * ParametersCapacity);
+		}
+		Function.Parameters[Function.NumParameters] = ExpectIdent();
+		Function.NumParameters++;
+
+		ExpectIdent(); // skip over type for now
+
+		if (Current->Kind != TK_RPAREN)
+			Expect(TK_COMMA);
+	}
 	Expect(TK_RPAREN);
+
+	GenerateParameterLocals(&Function);
+
+	ExpectIdent(); // skip over return type for now
+
 	Function.Body = ParseStatement();
 
 	Function.Locals = Locals;
