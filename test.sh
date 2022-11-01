@@ -60,6 +60,8 @@ assert 10 'func Main() i64 { var X; set X = 10; return X; }'
 assert 3 'func Main() i64 { var X; var Y; set X=3; set Y=&X; return *Y; }'
 assert 4 'func Main() i64 { var X; var Y; set X=10; set Y=&X; set *Y=4; return X; }'
 assert 6 'func Main() i64 { var X; var Y; var Z; set X=6; set Y=&X; set Z=&Y; return **Z; }'
+assert 3 'func Main() i64 { var X; var Y; set X=3; set Y=10; return *(&Y + 8); }'
+assert 10 'func Main() i64 { var X; var Y; set X=3; set Y=10; return *(&X - 8); }'
 
 # functions
 assert 92 'func Main() i64 { return Magic(); } func Magic() i64 { return 92; }'
