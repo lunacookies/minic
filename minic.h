@@ -90,6 +90,26 @@ void DebugTokens(struct token *Tokens);
 
 struct token *Tokenize(u8 *Input);
 
+// ------
+// type.c
+// ------
+
+enum type_kind {
+	TY_I64,
+	TY_ARRAY,
+};
+
+struct type {
+	enum type_kind Kind;
+
+	// array
+	struct type *ElementType;
+	usize NumElements;
+};
+void DebugType(struct type Type);
+
+usize TypeSize(struct type Type);
+
 // -------
 // parse.c
 // -------
@@ -171,10 +191,16 @@ struct statement {
 	struct expression Expression;
 };
 
+struct parameter {
+	u8 *Name;
+	struct type Type;
+};
+
 struct func {
 	u8 *Name;
-	u8 **Parameters;
+	struct parameter *Parameters;
 	usize NumParameters;
+	struct type ReturnType;
 	struct statement Body;
 	struct local *Locals;
 	usize NumLocals;

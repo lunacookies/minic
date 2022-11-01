@@ -141,7 +141,9 @@ DebugFunction(struct func Function)
 	for (usize I = 0; I < Function.NumParameters; I++) {
 		if (I != 0)
 			fprintf(stderr, ", ");
-		fprintf(stderr, "%s i64", Function.Parameters[I]);
+		struct parameter Parameter = Function.Parameters[I];
+		fprintf(stderr, "%s ", Parameter.Name);
+		DebugType(Parameter.Type);
 	}
 	fprintf(stderr, ") i64 ");
 	DebugStatement(Function.Body);
@@ -411,6 +413,33 @@ ParseExpression(void)
 	return ParseExpressionBindingPower(0);
 }
 
+internal struct type
+ParseType(void)
+{
+	switch (Current->Kind) {
+	case TK_I64: {
+		struct type Type;
+		Type.Kind = TY_I64;
+		Expect(TK_I64);
+		return Type;
+	}
+	case TK_LSQUARE: {
+		struct type Type;
+		Type.Kind = TY_ARRAY;
+		Expect(TK_LSQUARE);
+		Type.NumElements = strtol((char *)Current->Text, NULL, 10);
+		Expect(TK_NUMBER);
+		Expect(TK_RSQUARE);
+		Type.ElementType = malloc(sizeof(struct type));
+		*Type.ElementType = ParseType();
+		return Type;
+	}
+	default:
+		Error("expected type but found %s",
+		      TokenKindToString(Current->Kind));
+	}
+}
+
 internal struct statement
 ParseBlock(void)
 {
@@ -446,6 +475,7 @@ ParseStatement(void)
 	case TK_VAR: {
 		Expect(TK_VAR);
 		u8 *Name = ExpectIdent();
+		struct type Type = ParseType();
 		Expect(TK_SEMICOLON);
 
 		struct statement Statement;
@@ -453,7 +483,7 @@ ParseStatement(void)
 
 		struct local Local = {
 			.Name = Name,
-			.Size = 8,
+			.Size = TypeSize(Type),
 		};
 		Statement.Local = PushLocal(Local);
 
@@ -493,10 +523,10 @@ internal void
 GenerateParameterLocals(struct func *Function)
 {
 	for (usize I = 0; I < Function->NumParameters; I++) {
-		u8 *Parameter = Function->Parameters[I];
+		struct parameter Parameter = Function->Parameters[I];
 		struct local Local = {
-			.Name = Parameter,
-			.Size = 8,
+			.Name = Parameter.Name,
+			.Size = TypeSize(Parameter.Type),
 		};
 		PushLocal(Local);
 	}
@@ -512,20 +542,22 @@ ParseFunction(void)
 	Function.Name = ExpectIdent();
 
 	usize ParametersCapacity = 2;
-	Function.Parameters = calloc(ParametersCapacity, sizeof(u8 *));
+	Function.Parameters =
+	    calloc(ParametersCapacity, sizeof(struct parameter));
 	Function.NumParameters = 0;
 	Expect(TK_LPAREN);
 	while (Current->Kind != TK_RPAREN) {
 		if (Function.NumParameters == ParametersCapacity) {
 			ParametersCapacity *= 2;
-			Function.Parameters =
-			    realloc(Function.Parameters,
-			            sizeof(u8 *) * ParametersCapacity);
+			Function.Parameters = realloc(Function.Parameters,
+			                              sizeof(struct parameter) *
+			                                  ParametersCapacity);
 		}
-		Function.Parameters[Function.NumParameters] = ExpectIdent();
+		struct parameter *Parameter =
+		    &Function.Parameters[Function.NumParameters];
+		Parameter->Name = ExpectIdent();
+		Parameter->Type = ParseType();
 		Function.NumParameters++;
-
-		Expect(TK_I64); // skip over type for now
 
 		if (Current->Kind != TK_RPAREN)
 			Expect(TK_COMMA);
@@ -533,11 +565,8 @@ ParseFunction(void)
 	Expect(TK_RPAREN);
 
 	GenerateParameterLocals(&Function);
-
-	Expect(TK_I64); // skip over return type for now
-
+	Function.ReturnType = ParseType();
 	Function.Body = ParseStatement();
-
 	Function.Locals = Locals;
 	Function.NumLocals = NumLocals;
 
