@@ -57,11 +57,12 @@ assert 1 'func Main() i64 { return 1 <= 1; }'
 
 # variables & pointers
 assert 10 'func Main() i64 { var X i64; set X = 10; return X; }'
-assert 3 'func Main() i64 { var X i64; var Y i64; set X=3; set Y=&X; return *Y; }'
-assert 4 'func Main() i64 { var X i64; var Y i64; set X=10; set Y=&X; set *Y=4; return X; }'
-assert 6 'func Main() i64 { var X i64; var Y i64; var Z i64; set X=6; set Y=&X; set Z=&Y; return **Z; }'
-assert 3 'func Main() i64 { var X i64; var Y i64; set X=3; set Y=10; return *(&Y + 8); }'
-assert 10 'func Main() i64 { var X i64; var Y i64; set X=3; set Y=10; return *(&X - 8); }'
+assert 3 'func Main() i64 { var X i64; var Y *i64; set X=3; set Y=&X; return *Y; }'
+assert 4 'func Main() i64 { var X i64; var Y *i64; set X=10; set Y=&X; set *Y=4; return X; }'
+assert 6 'func Main() i64 { var X i64; var Y *i64; var Z **i64; set X=6; set Y=&X; set Z=&Y; return **Z; }'
+assert 3 'func Main() i64 { var X i64; var Y i64; set X=3; set Y=10; return *(&Y + 1); }'
+assert 10 'func Main() i64 { var X i64; var Y i64; set X=3; set Y=10; return *(&X - 1); }'
+assert 4 'func Main() i64 { var X i64; var Y [3]i64; var Z i64; return &X - &Z; }'
 
 # functions
 assert 92 'func Main() i64 { return Magic(); } func Magic() i64 { return 92; }'
@@ -69,8 +70,8 @@ assert 9 'func Main() i64 { return Add(4, 5); } func Add(X i64, Y i64) i64 { ret
 
 # arrays
 assert 10 'func Main() i64 { var A [3]i64; set A[0]=5; set A[1]=10; set A[2]=15; return A[1]; }'
-#assert 12 'func Main() i64 { var A [3]i64; set A[1]=12; var B i64; set B=&A; return (*B)[1]; }'
+assert 12 'func Main() i64 { var A [3]i64; set A[1]=12; var B *[3]i64; set B=&A; return (*B)[1]; }'
 assert 42 'func Main() i64 { var A [2]i64; var B [2]i64; set A[0]=5; set A[1]=42; set B=A; return B[1]; }'
-assert 12 'func Main() i64 { var A [3]i64; set *(&A[1]+8)=12; return A[2]; }'
+assert 12 'func Main() i64 { var A [3]i64; set *(&A[1]+1)=12; return A[2]; }'
 assert 3 'func Main() i64 { var A [10][10]i64; set A[8][5]=3; return A[8][5]; }'
 assert 30 'func Main() i64 { var A [20][5]i64; set A[3][1]=30; var B [5]i64; set B=A[3]; return B[1]; }'

@@ -98,6 +98,7 @@ enum type_kind {
 	TY_DUMMY,
 	TY_I64,
 	TY_ARRAY,
+	TY_POINTER,
 };
 
 struct type {
@@ -106,11 +107,15 @@ struct type {
 	// array
 	struct type *ElementType;
 	usize NumElements;
+
+	// pointer
+	struct type *Pointee;
 };
 void DebugType(struct type Type);
 struct type CreateDummyType();
 struct type CreateI64Type();
 struct type CreateArrayType(struct type ElementType, usize NumElements);
+struct type CreatePointerType(struct type Pointee);
 
 usize TypeSize(struct type Type);
 

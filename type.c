@@ -30,6 +30,17 @@ CreateArrayType(struct type ElementType, usize NumElements)
 	return Type;
 }
 
+struct type
+CreatePointerType(struct type Pointee)
+{
+	struct type Type = {
+		.Kind = TY_POINTER,
+		.Pointee = malloc(sizeof(struct type)),
+	};
+	*Type.Pointee = Pointee;
+	return Type;
+}
+
 void
 DebugType(struct type Type)
 {
@@ -43,6 +54,10 @@ DebugType(struct type Type)
 		fprintf(stderr, "[\033[91m%zu\033[0m]", Type.NumElements);
 		DebugType(*Type.ElementType);
 		break;
+	case TY_POINTER:
+		fprintf(stderr, "*");
+		DebugType(*Type.Pointee);
+		break;
 	}
 }
 
@@ -53,6 +68,7 @@ TypeSize(struct type Type)
 	case TY_DUMMY:
 		Assert(false);
 	case TY_I64:
+	case TY_POINTER:
 		return 8;
 	case TY_ARRAY:
 		return TypeSize(*Type.ElementType) * Type.NumElements;
@@ -66,32 +82,46 @@ AddTypeToExpression(struct expression *Expression)
 	case EK_NUMBER:
 		Expression->Type = CreateI64Type();
 		break;
+
 	case EK_VARIABLE:
 		Expression->Type = Expression->Local->Type;
 		break;
+
 	case EK_CALL:
 		for (usize I = 0; I < Expression->NumArguments; I++)
 			AddTypeToExpression(&Expression->Arguments[I]);
 		// we just don’t resolve types for calls at the moment
 		Expression->Type = CreateDummyType();
 		break;
+
 	case EK_BINARY:
 		AddTypeToExpression(Expression->Lhs);
 		AddTypeToExpression(Expression->Rhs);
-		Expression->Type = CreateI64Type();
+		// to account for pointer arithmetic
+		Expression->Type = Expression->Lhs->Type;
 		break;
+
 	case EK_NOT:
 		AddTypeToExpression(Expression->Lhs);
 		Expression->Type = CreateI64Type();
 		break;
+
 	case EK_ADDRESS_OF:
 		AddTypeToExpression(Expression->Lhs);
-		Expression->Type = CreateI64Type();
+		Expression->Type = CreatePointerType(Expression->Lhs->Type);
 		break;
+
 	case EK_DEREFERENCE:
 		AddTypeToExpression(Expression->Lhs);
-		Expression->Type = CreateI64Type();
+		switch (Expression->Lhs->Type.Kind) {
+		case TY_POINTER:
+			Expression->Type = *Expression->Lhs->Type.Pointee;
+			break;
+		default:
+			Error("tried to dereference non-pointer value");
+		}
 		break;
+
 	case EK_INDEX:
 		AddTypeToExpression(Expression->Array);
 		AddTypeToExpression(Expression->Index);

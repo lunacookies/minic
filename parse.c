@@ -477,6 +477,10 @@ ParseType(void)
 		struct type ElementType = ParseType();
 		return CreateArrayType(ElementType, NumElements);
 	}
+	case TK_STAR:
+		Expect(TK_STAR);
+		struct type Pointee = ParseType();
+		return CreatePointerType(Pointee);
 	default:
 		Error("expected type but found %s",
 		      TokenKindToString(Current->Kind));

@@ -37,6 +37,7 @@ Load(struct type Type)
 	case TY_DUMMY:
 		Assert(false);
 	case TY_I64:
+	case TY_POINTER:
 		printf("\tldr\tx8, [x8]\n");
 		break;
 	// loading larger types is handled on a case-by-case basis
@@ -54,6 +55,7 @@ Store(struct type Type)
 	case TY_DUMMY:
 		Assert(false);
 	case TY_I64:
+	case TY_POINTER:
 		printf("\tstr\tx8, [x9]\n");
 		break;
 	// x8 holds the address to load from, not the value itself
@@ -125,18 +127,36 @@ PrintName:
 void
 GenBinaryExpression(struct expression Expression)
 {
-	GenExpression(*Expression.Rhs);
+	struct expression *Lhs = Expression.Lhs;
+	struct expression *Rhs = Expression.Rhs;
+	enum binary_operator Operator = Expression.Operator;
+
+	GenExpression(*Rhs);
 	Push();
-	GenExpression(*Expression.Lhs);
+	GenExpression(*Lhs);
 	Pop("x9");
 
-	switch (Expression.Operator) {
+	switch (Operator) {
 	case OP_ADD:
-		printf("\tadd\tx8, x8, x9\n");
-		break;
-
 	case OP_SUBTRACT:
-		printf("\tsub\tx8, x8, x9\n");
+		if (Lhs->Type.Kind == TY_POINTER && Rhs->Type.Kind == TY_I64) {
+			printf("\tmov\tx10, #%zu\n",
+			       TypeSize(*Lhs->Type.Pointee));
+			printf("\tmul\tx9, x9, x10\n");
+		}
+
+		if (Operator == OP_ADD)
+			printf("\tadd\tx8, x8, x9\n");
+		else
+			printf("\tsub\tx8, x8, x9\n");
+
+		if (Lhs->Type.Kind == TY_POINTER &&
+		    Rhs->Type.Kind == TY_POINTER) {
+			printf("\tmov\tx9, #%zu\n",
+			       TypeSize(*Lhs->Type.Pointee));
+			printf("\tsdiv\tx8, x8, x9\n");
+		}
+
 		break;
 
 	case OP_MULTIPLY:
