@@ -79,16 +79,28 @@ DebugExpression(struct expression Expression)
 		fprintf(stderr, ")");
 		break;
 	case EK_NOT:
+		fprintf(stderr, "(");
 		fprintf(stderr, "\033[94m~\033[0m");
 		DebugExpression(*Expression.Lhs);
+		fprintf(stderr, ")");
 		break;
 	case EK_ADDRESS_OF:
+		fprintf(stderr, "(");
 		fprintf(stderr, "\033[94m&\033[0m");
 		DebugExpression(*Expression.Lhs);
+		fprintf(stderr, ")");
 		break;
 	case EK_DEREFERENCE:
+		fprintf(stderr, "(");
 		fprintf(stderr, "\033[94m*\033[0m");
 		DebugExpression(*Expression.Lhs);
+		fprintf(stderr, ")");
+		break;
+	case EK_INDEX:
+		DebugExpression(*Expression.Array);
+		fprintf(stderr, "[");
+		DebugExpression(*Expression.Index);
+		fprintf(stderr, "]");
 		break;
 	}
 }
@@ -98,9 +110,11 @@ DebugStatement(struct statement Statement)
 {
 	switch (Statement.Kind) {
 	case SK_VAR:
-		fprintf(stderr,
-		        "\033[94mvar\033[0m %s; \033[90m# size: %zu\033[0m",
-		        Statement.Local->Name, Statement.Local->Size);
+		fprintf(stderr, "\033[94mvar\033[0m %s ",
+		        Statement.Local->Name);
+		DebugType(Statement.Local->Type);
+		fprintf(stderr, "; \033[90m# size: %zu\033[0m",
+		        TypeSize(Statement.Local->Type));
 		break;
 	case SK_SET:
 		fprintf(stderr, "\033[94mset\033[0m ");
@@ -250,58 +264,92 @@ ParseCall(void)
 }
 
 internal struct expression
-ParseLhs(void)
+ParseAtom(void)
 {
+	struct expression Expression;
+
 	switch (Current->Kind) {
 	case TK_NUMBER: {
-		struct expression Expression;
 		Expression.Kind = EK_NUMBER;
 		Expression.Value = strtol((char *)Current->Text, NULL, 10);
 		Current++;
-		return Expression;
+		break;
 	}
 	case TK_IDENT: {
-		if ((Current + 1)->Kind == TK_LPAREN)
-			return ParseCall();
-		struct expression Expression;
+		if ((Current + 1)->Kind == TK_LPAREN) {
+			Expression = ParseCall();
+			break;
+		}
 		Expression.Kind = EK_VARIABLE;
 		Expression.Local = LookupLocal(ExpectIdent());
-		return Expression;
+		break;
 	}
 	case TK_LPAREN: {
 		Expect(TK_LPAREN);
-		struct expression Inner = ParseExpression();
+		Expression = ParseExpression();
 		Expect(TK_RPAREN);
-		return Inner;
-	}
-	case TK_SQUIGGLE: {
-		Expect(TK_SQUIGGLE);
-		struct expression Expression;
-		Expression.Kind = EK_NOT;
-		Expression.Lhs = malloc(sizeof(struct expression));
-		*Expression.Lhs = ParseLhs();
-		return Expression;
-	}
-	case TK_PRETZEL: {
-		Expect(TK_PRETZEL);
-		struct expression Expression;
-		Expression.Kind = EK_ADDRESS_OF;
-		Expression.Lhs = malloc(sizeof(struct expression));
-		*Expression.Lhs = ParseLhs();
-		return Expression;
-	}
-	case TK_STAR: {
-		Expect(TK_STAR);
-		struct expression Expression;
-		Expression.Kind = EK_DEREFERENCE;
-		Expression.Lhs = malloc(sizeof(struct expression));
-		*Expression.Lhs = ParseLhs();
-		return Expression;
+		break;
 	}
 	default:
 		Error("expected expression but found %s",
 		      TokenKindToString(Current->Kind));
 	}
+
+	for (;;) {
+		switch (Current->Kind) {
+		case TK_LSQUARE: {
+			struct expression New;
+			New.Kind = EK_INDEX;
+			Expect(TK_LSQUARE);
+			New.Array = malloc(sizeof(struct expression));
+			New.Index = malloc(sizeof(struct expression));
+			*New.Array = Expression;
+			*New.Index = ParseExpression();
+			Expect(TK_RSQUARE);
+			Expression = New;
+			break;
+		}
+		default:
+			// we’re done with postfix operators and can finally
+			// return
+			return Expression;
+		}
+	}
+}
+
+internal struct expression
+ParseLhs(void)
+{
+	struct expression Expression;
+
+	switch (Current->Kind) {
+	case TK_SQUIGGLE: {
+		Expect(TK_SQUIGGLE);
+		Expression.Kind = EK_NOT;
+		Expression.Lhs = malloc(sizeof(struct expression));
+		*Expression.Lhs = ParseLhs();
+		break;
+	}
+	case TK_PRETZEL: {
+		Expect(TK_PRETZEL);
+		Expression.Kind = EK_ADDRESS_OF;
+		Expression.Lhs = malloc(sizeof(struct expression));
+		*Expression.Lhs = ParseLhs();
+		break;
+	}
+	case TK_STAR: {
+		Expect(TK_STAR);
+		Expression.Kind = EK_DEREFERENCE;
+		Expression.Lhs = malloc(sizeof(struct expression));
+		*Expression.Lhs = ParseLhs();
+		break;
+	}
+	default:
+		Expression = ParseAtom();
+		break;
+	}
+
+	return Expression;
 }
 
 internal u8
@@ -418,21 +466,16 @@ ParseType(void)
 {
 	switch (Current->Kind) {
 	case TK_I64: {
-		struct type Type;
-		Type.Kind = TY_I64;
 		Expect(TK_I64);
-		return Type;
+		return CreateI64Type();
 	}
 	case TK_LSQUARE: {
-		struct type Type;
-		Type.Kind = TY_ARRAY;
 		Expect(TK_LSQUARE);
-		Type.NumElements = strtol((char *)Current->Text, NULL, 10);
+		usize NumElements = strtol((char *)Current->Text, NULL, 10);
 		Expect(TK_NUMBER);
 		Expect(TK_RSQUARE);
-		Type.ElementType = malloc(sizeof(struct type));
-		*Type.ElementType = ParseType();
-		return Type;
+		struct type ElementType = ParseType();
+		return CreateArrayType(ElementType, NumElements);
 	}
 	default:
 		Error("expected type but found %s",
@@ -483,7 +526,7 @@ ParseStatement(void)
 
 		struct local Local = {
 			.Name = Name,
-			.Size = TypeSize(Type),
+			.Type = Type,
 		};
 		Statement.Local = PushLocal(Local);
 
@@ -526,7 +569,7 @@ GenerateParameterLocals(struct func *Function)
 		struct parameter Parameter = Function->Parameters[I];
 		struct local Local = {
 			.Name = Parameter.Name,
-			.Size = TypeSize(Parameter.Type),
+			.Type = Parameter.Type,
 		};
 		PushLocal(Local);
 	}

@@ -5,7 +5,7 @@ void GenExpression(struct expression Expression);
 global_variable struct func *CurrentFunction;
 global_variable usize Depth;
 
-static void
+internal void
 Push(void)
 {
 	printf("\tsub\tsp, sp, #16\n");
@@ -13,19 +13,54 @@ Push(void)
 	Depth++;
 }
 
-static void
-Pop(char *arg)
+internal void
+Pop(char *Register)
 {
-	printf("\tldr\t%s, [sp]\n", arg);
+	printf("\tldr\t%s, [sp]\n", Register);
 	printf("\tadd\tsp, sp, #16\n");
 	Depth--;
 }
 
-static void
-Store(void)
+internal void
+EmitMemcpy(char *Destination, char *Source, usize N)
+{
+	printf("\tmov\tx0, %s\n", Destination);
+	printf("\tmov\tx1, %s\n", Source);
+	printf("\tmov\tx2, #%zu\n", N);
+	printf("\tbl\t_memcpy\n");
+}
+
+internal void
+Load(struct type Type)
+{
+	switch (Type.Kind) {
+	case TY_DUMMY:
+		Assert(false);
+	case TY_I64:
+		printf("\tldr\tx8, [x8]\n");
+		break;
+	// loading larger types is handled on a case-by-case basis
+	case TY_ARRAY:
+		break;
+	}
+}
+
+internal void
+Store(struct type Type)
 {
 	Pop("x9");
-	printf("\tstr\tx8, [x9]\n");
+
+	switch (Type.Kind) {
+	case TY_DUMMY:
+		Assert(false);
+	case TY_I64:
+		printf("\tstr\tx8, [x9]\n");
+		break;
+	// x8 holds the address to load from, not the value itself
+	case TY_ARRAY:
+		EmitMemcpy("x9", "x8", TypeSize(Type));
+		break;
+	}
 }
 
 void
@@ -37,6 +72,22 @@ GenAddress(struct expression Expression)
 		break;
 	case EK_DEREFERENCE:
 		GenExpression(*Expression.Lhs);
+		break;
+	case EK_INDEX:
+		GenAddress(*Expression.Array);
+		Push();
+
+		// calculate index, scaled by array element type size
+		GenExpression(*Expression.Index);
+		printf("\tmov\tx10, #%zu\n",
+		       TypeSize(*Expression.Array->Type.ElementType));
+		printf("\tmul\tx8, x8, x10\n");
+
+		// array start address is on the top of the stack
+		// and the index is in x8
+
+		Pop("x9");
+		printf("\tadd\tx8, x8, x9\n");
 		break;
 	default:
 		Error("not an lvalue");
@@ -135,7 +186,8 @@ GenExpression(struct expression Expression)
 		break;
 
 	case EK_VARIABLE:
-		printf("\tldr\tx8, [x29, #%zd]\n", Expression.Local->Offset);
+		GenAddress(Expression);
+		Load(Expression.Type);
 		break;
 
 	case EK_CALL:
@@ -158,6 +210,11 @@ GenExpression(struct expression Expression)
 		GenExpression(*Expression.Lhs);
 		printf("\tldr\tx8, [x8]\n");
 		break;
+
+	case EK_INDEX:
+		GenAddress(Expression);
+		Load(Expression.Type);
+		break;
 	}
 }
 
@@ -173,7 +230,7 @@ GenStatement(struct statement Statement)
 		GenAddress(Statement.Destination);
 		Push();
 		GenExpression(Statement.Source);
-		Store();
+		Store(Statement.Destination.Type);
 		break;
 
 	case SK_BLOCK:
@@ -234,7 +291,7 @@ StackAllocate(void)
 	isize Offset = 0;
 	for (usize I = 0; I < CurrentFunction->NumLocals; I++) {
 		struct local *Local = &CurrentFunction->Locals[I];
-		Offset += Local->Size;
+		Offset += TypeSize(Local->Type);
 		Local->Offset = -Offset;
 	}
 

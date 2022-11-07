@@ -95,6 +95,7 @@ struct token *Tokenize(u8 *Input);
 // ------
 
 enum type_kind {
+	TY_DUMMY,
 	TY_I64,
 	TY_ARRAY,
 };
@@ -107,6 +108,9 @@ struct type {
 	usize NumElements;
 };
 void DebugType(struct type Type);
+struct type CreateDummyType();
+struct type CreateI64Type();
+struct type CreateArrayType(struct type ElementType, usize NumElements);
 
 usize TypeSize(struct type Type);
 
@@ -122,6 +126,7 @@ enum expression_kind {
 	EK_NOT,
 	EK_ADDRESS_OF,
 	EK_DEREFERENCE,
+	EK_INDEX,
 };
 
 enum statement_kind {
@@ -147,12 +152,13 @@ enum binary_operator {
 
 struct local {
 	u8 *Name;
-	usize Size;
+	struct type Type;
 	isize Offset;
 };
 
 struct expression {
 	enum expression_kind Kind;
+	struct type Type;
 
 	// number
 	usize Value;
@@ -162,8 +168,6 @@ struct expression {
 
 	// call
 	u8 *Name;
-
-	// call
 	struct expression *Arguments;
 	usize NumArguments;
 
@@ -171,6 +175,10 @@ struct expression {
 	struct expression *Lhs;
 	struct expression *Rhs;
 	enum binary_operator Operator;
+
+	// index
+	struct expression *Array;
+	struct expression *Index;
 };
 
 struct statement {
@@ -217,6 +225,9 @@ void DebugStatement(struct statement Statement);
 void DebugFunction(struct func Function);
 void DebugAst(struct ast Ast);
 struct ast Parse(struct token *Tokens);
+
+// actually from type.c
+void AddTypes(struct ast Ast);
 
 // ---------
 // codegen.c
