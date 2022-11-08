@@ -147,6 +147,16 @@ DebugStatement(struct statement Statement)
 		DebugExpression(Statement.Expression);
 		fprintf(stderr, ";");
 		break;
+	case SK_IF:
+		fprintf(stderr, "\033[94mif\033[0m (");
+		DebugExpression(Statement.Expression);
+		fprintf(stderr, ") ");
+		DebugStatement(*Statement.TrueBranch);
+		if (Statement.FalseBranch != NULL) {
+			fprintf(stderr, " \033[94melse\033[0m ");
+			DebugStatement(*Statement.FalseBranch);
+		}
+		break;
 	}
 }
 
@@ -624,6 +634,25 @@ ParseStatement(void)
 		Expect(TK_RETURN);
 		Statement.Expression = ParseExpression();
 		Expect(TK_SEMICOLON);
+		return Statement;
+	}
+	case TK_IF: {
+		struct statement Statement;
+		Statement.Kind = SK_IF;
+		Expect(TK_IF);
+		Expect(TK_LPAREN);
+		Statement.Expression = ParseExpression();
+		Expect(TK_RPAREN);
+		Statement.TrueBranch = malloc(sizeof(struct statement));
+		*Statement.TrueBranch = ParseBlock();
+		if (Current->Kind == TK_ELSE) {
+			Expect(TK_ELSE);
+			Statement.FalseBranch =
+			    malloc(sizeof(struct statement));
+			*Statement.FalseBranch = ParseBlock();
+			return Statement;
+		}
+		Statement.FalseBranch = NULL;
 		return Statement;
 	}
 	default: {

@@ -81,3 +81,10 @@ assert 2 'struct a { X i64 } func Main() i64 { var A a; set A.X=2; return A.X; }
 assert 16 'struct pair { A i64, B i64 } func Main() i64 { var Pair pair; set Pair.A=4; set Pair.B=Pair.A * 5; return Pair.B - Pair.A; }'
 assert 6 'struct bar { D i64, E i64 } struct foo { A i64, B bar, C i64 } func Main() i64 { var Foo foo; set Foo.B.D=9; set *(&Foo.B.D + 1)=3; return Foo.B.D - Foo.B.E; }'
 assert 31 'struct pair { A i64, B i64 } func Main() i64 { var Pairs [10]pair; set Pairs[0].A=5; set Pairs[0].B=2; set Pairs[1]=Pairs[0]; set Pairs[1].A=29; return Pairs[1].A + Pairs[0].B; }'
+
+# if
+assert 1 'func Main() i64 { if (1) { return 1; } else { return 2; } }'
+assert 2 'func Main() i64 { if (0) { return 1; } else { return 2; } }'
+assert 1 'func Main() i64 { if (1) { return 1; } return 2; }'
+assert 2 'func Main() i64 { if (0) { return 1; } return 2; }'
+assert 3 'func Main() i64 { var X i64; set X=2; if (X) { if (X-1) { set X=X*2; } set X=X-1; } return X; }'

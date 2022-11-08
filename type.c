@@ -147,7 +147,7 @@ AddTypeToExpression(struct expression *Expression)
 }
 
 void
-AddTypetoStatement(struct statement *Statement)
+AddTypeToStatement(struct statement *Statement)
 {
 	switch (Statement->Kind) {
 	case SK_VAR:
@@ -158,13 +158,19 @@ AddTypetoStatement(struct statement *Statement)
 		break;
 	case SK_BLOCK:
 		for (usize I = 0; I < Statement->NumStatements; I++)
-			AddTypetoStatement(&Statement->Statements[I]);
+			AddTypeToStatement(&Statement->Statements[I]);
 		break;
 	case SK_EXPRESSION:
 		AddTypeToExpression(&Statement->Expression);
 		break;
 	case SK_RETURN:
 		AddTypeToExpression(&Statement->Expression);
+		break;
+	case SK_IF:
+		AddTypeToExpression(&Statement->Expression);
+		AddTypeToStatement(Statement->TrueBranch);
+		if (Statement->FalseBranch != NULL)
+			AddTypeToStatement(Statement->FalseBranch);
 		break;
 	}
 }
@@ -173,5 +179,5 @@ void
 AddTypes(struct ast Ast)
 {
 	for (usize I = 0; I < Ast.NumFunctions; I++)
-		AddTypetoStatement(&Ast.Functions[I].Body);
+		AddTypeToStatement(&Ast.Functions[I].Body);
 }

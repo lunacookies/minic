@@ -148,6 +148,7 @@ enum statement_kind {
 	SK_BLOCK,
 	SK_EXPRESSION,
 	SK_RETURN,
+	SK_IF,
 };
 
 enum binary_operator {
@@ -217,8 +218,12 @@ struct statement {
 	struct statement *Statements;
 	usize NumStatements;
 
-	// expression statement and return
+	// expression statement, return and if
 	struct expression Expression;
+
+	// if
+	struct statement *TrueBranch;
+	struct statement *FalseBranch;
 };
 
 struct parameter {

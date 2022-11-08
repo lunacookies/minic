@@ -5,6 +5,13 @@ void GenExpression(struct expression Expression);
 global_variable struct func *CurrentFunction;
 global_variable usize Depth;
 
+internal usize
+LabelCount(void)
+{
+	local_persist usize I = 0;
+	return I++;
+}
+
 internal void
 Push(void)
 {
@@ -273,6 +280,19 @@ GenStatement(struct statement Statement)
 		printf("\tmov\tx0, x8\n");
 		printf("\tb\t.L.return.%s\n", CurrentFunction->Name);
 		break;
+
+	case SK_IF: {
+		usize C = LabelCount();
+		GenExpression(Statement.Expression);
+		printf("\tcbz\tx8, .L.%zu.else\n", C);
+		GenStatement(*Statement.TrueBranch);
+		printf("\tb\t.L.%zu.end\n", C);
+		printf(".L.%zu.else:\n", C);
+		if (Statement.FalseBranch != NULL)
+			GenStatement(*Statement.FalseBranch);
+		printf(".L.%zu.end:\n", C);
+		break;
+	}
 	}
 }
 
