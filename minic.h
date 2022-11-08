@@ -99,6 +99,7 @@ enum type_kind {
 	TY_I64,
 	TY_ARRAY,
 	TY_POINTER,
+	TY_STRUCT,
 };
 
 struct type {
@@ -110,6 +111,12 @@ struct type {
 
 	// pointer
 	struct type *Pointee;
+
+	// struct
+	u8 *Name;
+	struct field *Fields;
+	usize NumFields;
+	usize Size;
 };
 void DebugType(struct type Type);
 struct type CreateDummyType();
@@ -132,6 +139,7 @@ enum expression_kind {
 	EK_ADDRESS_OF,
 	EK_DEREFERENCE,
 	EK_INDEX,
+	EK_FIELD_ACCESS,
 };
 
 enum statement_kind {
@@ -161,6 +169,12 @@ struct local {
 	isize Offset;
 };
 
+struct field {
+	u8 *Name;
+	struct type Type;
+	isize Offset;
+};
+
 struct expression {
 	enum expression_kind Kind;
 	struct type Type;
@@ -184,6 +198,9 @@ struct expression {
 	// index
 	struct expression *Array;
 	struct expression *Index;
+
+	// field access (base is in Lhs)
+	struct field *Field;
 };
 
 struct statement {
@@ -232,6 +249,8 @@ void DebugAst(struct ast Ast);
 struct ast Parse(struct token *Tokens);
 
 // actually from type.c
+void AddTypeToExpression(struct expression *Expression);
+void AddTypetoStatement(struct statement *Statement);
 void AddTypes(struct ast Ast);
 
 // ---------

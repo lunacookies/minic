@@ -58,6 +58,9 @@ DebugType(struct type Type)
 		fprintf(stderr, "*");
 		DebugType(*Type.Pointee);
 		break;
+	case TY_STRUCT:
+		fprintf(stderr, "\033[95m%s\033[0m", (char *)Type.Name);
+		break;
 	}
 }
 
@@ -72,10 +75,12 @@ TypeSize(struct type Type)
 		return 8;
 	case TY_ARRAY:
 		return TypeSize(*Type.ElementType) * Type.NumElements;
+	case TY_STRUCT:
+		return Type.Size;
 	}
 }
 
-internal void
+void
 AddTypeToExpression(struct expression *Expression)
 {
 	switch (Expression->Kind) {
@@ -133,10 +138,15 @@ AddTypeToExpression(struct expression *Expression)
 			Error("tried to index non-array value");
 		}
 		break;
+
+	case EK_FIELD_ACCESS:
+		AddTypeToExpression(Expression->Lhs);
+		Expression->Type = Expression->Field->Type;
+		break;
 	}
 }
 
-internal void
+void
 AddTypetoStatement(struct statement *Statement)
 {
 	switch (Statement->Kind) {

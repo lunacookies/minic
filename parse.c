@@ -102,6 +102,10 @@ DebugExpression(struct expression Expression)
 		DebugExpression(*Expression.Index);
 		fprintf(stderr, "]");
 		break;
+	case EK_FIELD_ACCESS:
+		DebugExpression(*Expression.Lhs);
+		fprintf(stderr, ".%s", Expression.Field->Name);
+		break;
 	}
 }
 
@@ -181,6 +185,9 @@ global_variable struct token *Current;
 global_variable struct local *Locals;
 global_variable usize NumLocals;
 global_variable usize LocalsCapacity;
+global_variable struct type *Structs;
+global_variable usize NumStructs;
+global_variable usize StructsCapacity;
 
 void
 InitLocals(void)
@@ -213,6 +220,53 @@ LookupLocal(u8 *Name)
 	}
 
 	Error("undefined variable `%s`", Name);
+}
+
+struct field *
+LookupField(u8 *Name, struct type Type)
+{
+	if (Type.Kind != TY_STRUCT)
+		Error("tried to access field of non-struct type");
+
+	for (usize I = 0; I < Type.NumFields; I++) {
+		struct field *Field = &Type.Fields[I];
+		if (strcmp((char *)Field->Name, (char *)Name) == 0)
+			return Field;
+	}
+
+	Error("undefined field `%s`", Name);
+}
+
+void
+InitStructs(void)
+{
+	StructsCapacity = 8;
+	Structs = calloc(StructsCapacity, sizeof(struct type));
+	NumStructs = 0;
+}
+
+void
+PushStruct(struct type Struct)
+{
+	if (NumStructs == StructsCapacity) {
+		StructsCapacity *= 2;
+		Structs =
+		    realloc(Structs, sizeof(struct type) * StructsCapacity);
+	}
+	Structs[NumStructs] = Struct;
+	NumStructs++;
+}
+
+struct type
+LookupStruct(u8 *Name)
+{
+	for (usize I = 0; I < NumStructs; I++) {
+		struct type *Struct = &Structs[I];
+		if (strcmp((char *)Struct->Name, (char *)Name) == 0)
+			return *Struct;
+	}
+
+	Error("undefined type `%s`", Name);
 }
 
 internal void
@@ -306,6 +360,18 @@ ParseAtom(void)
 			*New.Array = Expression;
 			*New.Index = ParseExpression();
 			Expect(TK_RSQUARE);
+			Expression = New;
+			break;
+		}
+		case TK_DOT: {
+			struct expression New;
+			New.Kind = EK_FIELD_ACCESS;
+			Expect(TK_DOT);
+			u8 *FieldName = ExpectIdent();
+			AddTypeToExpression(&Expression);
+			New.Field = LookupField(FieldName, Expression.Type);
+			New.Lhs = malloc(sizeof(struct expression));
+			*New.Lhs = Expression;
 			Expression = New;
 			break;
 		}
@@ -481,6 +547,10 @@ ParseType(void)
 		Expect(TK_STAR);
 		struct type Pointee = ParseType();
 		return CreatePointerType(Pointee);
+	case TK_IDENT: {
+		u8 *Name = ExpectIdent();
+		return LookupStruct(Name);
+	}
 	default:
 		Error("expected type but found %s",
 		      TokenKindToString(Current->Kind));
@@ -620,6 +690,46 @@ ParseFunction(void)
 	return Function;
 }
 
+internal struct type
+ParseStruct(void)
+{
+	struct type Struct;
+	Expect(TK_STRUCT);
+	Struct.Kind = TY_STRUCT;
+	Struct.Name = ExpectIdent();
+
+	usize FieldsCapacity = 2;
+	Struct.Fields = calloc(FieldsCapacity, sizeof(struct field));
+	Struct.NumFields = 0;
+	Expect(TK_LBRACE);
+	while (Current->Kind != TK_RBRACE) {
+		if (Struct.NumFields == FieldsCapacity) {
+			FieldsCapacity *= 2;
+			Struct.Fields =
+			    realloc(Struct.Fields,
+			            sizeof(struct field) * FieldsCapacity);
+		}
+		struct field *Field = &Struct.Fields[Struct.NumFields];
+		Field->Name = ExpectIdent();
+		Field->Type = ParseType();
+		Struct.NumFields++;
+
+		if (Current->Kind != TK_RBRACE)
+			Expect(TK_COMMA);
+	}
+	Expect(TK_RBRACE);
+
+	usize Offset = 0;
+	for (usize I = 0; I < Struct.NumFields; I++) {
+		struct field *Field = &Struct.Fields[I];
+		Field->Offset = Offset;
+		Offset += TypeSize(Field->Type);
+	}
+	Struct.Size = Offset;
+
+	return Struct;
+}
+
 struct ast
 Parse(struct token *Tokens)
 {
@@ -630,15 +740,31 @@ Parse(struct token *Tokens)
 		.NumFunctions = 0,
 	};
 
+	InitStructs();
+
 	while (Current->Kind != TK_EOF) {
-		struct func Function = ParseFunction();
-		if (Ast.NumFunctions == AstCapacity) {
-			AstCapacity *= 2;
-			Ast.Functions = realloc(
-			    Ast.Functions, sizeof(struct func) * AstCapacity);
+		switch (Current->Kind) {
+		case TK_FUNC: {
+			struct func Function = ParseFunction();
+			if (Ast.NumFunctions == AstCapacity) {
+				AstCapacity *= 2;
+				Ast.Functions =
+				    realloc(Ast.Functions,
+				            sizeof(struct func) * AstCapacity);
+			}
+			Ast.Functions[Ast.NumFunctions] = Function;
+			Ast.NumFunctions++;
+			break;
 		}
-		Ast.Functions[Ast.NumFunctions] = Function;
-		Ast.NumFunctions++;
+		case TK_STRUCT: {
+			struct type Struct = ParseStruct();
+			PushStruct(Struct);
+			break;
+		}
+		default:
+			Error("expected item but found %s",
+			      TokenKindToString(Current->Kind));
+		}
 	}
 
 	return Ast;

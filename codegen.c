@@ -40,8 +40,8 @@ Load(struct type Type)
 	case TY_POINTER:
 		printf("\tldr\tx8, [x8]\n");
 		break;
-	// loading larger types is handled on a case-by-case basis
 	case TY_ARRAY:
+	case TY_STRUCT:
 		break;
 	}
 }
@@ -60,6 +60,7 @@ Store(struct type Type)
 		break;
 	// x8 holds the address to load from, not the value itself
 	case TY_ARRAY:
+	case TY_STRUCT:
 		EmitMemcpy("x9", "x8", TypeSize(Type));
 		break;
 	}
@@ -90,6 +91,10 @@ GenAddress(struct expression Expression)
 
 		Pop("x9");
 		printf("\tadd\tx8, x8, x9\n");
+		break;
+	case EK_FIELD_ACCESS:
+		GenAddress(*Expression.Lhs);
+		printf("\tadd\tx8, x8, #%zd\n", Expression.Field->Offset);
 		break;
 	default:
 		Error("not an lvalue");
@@ -206,6 +211,7 @@ GenExpression(struct expression Expression)
 		break;
 
 	case EK_VARIABLE:
+	case EK_FIELD_ACCESS:
 		GenAddress(Expression);
 		Load(Expression.Type);
 		break;
