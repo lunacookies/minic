@@ -119,8 +119,8 @@ struct type {
 	usize Size;
 };
 void DebugType(struct type Type);
-struct type CreateDummyType();
-struct type CreateI64Type();
+struct type CreateDummyType(void);
+struct type CreateI64Type(void);
 struct type CreateArrayType(struct type ElementType, usize NumElements);
 struct type CreatePointerType(struct type Pointee);
 
@@ -259,7 +259,7 @@ struct ast Parse(struct token *Tokens);
 
 // actually from type.c
 void AddTypeToExpression(struct expression *Expression);
-void AddTypetoStatement(struct statement *Statement);
+void AddTypeToStatement(struct statement *Statement);
 void AddTypes(struct ast Ast);
 
 // ---------

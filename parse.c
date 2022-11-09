@@ -211,7 +211,7 @@ global_variable struct type *Structs;
 global_variable usize NumStructs;
 global_variable usize StructsCapacity;
 
-void
+internal void
 InitLocals(void)
 {
 	LocalsCapacity = 8;
@@ -219,7 +219,7 @@ InitLocals(void)
 	NumLocals = 0;
 }
 
-struct local *
+internal struct local *
 PushLocal(struct local Local)
 {
 	if (NumLocals == LocalsCapacity) {
@@ -232,7 +232,7 @@ PushLocal(struct local Local)
 	return Ptr;
 }
 
-struct local *
+internal struct local *
 LookupLocal(u8 *Name)
 {
 	for (usize I = 0; I < NumLocals; I++) {
@@ -244,7 +244,7 @@ LookupLocal(u8 *Name)
 	Error("undefined variable `%s`", Name);
 }
 
-struct field *
+internal struct field *
 LookupField(u8 *Name, struct type Type)
 {
 	if (Type.Kind != TY_STRUCT)
@@ -259,7 +259,7 @@ LookupField(u8 *Name, struct type Type)
 	Error("undefined field `%s`", Name);
 }
 
-void
+internal void
 InitStructs(void)
 {
 	StructsCapacity = 8;
@@ -267,7 +267,7 @@ InitStructs(void)
 	NumStructs = 0;
 }
 
-void
+internal void
 PushStruct(struct type Struct)
 {
 	if (NumStructs == StructsCapacity) {
@@ -279,7 +279,7 @@ PushStruct(struct type Struct)
 	NumStructs++;
 }
 
-struct type
+internal struct type
 LookupStruct(u8 *Name)
 {
 	for (usize I = 0; I < NumStructs; I++) {

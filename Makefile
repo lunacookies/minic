@@ -1,4 +1,4 @@
-CFLAGS=-std=c11 -fsanitize=address -g -W -Wall -Wextra -Wpedantic -Wimplicit-fallthrough -Wshadow
+CFLAGS=-std=c11 -fsanitize=address -g -W -Wall -Wextra -Wpedantic -Wimplicit-fallthrough -Wshadow -Wstrict-prototypes -Wmissing-prototypes
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
 

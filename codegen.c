@@ -1,6 +1,6 @@
 #include "minic.h"
 
-void GenExpression(struct expression Expression);
+internal void GenExpression(struct expression Expression);
 
 global_variable struct func *CurrentFunction;
 global_variable usize Depth;
@@ -73,7 +73,7 @@ Store(struct type Type)
 	}
 }
 
-void
+internal void
 GenAddress(struct expression Expression)
 {
 	switch (Expression.Kind) {
@@ -108,7 +108,7 @@ GenAddress(struct expression Expression)
 	}
 }
 
-void
+internal void
 GenCall(struct expression Expression)
 {
 	if (Expression.NumArguments == 0)
@@ -136,7 +136,7 @@ PrintName:
 	printf("\tbl\t_%s\n", Expression.Name);
 }
 
-void
+internal void
 GenBinaryExpression(struct expression Expression)
 {
 	struct expression *Lhs = Expression.Lhs;
@@ -209,7 +209,7 @@ GenBinaryExpression(struct expression Expression)
 	}
 }
 
-void
+internal void
 GenExpression(struct expression Expression)
 {
 	switch (Expression.Kind) {
@@ -251,7 +251,7 @@ GenExpression(struct expression Expression)
 	}
 }
 
-void
+internal void
 GenStatement(struct statement Statement)
 {
 	switch (Statement.Kind) {
@@ -307,7 +307,7 @@ GenStatement(struct statement Statement)
 	}
 }
 
-void
+internal void
 GenPrologue()
 {
 	// allocate 16 bytes on the stack for the frame record
@@ -321,7 +321,7 @@ GenPrologue()
 	printf("\tsub\tsp, sp, #%zu\n", CurrentFunction->StackSize);
 }
 
-void
+internal void
 GenEpilogue()
 {
 	// deallocate locals
@@ -336,13 +336,13 @@ GenEpilogue()
 	printf("\tadd\tsp, sp, #16\n");
 }
 
-usize
+internal usize
 AlignTo(usize N, usize Align)
 {
 	return (N + Align - 1) / Align * Align;
 }
 
-void
+internal void
 StackAllocate(void)
 {
 	isize Offset = 0;
@@ -357,7 +357,7 @@ StackAllocate(void)
 	CurrentFunction->StackSize = AlignTo(Offset, 16);
 }
 
-void
+internal void
 GenFunction(struct func *Function)
 {
 	CurrentFunction = Function;
