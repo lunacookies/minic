@@ -293,6 +293,17 @@ GenStatement(struct statement Statement)
 		printf(".L.%zu.end:\n", C);
 		break;
 	}
+
+	case SK_WHILE: {
+		usize C = LabelCount();
+		printf(".L.%zu.begin:\n", C);
+		GenExpression(Statement.Expression);
+		printf("\tcbz\tx8, .L.%zu.end\n", C);
+		GenStatement(*Statement.Body);
+		printf("\tb\t.L.%zu.begin\n", C);
+		printf(".L.%zu.end:\n", C);
+		break;
+	}
 	}
 }
 

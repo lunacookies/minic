@@ -172,6 +172,10 @@ AddTypeToStatement(struct statement *Statement)
 		if (Statement->FalseBranch != NULL)
 			AddTypeToStatement(Statement->FalseBranch);
 		break;
+	case SK_WHILE:
+		AddTypeToExpression(&Statement->Expression);
+		AddTypeToStatement(Statement->Body);
+		break;
 	}
 }
 

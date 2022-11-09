@@ -88,3 +88,7 @@ assert 2 'func Main() i64 { if (0) { return 1; } else { return 2; } }'
 assert 1 'func Main() i64 { if (1) { return 1; } return 2; }'
 assert 2 'func Main() i64 { if (0) { return 1; } return 2; }'
 assert 3 'func Main() i64 { var X i64; set X=2; if (X) { if (X-1) { set X=X*2; } set X=X-1; } return X; }'
+
+# while
+assert 5 'func Main() i64 { var I i64; set I=0; while (I<5) { set I=I+1; } return I; }'
+assert 55 'func Main() i64 { var Sum i64; set Sum=0; var I i64; set I=0; while (I<10) { set I=I+1; set Sum=Sum+I; } return Sum; }'

@@ -120,6 +120,7 @@ DebugStatement(struct statement Statement)
 		fprintf(stderr, "; \033[90m# size: %zu\033[0m",
 		        TypeSize(Statement.Local->Type));
 		break;
+
 	case SK_SET:
 		fprintf(stderr, "\033[94mset\033[0m ");
 		DebugExpression(Statement.Destination);
@@ -127,6 +128,7 @@ DebugStatement(struct statement Statement)
 		DebugExpression(Statement.Source);
 		fprintf(stderr, ";");
 		break;
+
 	case SK_BLOCK:
 		fprintf(stderr, "{");
 		Indentation++;
@@ -138,14 +140,17 @@ DebugStatement(struct statement Statement)
 		Newline();
 		fprintf(stderr, "}");
 		break;
+
 	case SK_EXPRESSION:
 		DebugExpression(Statement.Expression);
 		fprintf(stderr, ";");
 		break;
+
 	case SK_RETURN:
 		fprintf(stderr, "\033[94mreturn\033[0m ");
 		DebugExpression(Statement.Expression);
 		fprintf(stderr, ";");
+
 		break;
 	case SK_IF:
 		fprintf(stderr, "\033[94mif\033[0m (");
@@ -156,6 +161,13 @@ DebugStatement(struct statement Statement)
 			fprintf(stderr, " \033[94melse\033[0m ");
 			DebugStatement(*Statement.FalseBranch);
 		}
+		break;
+
+	case SK_WHILE:
+		fprintf(stderr, "\033[94mwhile\033[0m (");
+		DebugExpression(Statement.Expression);
+		fprintf(stderr, ") ");
+		DebugStatement(*Statement.Body);
 		break;
 	}
 }
@@ -616,6 +628,7 @@ ParseStatement(void)
 
 		return Statement;
 	}
+
 	case TK_SET: {
 		struct statement Statement;
 		Statement.Kind = SK_SET;
@@ -626,8 +639,10 @@ ParseStatement(void)
 		Expect(TK_SEMICOLON);
 		return Statement;
 	}
+
 	case TK_LBRACE:
 		return ParseBlock();
+
 	case TK_RETURN: {
 		struct statement Statement;
 		Statement.Kind = SK_RETURN;
@@ -636,6 +651,7 @@ ParseStatement(void)
 		Expect(TK_SEMICOLON);
 		return Statement;
 	}
+
 	case TK_IF: {
 		struct statement Statement;
 		Statement.Kind = SK_IF;
@@ -655,6 +671,19 @@ ParseStatement(void)
 		Statement.FalseBranch = NULL;
 		return Statement;
 	}
+
+	case TK_WHILE: {
+		struct statement Statement;
+		Statement.Kind = SK_WHILE;
+		Expect(TK_WHILE);
+		Expect(TK_LPAREN);
+		Statement.Expression = ParseExpression();
+		Expect(TK_RPAREN);
+		Statement.Body = malloc(sizeof(struct statement));
+		*Statement.Body = ParseBlock();
+		return Statement;
+	}
+
 	default: {
 		struct statement Statement;
 		Statement.Kind = SK_EXPRESSION;
