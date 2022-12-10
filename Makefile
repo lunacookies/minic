@@ -1,15 +1,33 @@
-CFLAGS = -W -Wall -Wextra -Wpedantic -std=c99
+CFLAGS=\
+	-std=c99 \
+	-fsanitize=address \
+	-g \
+	-W \
+	-Wall \
+	-Wextra \
+	-Wpedantic \
+	-Wimplicit-fallthrough \
+	-Wshadow \
+	-Wstrict-prototypes \
+	-Wmissing-prototypes
 
-all: tidy minic
+SRCS=$(wildcard *.c)
+OBJS=$(SRCS:.c=.o)
 
-tidy:
-	clang-format --dry-run *.h *.c
+all: minic tidy
 
-%.o: %.c %.h
-	$(CC) $(CFLAGS) -c $^
-
-minic: minic.c vec.o bump.o
+minic: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
+$(OBJS): minic.h
+
+tidy: *.c *.h
+	clang-format -i $^
+
+test: all
+	./test.sh
+
 clean:
-	rm *.o *.gch minic
+	rm minic *.o tmp*
+
+.PHONY: tidy test clean
