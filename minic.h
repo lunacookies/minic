@@ -68,3 +68,25 @@ typedef struct projectSpec {
 } projectSpec;
 
 projectSpec discoverProject(memory *m);
+
+// ----------------------------------------------------------------------------
+// lexer.c
+
+typedef enum tokenKind { TOK_NUMBER, TOK_IDENTIFIER } tokenKind;
+
+typedef struct span {
+	u32 start;
+	u32 end;
+} span;
+
+typedef struct token {
+	tokenKind kind;
+	span span;
+} token;
+
+typedef struct tokenBuffer {
+	token *tokens;
+	usize count;
+} tokenBuffer;
+
+tokenBuffer lex(u8 *input, memory *m);
