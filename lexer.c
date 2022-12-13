@@ -1,5 +1,8 @@
 #include "minic.h"
 
+static const char *keywords[] = { "func", "return" };
+static const tokenKind keywordKinds[] = { TOK_FUNC, TOK_RETURN };
+
 static void pushToken(tokenKind kind, u32 start, u32 end, memory *m)
 {
 	token t = {
@@ -26,6 +29,24 @@ static bool isDigit(u8 c)
 static bool isIdentifierFirst(u8 c)
 {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_');
+}
+
+static void convertKeywords(u8 *input, tokenBuffer *buf)
+{
+	usize num_keywords = sizeof(keywords) / sizeof(keywords[0]);
+
+	for (usize i = 0; i < buf->count; i++) {
+		token *t = &buf->tokens[i];
+		if (t->kind != TOK_IDENTIFIER)
+			continue;
+
+		usize length = t->span.end - t->span.start;
+
+		for (usize j = 0; j < num_keywords; j++)
+			if (strncmp((char *)input + t->span.start, keywords[j],
+				    length) == 0)
+				t->kind = keywordKinds[j];
+	}
 }
 
 tokenBuffer lex(u8 *input, memory *m)
@@ -65,6 +86,8 @@ tokenBuffer lex(u8 *input, memory *m)
 
 		error("invalid token");
 	}
+
+	convertKeywords(input, &buf);
 
 	return buf;
 }

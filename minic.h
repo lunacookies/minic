@@ -72,7 +72,12 @@ projectSpec discoverProject(memory *m);
 // ----------------------------------------------------------------------------
 // lexer.c
 
-typedef enum tokenKind { TOK_NUMBER, TOK_IDENTIFIER } tokenKind;
+typedef enum tokenKind {
+	TOK_NUMBER,
+	TOK_IDENTIFIER,
+	TOK_FUNC,
+	TOK_RETURN
+} tokenKind;
 
 typedef struct span {
 	u32 start;
