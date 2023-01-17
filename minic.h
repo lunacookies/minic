@@ -26,7 +26,7 @@ typedef ssize_t isize;
 
 #define assert(B)                                                              \
 	if (!(B))                                                              \
-		error("an internal error occurred at "                         \
+		error("an assert failed at "                         \
 		      "\033[1;4;97m%s:%d\033[0m",                              \
 		      __FILE__, __LINE__);
 
