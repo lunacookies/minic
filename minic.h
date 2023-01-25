@@ -1,5 +1,6 @@
 #include <dirent.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -26,14 +27,12 @@ typedef ssize_t isize;
 
 #define assert(B)                                                              \
 	if (!(B))                                                              \
-		error("an assert failed at "                         \
-		      "\033[1;4;97m%s:%d\033[0m",                              \
-		      __FILE__, __LINE__);
+		internalError("an assert failed at %s:%d", __FILE__, __LINE__);
 
 // ----------------------------------------------------------------------------
 // utils.c
 
-void error(char *fmt, ...);
+void internalError(char *fmt, ...);
 
 // ----------------------------------------------------------------------------
 // bump.c
@@ -69,20 +68,35 @@ typedef struct projectSpec {
 
 projectSpec discoverProject(memory *m);
 
-// ----------------------------------------------------------------------------
-// lexer.c
+void setCurrentProject(projectSpec p);
+projectSpec currentProject(void);
+void setCurrentFile(u16 f);
+u16 currentFile(void);
 
-typedef enum tokenKind {
-	TOK_NUMBER,
-	TOK_IDENTIFIER,
-	TOK_FUNC,
-	TOK_RETURN
-} tokenKind;
+// ----------------------------------------------------------------------------
+// diagnostics.c
+
+typedef enum severity { DIAG_WARNING, DIAG_ERROR } severity;
 
 typedef struct span {
 	u32 start;
 	u32 end;
 } span;
+
+void initializeDiagnosticSink(void);
+void sendDiagnosticToSink(severity severity, span span, char *fmt, ...);
+
+// ----------------------------------------------------------------------------
+// lexer.c
+
+typedef enum tokenKind {
+	TOK_EOF,
+	TOK_ERROR,
+	TOK_NUMBER,
+	TOK_IDENTIFIER,
+	TOK_FUNC,
+	TOK_RETURN
+} tokenKind;
 
 typedef struct token {
 	tokenKind kind;

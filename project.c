@@ -77,3 +77,26 @@ projectSpec discoverProject(memory *m)
 	};
 	return p;
 }
+
+_Thread_local projectSpec current_project;
+_Thread_local u16 current_file;
+
+void setCurrentProject(projectSpec p)
+{
+	current_project = p;
+}
+
+projectSpec currentProject(void)
+{
+	return current_project;
+}
+
+void setCurrentFile(u16 f)
+{
+	current_file = f;
+}
+
+u16 currentFile(void)
+{
+	return current_file;
+}

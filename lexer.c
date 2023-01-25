@@ -84,7 +84,15 @@ tokenBuffer lex(u8 *input, memory *m)
 			continue;
 		}
 
-		error("invalid token");
+		span span = {
+			.start = i,
+			.end = i + 1,
+		};
+		sendDiagnosticToSink(DIAG_ERROR, span, "invalid token “%c”",
+				     input[i]);
+		i++;
+		pushToken(TOK_ERROR, span.start, span.end, m);
+		buf.count++;
 	}
 
 	convertKeywords(input, &buf);

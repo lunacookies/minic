@@ -1,13 +1,11 @@
 #include "minic.h"
 
-// We take char instead of u8 to allow for the passing of unadorned string
-// literals.
-void error(char *fmt, ...)
+void internalError(char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	fprintf(stderr, "\033[1;31minternal error:\033[0m ");
+	fprintf(stderr, "\033[31minternal error:\033[0;1m ");
 	vfprintf(stderr, fmt, ap);
-	fprintf(stderr, "\n");
+	fprintf(stderr, "\033[0m\n");
 	abort();
 }
