@@ -4,9 +4,17 @@ void internalError(char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
+	internalErrorV(fmt, ap);
+	// no need for va_end(ap);
+	// because we’ve already aborted by this point
+}
+
+void internalErrorV(char *fmt, va_list ap)
+{
 	fprintf(stderr, "\033[31minternal error:\033[0;1m ");
 	vfprintf(stderr, fmt, ap);
 	fprintf(stderr, "\033[0m\n");
+
 	abort();
 }
 

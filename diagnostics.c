@@ -59,6 +59,14 @@ static diagnosticLocation getDiagnosticLocation(span span)
 
 void sendDiagnosticToSink(severity severity, span span, char *fmt, ...)
 {
+	va_list ap;
+	va_start(ap, fmt);
+	sendDiagnosticToSinkV(severity, span, fmt, ap);
+	va_end(ap);
+}
+
+void sendDiagnosticToSinkV(severity severity, span span, char *fmt, va_list ap)
+{
 	assert(isInitialized);
 	pthread_mutex_lock(&stderrMutex);
 
@@ -76,10 +84,7 @@ void sendDiagnosticToSink(severity severity, span span, char *fmt, ...)
 	}
 	fprintf(stderr, ":\033[0;1m ");
 
-	va_list ap;
-	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
-
 	fprintf(stderr, "\033[0m\n");
 
 	pthread_mutex_unlock(&stderrMutex);

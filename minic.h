@@ -34,6 +34,7 @@ typedef ssize_t isize;
 // utils.c
 
 void internalError(char *fmt, ...);
+void internalErrorV(char *fmt, va_list ap);
 u32 numCpus(void);
 
 // ----------------------------------------------------------------------------
@@ -87,6 +88,7 @@ typedef struct span {
 
 void initializeDiagnosticSink(void);
 void sendDiagnosticToSink(severity severity, span span, char *fmt, ...);
+void sendDiagnosticToSinkV(severity severity, span span, char *fmt, va_list ap);
 
 // ----------------------------------------------------------------------------
 // lexer.c
