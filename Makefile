@@ -1,5 +1,5 @@
 CFLAGS=\
-	-std=c99 \
+	-std=c11 \
 	-fsanitize=address \
 	-g \
 	-W \
