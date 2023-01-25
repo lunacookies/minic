@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/sysctl.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -33,6 +34,7 @@ typedef ssize_t isize;
 // utils.c
 
 void internalError(char *fmt, ...);
+u32 numCpus(void);
 
 // ----------------------------------------------------------------------------
 // bump.c
