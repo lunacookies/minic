@@ -1,7 +1,7 @@
 #include "minic.h"
 
-static const char *keywords[] = { "func", "return" };
-static const tokenKind keywordKinds[] = { TOK_FUNC, TOK_RETURN };
+static const char *keywords[] = { "func", "return", "var" };
+static const tokenKind keywordKinds[] = { TOK_FUNC, TOK_RETURN, TOK_VAR };
 
 static void pushToken(tokenKind kind, u32 start, u32 end, memory *m)
 {
@@ -80,6 +80,15 @@ tokenBuffer lex(u8 *input, memory *m)
 				i++;
 			u32 end = i;
 			pushToken(TOK_IDENTIFIER, start, end, m);
+			buf.count++;
+			continue;
+		}
+
+		if (input[i] == '=') {
+			u32 start = i;
+			i++;
+			u32 end = i;
+			pushToken(TOK_EQUAL, start, end, m);
 			buf.count++;
 			continue;
 		}
