@@ -144,6 +144,13 @@ static astExpression *expression(parser *p, memory *m)
 		break;
 	}
 
+	case TOK_IDENTIFIER: {
+		u8 *name = expectCopy(p, TOK_IDENTIFIER, m);
+		e.kind = AST_EXPR_VARIABLE;
+		e.name = name;
+		break;
+	}
+
 	default:
 		error(p, "expected expression");
 		e.kind = AST_EXPR_MISSING;
@@ -290,6 +297,10 @@ static void debugExpression(astExpression *expression)
 
 	case AST_EXPR_INT_LITERAL:
 		printf("\033[36m%llu\033[0m", expression->value);
+		break;
+
+	case AST_EXPR_VARIABLE:
+		printf("\033[35m%s\033[0m", expression->name);
 		break;
 	}
 }

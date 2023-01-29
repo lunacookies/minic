@@ -131,7 +131,8 @@ tokenBuffer lex(u8 *input, memory *m);
 
 typedef enum astExpressionKind {
 	AST_EXPR_MISSING,
-	AST_EXPR_INT_LITERAL
+	AST_EXPR_INT_LITERAL,
+	AST_EXPR_VARIABLE
 } astExpressionKind;
 
 typedef struct astExpression {
@@ -139,6 +140,9 @@ typedef struct astExpression {
 
 	// int literal
 	u64 value;
+
+	// variable
+	u8 *name;
 } astExpression;
 
 typedef enum astStatementKind {
