@@ -21,6 +21,10 @@ static u8 *printTokenKind(tokenKind kind)
 		return (u8 *)"“func”";
 	case TOK_RETURN:
 		return (u8 *)"“return”";
+	case TOK_VAR:
+		return (u8 *)"“var”";
+	case TOK_EQUAL:
+		return (u8 *)"“=”";
 	}
 }
 
@@ -160,6 +164,17 @@ static astStatement *statement(parser *p, memory *m)
 		break;
 	}
 
+	case TOK_VAR: {
+		expect(p, TOK_VAR);
+		u8 *name = expectCopy(p, TOK_IDENTIFIER, m);
+		expect(p, TOK_EQUAL);
+		astExpression *value = expression(p, m);
+		s.kind = AST_STMT_LOCAL_DEFINITION;
+		s.name = name;
+		s.value = value;
+		break;
+	}
+
 	default:
 		error(p, "expected statement");
 		s.kind = AST_STMT_MISSING;
@@ -252,6 +267,12 @@ static void debugStatement(astStatement *statement)
 
 	case AST_STMT_RETURN:
 		printf("\033[1;95mreturn\033[0m ");
+		debugExpression(statement->value);
+		break;
+
+	case AST_STMT_LOCAL_DEFINITION:
+		printf("\033[1;95mvar\033[0m \033[33m%s\033[0m = ",
+		       statement->name);
 		debugExpression(statement->value);
 		break;
 	}

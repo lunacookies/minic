@@ -133,14 +133,18 @@ typedef struct astExpression {
 
 typedef enum astStatementKind {
 	AST_STMT_MISSING,
-	AST_STMT_RETURN
+	AST_STMT_RETURN,
+	AST_STMT_LOCAL_DEFINITION
 } astStatementKind;
 
 typedef struct astStatement {
 	astStatementKind kind;
 
-	// return
+	// return and local definition
 	astExpression *value;
+
+	// local definition
+	u8 *name;
 } astStatement;
 
 typedef struct astFunction {
