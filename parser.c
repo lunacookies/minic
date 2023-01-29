@@ -179,6 +179,36 @@ static astStatement *statement(parser *p, memory *m)
 		break;
 	}
 
+	case TOK_LBRACE: {
+		expect(p, TOK_LBRACE);
+		astStatement *statements_start =
+			(astStatement *)(m->temp.top + m->temp.bytes_used);
+		u32 count = 0;
+
+		bumpMark mark = markBump(&m->temp);
+
+		while (!at(p, TOK_RBRACE) && !atEof(p)) {
+			astStatement *stmt = statement(p, m);
+			astStatement **stmt_ptr = allocateInBump(
+				&m->temp, sizeof(astStatement *));
+			*stmt_ptr = stmt;
+			count++;
+		}
+		expect(p, TOK_RBRACE);
+
+		astStatement **statements = allocateInBump(
+			&m->general, sizeof(astStatement *) * count);
+		memcpy(statements, statements_start,
+		       sizeof(astStatement *) * count);
+
+		clearBumpToMark(&m->temp, mark);
+
+		s.kind = AST_STMT_BLOCK;
+		s.statements = statements;
+		s.count = count;
+		break;
+	}
+
 	default:
 		error(p, "expected statement");
 		s.kind = AST_STMT_MISSING;
@@ -219,6 +249,7 @@ astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 	astFunction *head = NULL;
 	astFunction *current_function = NULL;
 
+	clearBump(&m->temp);
 	while (!atEof(&p)) {
 		switch (current(&p)) {
 		case TOK_FUNC: {
@@ -237,6 +268,7 @@ astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 			break;
 		}
 	}
+	clearBump(&m->temp);
 
 	astRoot root = { .functions = head };
 	return root;
@@ -262,7 +294,7 @@ static void debugExpression(astExpression *expression)
 	}
 }
 
-static void debugStatement(astStatement *statement)
+static void debugStatement(astStatement *statement, u32 indentation)
 {
 	switch (statement->kind) {
 	case AST_STMT_MISSING:
@@ -279,6 +311,22 @@ static void debugStatement(astStatement *statement)
 		       statement->name);
 		debugExpression(statement->value);
 		break;
+
+	case AST_STMT_BLOCK:
+		if (statement->count == 0) {
+			printf("{}");
+			break;
+		}
+		printf("{");
+		indentation++;
+		for (u32 i = 0; i < statement->count; i++) {
+			newline(indentation);
+			debugStatement(statement->statements[i], indentation);
+		}
+		indentation--;
+		newline(indentation);
+		printf("}");
+		break;
 	}
 }
 
@@ -287,7 +335,7 @@ static void debugFunction(astFunction function, u32 indentation)
 	printf("\033[1;95mfunc \033[0;32m%s\033[0m", function.name);
 	indentation++;
 	newline(indentation);
-	debugStatement(function.body);
+	debugStatement(function.body, indentation);
 	indentation--;
 }
 

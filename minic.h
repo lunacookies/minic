@@ -144,7 +144,8 @@ typedef struct astExpression {
 typedef enum astStatementKind {
 	AST_STMT_MISSING,
 	AST_STMT_RETURN,
-	AST_STMT_LOCAL_DEFINITION
+	AST_STMT_LOCAL_DEFINITION,
+	AST_STMT_BLOCK
 } astStatementKind;
 
 typedef struct astStatement {
@@ -155,6 +156,10 @@ typedef struct astStatement {
 
 	// local definition
 	u8 *name;
+
+	// block
+	struct astStatement **statements;
+	u32 count;
 } astStatement;
 
 typedef struct astFunction {
