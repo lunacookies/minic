@@ -302,12 +302,12 @@ static void debugStatement(astStatement *statement, u32 indentation)
 		break;
 
 	case AST_STMT_RETURN:
-		printf("\033[1;95mreturn\033[0m ");
+		printf("\033[32mreturn\033[0m ");
 		debugExpression(statement->value);
 		break;
 
 	case AST_STMT_LOCAL_DEFINITION:
-		printf("\033[1;95mvar\033[0m \033[33m%s\033[0m = ",
+		printf("\033[32mvar\033[0m \033[35m%s\033[0m = ",
 		       statement->name);
 		debugExpression(statement->value);
 		break;
@@ -332,7 +332,7 @@ static void debugStatement(astStatement *statement, u32 indentation)
 
 static void debugFunction(astFunction function, u32 indentation)
 {
-	printf("\033[1;95mfunc \033[0;32m%s\033[0m", function.name);
+	printf("\033[32mfunc \033[33m%s\033[0m", function.name);
 	indentation++;
 	newline(indentation);
 	debugStatement(function.body, indentation);
