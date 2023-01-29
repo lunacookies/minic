@@ -26,7 +26,7 @@ void clearBump(bump *b)
 
 void clearBumpToMark(bump *b, bumpMark mark)
 {
-	assert(b->bytes_used > mark.bytes_used);
+	assert(b->bytes_used >= mark.bytes_used);
 	usize bytes_allocated_since_mark = b->bytes_used - mark.bytes_used;
 	memset(b->top + mark.bytes_used, 0, bytes_allocated_since_mark);
 	b->bytes_used = mark.bytes_used;

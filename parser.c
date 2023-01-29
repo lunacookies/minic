@@ -73,16 +73,27 @@ static bool at(parser *p, tokenKind kind)
 	return current(p) == kind;
 }
 
-static void errorV(parser *p, char *fmt, va_list ap)
+static bool atItemFirst(parser *p)
 {
-	token *t = currentToken(p);
+	return at(p, TOK_FUNC);
+}
+
+static bool atRecovery(parser *p)
+{
+	return atItemFirst(p) || at(p, TOK_LBRACE) || at(p, TOK_RBRACE);
+}
+
+static void errorV(parser *p, bool honor_recovery, char *fmt, va_list ap)
+{
 	span s = { 0 };
-	if (t == NULL) {
+	if (atEof(p) || (honor_recovery && atRecovery(p))) {
 		span previousTokenSpan = previousToken(p)->span;
 		s.start = previousTokenSpan.end;
 		s.end = previousTokenSpan.end + 1;
-	} else
-		s = t->span;
+	} else {
+		s = currentToken(p)->span;
+		addToken(p);
+	}
 	sendDiagnosticToSinkV(DIAG_ERROR, s, fmt, ap);
 }
 
@@ -90,11 +101,16 @@ static void error(parser *p, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	errorV(p, fmt, ap);
+	errorV(p, true, fmt, ap);
 	va_end(ap);
+}
 
-	if (!atEof(p))
-		addToken(p);
+static void errorWithoutRecovery(parser *p, char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	errorV(p, false, fmt, ap);
+	va_end(ap);
 }
 
 static void expect(parser *p, tokenKind expected)
@@ -194,7 +210,7 @@ static astStatement *statement(parser *p, memory *m)
 
 		bumpMark mark = markBump(&m->temp);
 
-		while (!at(p, TOK_RBRACE) && !atEof(p)) {
+		while (!at(p, TOK_RBRACE) && !atEof(p) && !atItemFirst(p)) {
 			astStatement *stmt = statement(p, m);
 			astStatement **stmt_ptr = allocateInBump(
 				&m->temp, sizeof(astStatement *));
@@ -271,7 +287,7 @@ astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 			break;
 		}
 		default:
-			error(&p, "expected function");
+			errorWithoutRecovery(&p, "expected function");
 			break;
 		}
 	}
