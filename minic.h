@@ -35,6 +35,8 @@ typedef ssize_t isize;
 
 void internalError(char *fmt, ...);
 void internalErrorV(char *fmt, va_list ap);
+void debugLog(char *fmt, ...);
+void debugLogV(char *fmt, va_list ap);
 u32 numCpus(void);
 
 // ----------------------------------------------------------------------------

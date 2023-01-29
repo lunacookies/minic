@@ -18,6 +18,21 @@ void internalErrorV(char *fmt, va_list ap)
 	abort();
 }
 
+void debugLog(char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	debugLogV(fmt, ap);
+	va_end(ap);
+}
+
+void debugLogV(char *fmt, va_list ap)
+{
+	fprintf(stderr, "\033[35mlog:\033[0;1m ");
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\033[0m\n");
+}
+
 u32 numCpus()
 {
 	const char *name = "hw.logicalcpu";
