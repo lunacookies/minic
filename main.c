@@ -6,6 +6,8 @@ int main()
 	initializeDiagnosticSink();
 
 	projectSpec current_project = discoverProject(&m);
+	assert(m.temp.bytes_used == 0);
+
 	setCurrentProject(current_project);
 	for (u16 i = 0; i < current_project.num_files; i++) {
 		setCurrentFile(i);
@@ -14,5 +16,7 @@ int main()
 		tokenBuffer tokens = lex(content, &m);
 		astRoot ast = parse(tokens, content, &m);
 		debugAst(ast);
+
+		assert(m.temp.bytes_used == 0);
 	}
 }
