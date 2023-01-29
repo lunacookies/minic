@@ -138,7 +138,8 @@ static astExpression *expression(parser *p, memory *m)
 
 	default:
 		error(p, "expected expression");
-		return NULL;
+		e.kind = AST_EXPR_MISSING;
+		break;
 	}
 
 	astExpression *ptr = allocateInBump(&m->general, sizeof(astExpression));
@@ -161,7 +162,8 @@ static astStatement *statement(parser *p, memory *m)
 
 	default:
 		error(p, "expected statement");
-		return NULL;
+		s.kind = AST_STMT_MISSING;
+		break;
 	}
 
 	astStatement *ptr = allocateInBump(&m->general, sizeof(astStatement));
@@ -230,12 +232,11 @@ static void newline(u32 indentation)
 
 static void debugExpression(astExpression *expression)
 {
-	if (expression == NULL) {
-		printf("<unknown expression>");
-		return;
-	}
-
 	switch (expression->kind) {
+	case AST_EXPR_MISSING:
+		printf("\033[7;31m<missing>\033[0m");
+		break;
+
 	case AST_EXPR_INT_LITERAL:
 		printf("\033[36m%llu\033[0m", expression->value);
 		break;
@@ -244,18 +245,14 @@ static void debugExpression(astExpression *expression)
 
 static void debugStatement(astStatement *statement)
 {
-	if (statement == NULL) {
-		printf("<unknown statement>");
-		return;
-	}
-
 	switch (statement->kind) {
+	case AST_STMT_MISSING:
+		printf("\033[7;31m<missing>\033[0m");
+		break;
+
 	case AST_STMT_RETURN:
-		printf("\033[1;95mreturn\033[0m");
-		if (statement->value != NULL) {
-			printf(" ");
-			debugExpression(statement->value);
-		}
+		printf("\033[1;95mreturn\033[0m ");
+		debugExpression(statement->value);
 		break;
 	}
 }

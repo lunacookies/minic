@@ -117,7 +117,10 @@ tokenBuffer lex(u8 *input, memory *m);
 // ----------------------------------------------------------------------------
 // parser.c
 
-typedef enum astExpressionKind { AST_EXPR_INT_LITERAL } astExpressionKind;
+typedef enum astExpressionKind {
+	AST_EXPR_MISSING,
+	AST_EXPR_INT_LITERAL
+} astExpressionKind;
 
 typedef struct astExpression {
 	astExpressionKind kind;
@@ -126,7 +129,10 @@ typedef struct astExpression {
 	u64 value;
 } astExpression;
 
-typedef enum astStatementKind { AST_STMT_RETURN } astStatementKind;
+typedef enum astStatementKind {
+	AST_STMT_MISSING,
+	AST_STMT_RETURN
+} astStatementKind;
 
 typedef struct astStatement {
 	astStatementKind kind;
