@@ -48,8 +48,14 @@ typedef struct bump {
 	usize max_size;
 } bump;
 
+typedef struct bumpMark {
+	usize bytes_used;
+} bumpMark;
+
 bump createBump(void *buffer, usize size);
+bumpMark markBump(bump *b);
 void clearBump(bump *b);
+void clearBumpToMark(bump *b, bumpMark mark);
 void *allocateInBump(bump *b, usize size);
 
 // ----------------------------------------------------------------------------

@@ -10,11 +10,26 @@ bump createBump(void *buffer, usize size)
 	return b;
 }
 
+bumpMark markBump(bump *b)
+{
+	bumpMark mark = {
+		.bytes_used = b->bytes_used,
+	};
+	return mark;
+}
+
 void clearBump(bump *b)
 {
-	// Zero out everything we’ve used so far.
 	memset(b->top, 0, b->bytes_used);
 	b->bytes_used = 0;
+}
+
+void clearBumpToMark(bump *b, bumpMark mark)
+{
+	assert(b->bytes_used > mark.bytes_used);
+	usize bytes_allocated_since_mark = b->bytes_used - mark.bytes_used;
+	memset(b->top + mark.bytes_used, 0, bytes_allocated_since_mark);
+	b->bytes_used = mark.bytes_used;
 }
 
 void *allocateInBump(bump *b, usize size)
