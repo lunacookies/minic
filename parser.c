@@ -375,14 +375,11 @@ void debugAst(astRoot ast)
 	while (f != NULL) {
 		if (first)
 			first = false;
-		else {
+		else
 			newline(indentation);
-			newline(indentation);
-		}
 
 		debugFunction(*f, indentation);
+		newline(indentation);
 		f = f->next;
 	}
-
-	newline(indentation);
 }
