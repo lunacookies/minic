@@ -19,4 +19,7 @@ int main()
 
 		assert(m.temp.bytes_used == 0);
 	}
+
+	debugLog("compiled %u files using %zu KiB of memory",
+		 current_project.num_files, m.general.bytes_used / 1024);
 }
