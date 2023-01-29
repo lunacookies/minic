@@ -14,10 +14,9 @@ int main()
 		printf("name: %s\n", current_project.file_names[i]);
 		printf("content: %s", current_project.file_contents[i]);
 
-		tokenBuffer tokens = lex(current_project.file_contents[i], &m);
-		for (usize j = 0; j < tokens.count; j++)
-			printf("%d@%u..%u\n", tokens.tokens[j].kind,
-			       tokens.tokens[j].span.start,
-			       tokens.tokens[j].span.end);
+		u8 *content = current_project.file_contents[i];
+		tokenBuffer tokens = lex(content, &m);
+		astRoot ast = parse(tokens, content, &m);
+		debugAst(ast);
 	}
 }

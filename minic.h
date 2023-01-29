@@ -113,3 +113,37 @@ typedef struct tokenBuffer {
 } tokenBuffer;
 
 tokenBuffer lex(u8 *input, memory *m);
+
+// ----------------------------------------------------------------------------
+// parser.c
+
+typedef enum astExpressionKind { AST_EXPR_INT_LITERAL } astExpressionKind;
+
+typedef struct astExpression {
+	astExpressionKind kind;
+
+	// int literal
+	u64 value;
+} astExpression;
+
+typedef enum astStatementKind { AST_STMT_RETURN } astStatementKind;
+
+typedef struct astStatement {
+	astStatementKind kind;
+
+	// return
+	astExpression *value;
+} astStatement;
+
+typedef struct astFunction {
+	u8 *name;
+	astStatement *body;
+	struct astFunction *next;
+} astFunction;
+
+typedef struct astRoot {
+	astFunction *functions;
+} astRoot;
+
+astRoot parse(tokenBuffer tokens, u8 *content, memory *m);
+void debugAst(astRoot ast);
