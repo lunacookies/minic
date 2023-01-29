@@ -6,15 +6,23 @@
 #define TEMP_MEMORY_SIZE (16 * 1024 * 1024)
 #define GENERAL_MEMORY_SIZE (TOTAL_MEMORY_SIZE - TEMP_MEMORY_SIZE)
 
+static u8 *allocFromOs(usize size, u8 *desired_addr)
+{
+	void *ptr = mmap(desired_addr, size, PROT_READ | PROT_WRITE,
+			 MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+	assert(ptr == desired_addr);
+	return ptr;
+}
+
 memory initMemory(void)
 {
-	u8 *ptr = mmap(NULL, TOTAL_MEMORY_SIZE, PROT_READ | PROT_WRITE,
-		       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	u8 *temp_ptr = allocFromOs(TEMP_MEMORY_SIZE, (u8 *)0x0000200000000000);
+	u8 *general_ptr =
+		allocFromOs(GENERAL_MEMORY_SIZE, (u8 *)0x0000400000000000);
 
 	memory mem = {
-		.temp = createBump(ptr, TEMP_MEMORY_SIZE),
-		.general =
-			createBump(ptr + TEMP_MEMORY_SIZE, GENERAL_MEMORY_SIZE),
+		.temp = createBump(temp_ptr, TEMP_MEMORY_SIZE),
+		.general = createBump(general_ptr, GENERAL_MEMORY_SIZE),
 	};
 	return mem;
 }
