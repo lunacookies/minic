@@ -92,6 +92,22 @@ tokenBuffer lex(u8 *input, memory *m)
 			buf.count++;
 			continue;
 		}
+		if (input[i] == '{') {
+			u32 start = i;
+			i++;
+			u32 end = i;
+			pushToken(TOK_LBRACE, start, end, m);
+			buf.count++;
+			continue;
+		}
+		if (input[i] == '}') {
+			u32 start = i;
+			i++;
+			u32 end = i;
+			pushToken(TOK_RBRACE, start, end, m);
+			buf.count++;
+			continue;
+		}
 
 		span span = {
 			.start = i,

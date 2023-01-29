@@ -101,7 +101,9 @@ typedef enum tokenKind {
 	TOK_FUNC,
 	TOK_RETURN,
 	TOK_VAR,
-	TOK_EQUAL
+	TOK_EQUAL,
+	TOK_LBRACE,
+	TOK_RBRACE
 } tokenKind;
 
 typedef struct token {

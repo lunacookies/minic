@@ -25,6 +25,10 @@ static u8 *printTokenKind(tokenKind kind)
 		return (u8 *)"“var”";
 	case TOK_EQUAL:
 		return (u8 *)"“=”";
+	case TOK_LBRACE:
+		return (u8 *)"“{”";
+	case TOK_RBRACE:
+		return (u8 *)"“}”";
 	}
 }
 
