@@ -62,12 +62,11 @@ projectSpec discoverProject(memory *m)
 
 	// Now that general memory isn’t being touched anymore, we can copy the
 	// aux arrays there.
-	u8 **permanent_file_names =
-		allocateInBump(&m->general, PTR_PER_FILE_SIZE);
-	u8 **permanent_file_contents =
-		allocateInBump(&m->general, PTR_PER_FILE_SIZE);
-	memcpy(permanent_file_names, file_names, PTR_PER_FILE_SIZE);
-	memcpy(permanent_file_contents, file_contents, PTR_PER_FILE_SIZE);
+	usize bytes_used = num_files * sizeof(u8 *);
+	u8 **permanent_file_names = allocateInBump(&m->general, bytes_used);
+	u8 **permanent_file_contents = allocateInBump(&m->general, bytes_used);
+	memcpy(permanent_file_names, file_names, bytes_used);
+	memcpy(permanent_file_contents, file_contents, bytes_used);
 	clearBump(&m->temp);
 
 	projectSpec p = {
