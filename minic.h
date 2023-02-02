@@ -38,6 +38,9 @@ void internalErrorV(char *fmt, va_list ap);
 void debugLog(char *fmt, ...);
 void debugLogV(char *fmt, va_list ap);
 u32 numCpus(void);
+u64 rotl(u64 value, u64 count);
+u64 rotr(u64 value, u64 count);
+u64 fxhash(u8 *ptr, usize len);
 
 // ----------------------------------------------------------------------------
 // bump.c
@@ -114,13 +117,20 @@ typedef enum tokenKind {
 	TOK_RBRACE
 } tokenKind;
 
+typedef struct identifierId {
+	u32 raw;
+} identifierId;
+
 typedef struct tokenBuffer {
 	tokenKind *kinds;
 	span *spans;
+	identifierId *identifier_ids;
+	u8 **identifier_contents;
 	usize count;
 } tokenBuffer;
 
 tokenBuffer lex(u8 *input, memory *m);
+u8 *identifierText(tokenBuffer buf, u32 token_id);
 u8 *showTokenKind(tokenKind kind);
 u8 *debugTokenKind(tokenKind kind);
 void debugTokenBuffer(tokenBuffer buf);

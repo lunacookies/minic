@@ -53,3 +53,25 @@ u32 numCpus()
 
 	return num_cpus;
 }
+
+u64 rotl(u64 value, u64 count)
+{
+	u64 mask = 8 * sizeof(value) - 1;
+	count &= mask;
+	return (value << count) | (value >> (-count & mask));
+}
+
+u64 rotr(u64 value, u64 count)
+{
+	u64 mask = 8 * sizeof(value) - 1;
+	count &= mask;
+	return (value >> count) | (value << (-count & mask));
+}
+
+u64 fxhash(u8 *ptr, usize len)
+{
+	u64 hash = 0;
+	for (usize i = 0; i < len; i++)
+		hash = (rotl(hash, 5) ^ ptr[i]) * 0x517cc1b727220a95;
+	return hash;
+}
