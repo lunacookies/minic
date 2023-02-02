@@ -102,7 +102,7 @@ void sendDiagnosticToSink(severity severity, span span, char *fmt, ...);
 void sendDiagnosticToSinkV(severity severity, span span, char *fmt, va_list ap);
 
 // ----------------------------------------------------------------------------
-// lexer.c
+// lex.c
 
 typedef enum tokenKind {
 	TOK_EOF,
@@ -136,7 +136,7 @@ u8 *debugTokenKind(tokenKind kind);
 void debugTokenBuffer(tokenBuffer buf);
 
 // ----------------------------------------------------------------------------
-// parser.c
+// parse.c
 
 typedef enum astExpressionKind {
 	AST_EXPR_MISSING,
