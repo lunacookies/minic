@@ -100,6 +100,7 @@ static u8 *expectCopy(parser *p, tokenKind expected, memory *m)
 		ptr = allocateInBump(&m->general,
 				     length + 1); // null-terminated
 		memcpy(ptr, p->content + span.start, length);
+		ptr[length] = '\0';
 	}
 	expect(p, expected);
 	return ptr;
