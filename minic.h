@@ -114,17 +114,16 @@ typedef enum tokenKind {
 	TOK_RBRACE
 } tokenKind;
 
-typedef struct token {
-	tokenKind kind;
-	span span;
-} token;
-
 typedef struct tokenBuffer {
-	token *tokens;
+	tokenKind *kinds;
+	span *spans;
 	usize count;
 } tokenBuffer;
 
 tokenBuffer lex(u8 *input, memory *m);
+u8 *showTokenKind(tokenKind kind);
+u8 *debugTokenKind(tokenKind kind);
+void debugTokenBuffer(tokenBuffer buf);
 
 // ----------------------------------------------------------------------------
 // parser.c

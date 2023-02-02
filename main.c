@@ -14,6 +14,8 @@ int main()
 
 		u8 *content = current_project.file_contents[i];
 		tokenBuffer tokens = lex(content, &m);
+		debugTokenBuffer(tokens);
+
 		astRoot ast = parse(tokens, content, &m);
 		debugAst(ast);
 

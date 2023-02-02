@@ -6,32 +6,6 @@ typedef struct parser {
 	u8 *content;
 } parser;
 
-static u8 *printTokenKind(tokenKind kind)
-{
-	switch (kind) {
-	case TOK_EOF:
-		return (u8 *)"EOF";
-	case TOK_ERROR:
-		return (u8 *)"unrecognized token";
-	case TOK_NUMBER:
-		return (u8 *)"number literal";
-	case TOK_IDENTIFIER:
-		return (u8 *)"identifier";
-	case TOK_FUNC:
-		return (u8 *)"“func”";
-	case TOK_RETURN:
-		return (u8 *)"“return”";
-	case TOK_VAR:
-		return (u8 *)"“var”";
-	case TOK_EQUAL:
-		return (u8 *)"“=”";
-	case TOK_LBRACE:
-		return (u8 *)"“{”";
-	case TOK_RBRACE:
-		return (u8 *)"“}”";
-	}
-}
-
 static bool atEof(parser *p)
 {
 	// cursor should never go more than one past the end
@@ -45,27 +19,17 @@ static void addToken(parser *p)
 	p->cursor++;
 }
 
-static token *currentToken(parser *p)
-{
-	if (atEof(p))
-		return NULL;
-	return &p->tokens.tokens[p->cursor];
-}
-
-static token *previousToken(parser *p)
-{
-	p->cursor--;
-	token *t = currentToken(p);
-	p->cursor++;
-	return t;
-}
-
 static tokenKind current(parser *p)
 {
-	token *t = currentToken(p);
-	if (t == NULL)
+	if (atEof(p))
 		return TOK_EOF;
-	return t->kind;
+	return p->tokens.kinds[p->cursor];
+}
+
+static span currentSpan(parser *p)
+{
+	assert(!atEof(p));
+	return p->tokens.spans[p->cursor];
 }
 
 static bool at(parser *p, tokenKind kind)
@@ -87,11 +51,14 @@ static void errorV(parser *p, bool honor_recovery, char *fmt, va_list ap)
 {
 	span s = { 0 };
 	if (atEof(p) || (honor_recovery && atRecovery(p))) {
-		span previousTokenSpan = previousToken(p)->span;
+		p->cursor--;
+		span previousTokenSpan = currentSpan(p);
+		p->cursor++;
+
 		s.start = previousTokenSpan.end;
 		s.end = previousTokenSpan.end + 1;
 	} else {
-		s = currentToken(p)->span;
+		s = currentSpan(p);
 		addToken(p);
 	}
 	sendDiagnosticToSinkV(DIAG_ERROR, s, fmt, ap);
@@ -120,15 +87,15 @@ static void expect(parser *p, tokenKind expected)
 		addToken(p);
 		return;
 	}
-	error(p, "expected %s but found %s", printTokenKind(expected),
-	      printTokenKind(actual));
+	error(p, "expected %s but found %s", showTokenKind(expected),
+	      showTokenKind(actual));
 }
 
 static u8 *expectCopy(parser *p, tokenKind expected, memory *m)
 {
 	u8 *ptr = NULL;
 	if (current(p) == expected) {
-		span span = currentToken(p)->span;
+		span span = currentSpan(p);
 		usize length = span.end - span.start;
 		ptr = allocateInBump(&m->general,
 				     length + 1); // null-terminated
@@ -144,15 +111,15 @@ static astExpression *expression(parser *p, memory *m)
 
 	switch (current(p)) {
 	case TOK_NUMBER: {
-		token *tok = currentToken(p);
+		span span = currentSpan(p);
 		expect(p, TOK_NUMBER);
 
-		char *start = (char *)p->content + tok->span.start;
+		char *start = (char *)p->content + span.start;
 		char *end = NULL;
 		u64 value = strtoll(start, &end, 10);
 
 		usize num_bytes_converted = end - start;
-		usize token_length = tok->span.end - tok->span.start;
+		usize token_length = span.end - span.start;
 		assert(num_bytes_converted == token_length);
 
 		e.kind = AST_EXPR_INT_LITERAL;
