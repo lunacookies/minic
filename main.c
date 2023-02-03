@@ -41,12 +41,15 @@ int main()
 		debugAst(ast, interner);
 		hirRoot hir = lower(ast, &m);
 		debugHir(hir, interner);
-
-		codegen(hir, interner);
+		codegen(hir, interner, &m);
 
 		assert(m.temp.bytes_used == 0);
 	}
 
-	debugLog("compiled %u files using %zu bytes of memory",
-		 current_project.num_files, m.general.bytes_used);
+	debugLog("compiled %u files using", current_project.num_files);
+	debugLog("    %zu bytes of general memory", m.general.bytes_used);
+	debugLog("    %zu bytes of assembly memory", m.assembly.bytes_used);
+
+	int fd = open("out.s", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+	write(fd, m.assembly.top, m.assembly.bytes_used);
 }

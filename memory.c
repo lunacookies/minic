@@ -1,10 +1,9 @@
 #include "minic.h"
 
-// 128 MiB
-#define TOTAL_MEMORY_SIZE (128 * 1024 * 1024)
-// 16 MiB
-#define TEMP_MEMORY_SIZE (16 * 1024 * 1024)
-#define GENERAL_MEMORY_SIZE (TOTAL_MEMORY_SIZE - TEMP_MEMORY_SIZE)
+#define MiB (1024 * 1024)
+#define TEMP_MEMORY_SIZE (16 * MiB)
+#define ASSEMBLY_MEMORY_SIZE (16 * MiB)
+#define GENERAL_MEMORY_SIZE (96 * MiB)
 
 static u8 *allocFromOs(usize size, u8 *desired_addr)
 {
@@ -17,11 +16,14 @@ static u8 *allocFromOs(usize size, u8 *desired_addr)
 memory initMemory(void)
 {
 	u8 *temp_ptr = allocFromOs(TEMP_MEMORY_SIZE, (u8 *)0x0000200000000000);
+	u8 *assembly_ptr =
+		allocFromOs(ASSEMBLY_MEMORY_SIZE, (u8 *)0x0000300000000000);
 	u8 *general_ptr =
 		allocFromOs(GENERAL_MEMORY_SIZE, (u8 *)0x0000400000000000);
 
 	memory mem = {
 		.temp = createBump(temp_ptr, TEMP_MEMORY_SIZE),
+		.assembly = createBump(assembly_ptr, ASSEMBLY_MEMORY_SIZE),
 		.general = createBump(general_ptr, GENERAL_MEMORY_SIZE),
 	};
 	return mem;

@@ -66,6 +66,7 @@ void *allocateInBump(bump *b, usize size);
 
 typedef struct memory {
 	bump temp;
+	bump assembly;
 	bump general;
 } memory;
 
@@ -261,4 +262,4 @@ void debugHir(hirRoot hir, interner interner);
 // ----------------------------------------------------------------------------
 // codegen.c
 
-void codegen(hirRoot hir, interner interner);
+void codegen(hirRoot hir, interner interner, memory *m);

@@ -20,52 +20,52 @@ static void calculateStackLayout(hirFunction *function)
 	function->stack_size = roundUpTo(offset, 16);
 }
 
-static void directive(char *directive_name, char *fmt, ...)
+static void directive(char **s, char *directive_name, char *fmt, ...)
 {
-	printf(".%s ", directive_name);
+	*s += snprintf(*s, 1024, ".%s ", directive_name);
 	va_list ap;
 	va_start(ap, fmt);
-	vprintf(fmt, ap);
+	*s += vsnprintf(*s, 1024, fmt, ap);
 	va_end(ap);
-	printf("\n");
+	*s += snprintf(*s, 2, "\n");
 }
 
-static void label(char *fmt, ...)
+static void label(char **s, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	vprintf(fmt, ap);
+	*s += vsnprintf(*s, 1024, fmt, ap);
 	va_end(ap);
-	printf(":\n");
+	*s += snprintf(*s, 3, ":\n");
 }
 
-static void instruction(char *instruction_mnemonic, char *fmt, ...)
+static void instruction(char **s, char *instruction_mnemonic, char *fmt, ...)
 {
-	printf("\t%s\t", instruction_mnemonic);
+	*s += snprintf(*s, 1024, "\t%s\t", instruction_mnemonic);
 	va_list ap;
 	va_start(ap, fmt);
-	vprintf(fmt, ap);
+	*s += vsnprintf(*s, 1024, fmt, ap);
 	va_end(ap);
-	printf("\n");
+	*s += snprintf(*s, 2, "\n");
 }
 
-static void push(void)
+static void push(char **s)
 {
-	instruction("sub", "sp, sp, #16");
-	instruction("str", "x8, [sp]");
+	instruction(s, "sub", "sp, sp, #16");
+	instruction(s, "str", "x8, [sp]");
 }
 
-static void pop(char *reg)
+static void pop(char **s, char *reg)
 {
-	instruction("ldr", "%s, [sp]", reg);
-	instruction("add", "sp, sp, #16");
+	instruction(s, "ldr", "%s, [sp]", reg);
+	instruction(s, "add", "sp, sp, #16");
 }
 
-static void genAddress(hirNode *node)
+static void genAddress(char **s, hirNode *node)
 {
 	switch (node->kind) {
 	case HIR_VARIABLE:
-		instruction("sub", "x8, fp, #%u", node->local->offset);
+		instruction(s, "sub", "x8, fp, #%u", node->local->offset);
 		break;
 
 	default:
@@ -74,91 +74,95 @@ static void genAddress(hirNode *node)
 	}
 }
 
-static void gen(hirNode *node, identifierId function_name, interner interner)
+static void gen(char **s, hirNode *node, identifierId function_name,
+		interner interner)
 {
 	switch (node->kind) {
 	case HIR_MISSING:
 		break;
 
 	case HIR_INT_LITERAL:
-		instruction("mov", "x8, #%d", node->value);
+		instruction(s, "mov", "x8, #%d", node->value);
 		break;
 
 	case HIR_VARIABLE:
-		instruction("ldr", "x8, [fp, #-%u]", node->local->offset);
+		instruction(s, "ldr", "x8, [fp, #-%u]", node->local->offset);
 		break;
 
 	case HIR_ASSIGN:
-		genAddress(node->lhs);
-		push();
-		gen(node->rhs, function_name, interner);
-		pop("x9");
-		instruction("str", "x8, [x9]");
+		genAddress(s, node->lhs);
+		push(s);
+		gen(s, node->rhs, function_name, interner);
+		pop(s, "x9");
+		instruction(s, "str", "x8, [x9]");
 		break;
 
 	case HIR_RETURN:
-		gen(node->lhs, function_name, interner);
-		instruction("mov", "x0, x8");
-		instruction("b", "RETURN_%s", lookup(interner, function_name));
+		gen(s, node->lhs, function_name, interner);
+		instruction(s, "mov", "x0, x8");
+		instruction(s, "b", "RETURN_%s",
+			    lookup(interner, function_name));
 		break;
 
 	case HIR_BLOCK:
 		for (usize i = 0; i < node->count; i++)
-			gen(node->children[i], function_name, interner);
+			gen(s, node->children[i], function_name, interner);
 		break;
 	}
 }
 
-static void genPrologue(hirFunction *function)
+static void genPrologue(char **s, hirFunction *function)
 {
 	// allocate 16 bytes on the stack for the frame record
-	instruction("sub", "sp, sp, #16");
-	instruction("stp", "fp, lr, [sp]");
+	instruction(s, "sub", "sp, sp, #16");
+	instruction(s, "stp", "fp, lr, [sp]");
 
 	// now sp points at the frame record
 
 	// the frame pointer always points to the frame record
-	instruction("mov", "fp, sp");
+	instruction(s, "mov", "fp, sp");
 
 	// allocate enough space for all local variables
-	instruction("sub", "sp, sp, #%u", function->stack_size);
+	instruction(s, "sub", "sp, sp, #%u", function->stack_size);
 }
 
-static void genEpilogue(hirFunction *function)
+static void genEpilogue(char **s, hirFunction *function)
 {
 	// deallocate locals
-	instruction("add", "sp, sp, #%u", function->stack_size);
+	instruction(s, "add", "sp, sp, #%u", function->stack_size);
 
 	// now sp points at the frame record
 
 	// restore link register and caller’s frame pointer
-	instruction("ldp", "fp, lr, [sp]");
+	instruction(s, "ldp", "fp, lr, [sp]");
 
 	// deallocate frame record
-	instruction("add", "sp, sp, #16");
+	instruction(s, "add", "sp, sp, #16");
 }
 
-void codegen(hirRoot hir, interner interner)
+void codegen(hirRoot hir, interner interner, memory *m)
 {
-	bool is_first = true;
+	char *assembly_top = (char *)(m->assembly.top + m->assembly.bytes_used);
+	char **s = &assembly_top;
+
 	for (hirFunction *function = hir.functions; function != NULL;
 	     function = function->next) {
 		calculateStackLayout(function);
 
-		if (is_first)
-			is_first = false;
-		else
-			printf("\n");
+		directive(s, "global", "_%s", lookup(interner, function->name));
+		directive(s, "align", "2");
+		label(s, "_%s", lookup(interner, function->name));
 
-		directive("global", "_%s", lookup(interner, function->name));
-		directive("align", "2");
-		label("_%s", lookup(interner, function->name));
+		genPrologue(s, function);
+		gen(s, function->body, function->name, interner);
 
-		genPrologue(function);
-		gen(function->body, function->name, interner);
+		label(s, "RETURN_%s", lookup(interner, function->name));
+		genEpilogue(s, function);
+		instruction(s, "ret", "");
 
-		label("RETURN_%s", lookup(interner, function->name));
-		genEpilogue(function);
-		instruction("ret", "");
+		snprintf(*s, 2, "\n");
+		(*s)++;
 	}
+
+	m->assembly.bytes_used = assembly_top - (char *)m->assembly.top;
 }
