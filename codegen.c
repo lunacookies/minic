@@ -49,8 +49,64 @@ static void instruction(char *instruction_mnemonic, char *fmt, ...)
 	printf("\n");
 }
 
-static void genNode(hirNode *node)
+static void push(void)
 {
+	instruction("sub", "sp, sp, #16");
+	instruction("str", "x8, [sp]");
+}
+
+static void pop(char *reg)
+{
+	instruction("ldr", "%s, [sp]", reg);
+	instruction("add", "sp, sp, #16");
+}
+
+static void genAddress(hirNode *node)
+{
+	switch (node->kind) {
+	case HIR_VARIABLE:
+		instruction("sub", "x8, fp, #%u", node->local->offset);
+		break;
+
+	default:
+		sendDiagnosticToSink(DIAG_ERROR, node->span, "not an lvalue");
+		break;
+	}
+}
+
+static void gen(hirNode *node, identifierId function_name, interner interner)
+{
+	switch (node->kind) {
+	case HIR_MISSING:
+		break;
+
+	case HIR_INT_LITERAL:
+		instruction("mov", "x8, #%d", node->value);
+		break;
+
+	case HIR_VARIABLE:
+		instruction("ldr", "x8, [fp, #-%u]", node->local->offset);
+		break;
+
+	case HIR_ASSIGN:
+		genAddress(node->lhs);
+		push();
+		gen(node->rhs, function_name, interner);
+		pop("x9");
+		instruction("str", "x8, [x9]");
+		break;
+
+	case HIR_RETURN:
+		gen(node->lhs, function_name, interner);
+		instruction("mov", "x0, x8");
+		instruction("b", "RETURN_%s", lookup(interner, function_name));
+		break;
+
+	case HIR_BLOCK:
+		for (usize i = 0; i < node->count; i++)
+			gen(node->children[i], function_name, interner);
+		break;
+	}
 }
 
 static void genPrologue(hirFunction *function)
@@ -99,7 +155,10 @@ void codegen(hirRoot hir, interner interner)
 		label("_%s", lookup(interner, function->name));
 
 		genPrologue(function);
-		genNode(function->body);
+		gen(function->body, function->name, interner);
+
+		label("RETURN_%s", lookup(interner, function->name));
 		genEpilogue(function);
+		instruction("ret", "");
 	}
 }
