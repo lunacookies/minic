@@ -267,22 +267,14 @@ static void debugFunction(hirFunction *function, interner interner,
 	       lookup(interner, function->name));
 
 	indentation++;
-	newline(indentation);
-	printf("locals: {");
-	indentation++;
 	for (hirLocal *local = function->locals; local != NULL;
 	     local = local->next) {
 		newline(indentation);
-		printf("\033[35m%s\033[0m (\033[91m%s\033[0m)",
+		printf("\033[32mvar \033[35m%s \033[91m%s\033[0m",
 		       lookup(interner, local->name),
 		       debugHirType(local->type));
 	}
-	indentation--;
-	newline(indentation);
-	printf("}");
-	indentation--;
 
-	indentation++;
 	newline(indentation);
 	debugNode(function->body, interner, indentation);
 	indentation--;
