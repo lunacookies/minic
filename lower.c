@@ -26,79 +26,58 @@ static hirLocal *addLocal(identifierId name, hirType type, hirLocal **locals,
 static hirNode *lowerExpression(astExpression *ast_expression,
 				hirLocal **locals, memory *m)
 {
-	switch (ast_expression->kind) {
-	case AST_EXPR_MISSING: {
-		hirNode node = {
-			.kind = HIR_MISSING,
-			.type = HIR_TYPE_VOID,
-		};
-		hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
-		*ptr = node;
-		return ptr;
-	}
+	hirNode node = { 0 };
 
-	case AST_EXPR_INT_LITERAL: {
-		hirNode node = {
-			.kind = HIR_INT_LITERAL,
-			.type = HIR_TYPE_I64,
-			.value = ast_expression->value,
-		};
-		hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
-		*ptr = node;
-		return ptr;
-	}
+	switch (ast_expression->kind) {
+	case AST_EXPR_MISSING:
+		node.kind = HIR_MISSING;
+		node.type = HIR_TYPE_VOID;
+		break;
+
+	case AST_EXPR_INT_LITERAL:
+		node.kind = HIR_INT_LITERAL;
+		node.type = HIR_TYPE_I64;
+		node.value = ast_expression->value;
+		break;
 
 	case AST_EXPR_VARIABLE: {
 		hirLocal *local = lookupLocal(ast_expression->name, *locals);
 		if (local == NULL) {
 			sendDiagnosticToSink(DIAG_ERROR, ast_expression->span,
 					     "undefined variable");
-			hirNode node = {
-				.kind = HIR_MISSING,
-				.type = HIR_TYPE_VOID,
-			};
-			hirNode *ptr =
-				allocateInBump(&m->general, sizeof(hirNode));
-			*ptr = node;
-			return ptr;
+			node.kind = HIR_MISSING;
+			node.type = HIR_TYPE_VOID;
+			break;
 		}
 
-		hirNode node = {
-			.kind = HIR_VARIABLE,
-			.type = local->type,
-			.local = local,
-		};
-		hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
-		*ptr = node;
-		return ptr;
+		node.kind = HIR_VARIABLE;
+		node.type = local->type;
+		node.local = local;
+		break;
 	}
 	}
+
+	hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
+	*ptr = node;
+	return ptr;
 }
 
 static hirNode *lowerStatement(astStatement *ast_statement, hirLocal **locals,
 			       memory *m)
 {
-	switch (ast_statement->kind) {
-	case AST_STMT_MISSING: {
-		hirNode node = {
-			.kind = HIR_MISSING,
-			.type = HIR_TYPE_VOID,
-		};
-		hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
-		*ptr = node;
-		return ptr;
-	}
+	hirNode node = { 0 };
 
-	case AST_STMT_RETURN: {
-		hirNode node = {
-			.kind = HIR_RETURN,
-			.type = HIR_TYPE_VOID,
-			.lhs = lowerExpression(ast_statement->value, locals, m),
-		};
-		hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
-		*ptr = node;
-		return ptr;
-	}
+	switch (ast_statement->kind) {
+	case AST_STMT_MISSING:
+		node.kind = HIR_MISSING;
+		node.type = HIR_TYPE_VOID;
+		break;
+
+	case AST_STMT_RETURN:
+		node.kind = HIR_RETURN;
+		node.type = HIR_TYPE_VOID;
+		node.lhs = lowerExpression(ast_statement->value, locals, m);
+		break;
 
 	case AST_STMT_LOCAL_DEFINITION: {
 		hirLocal *existing_local =
@@ -119,15 +98,11 @@ static hirNode *lowerStatement(astStatement *ast_statement, hirLocal **locals,
 		hirNode *lhs = allocateInBump(&m->general, sizeof(hirNode));
 		*lhs = lhs_no_ptr;
 
-		hirNode node = {
-			.kind = HIR_ASSIGN,
-			.type = HIR_TYPE_VOID,
-			.lhs = lhs,
-			.rhs = rhs,
-		};
-		hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
-		*ptr = node;
-		return ptr;
+		node.kind = HIR_ASSIGN;
+		node.type = HIR_TYPE_VOID;
+		node.lhs = lhs;
+		node.rhs = rhs;
+		break;
 	}
 
 	case AST_STMT_BLOCK: {
@@ -152,17 +127,17 @@ static hirNode *lowerStatement(astStatement *ast_statement, hirLocal **locals,
 		memcpy(children, children_top, children_size);
 		clearBumpToMark(&m->temp, mark);
 
-		hirNode node = {
-			.kind = HIR_BLOCK,
-			.type = HIR_TYPE_VOID,
-			.children = children,
-			.count = count,
-		};
-		hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
-		*ptr = node;
-		return ptr;
+		node.kind = HIR_BLOCK;
+		node.type = HIR_TYPE_VOID;
+		node.children = children;
+		node.count = count;
+		break;
 	}
 	}
+
+	hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
+	*ptr = node;
+	return ptr;
 }
 
 hirRoot lower(astRoot ast, memory *m)
