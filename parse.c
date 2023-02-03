@@ -102,7 +102,10 @@ static identifierId expectIdentifier(parser *p)
 
 static astExpression *expression(parser *p, memory *m)
 {
-	astExpression e = { 0 };
+	astExpression e = { .span.start =
+				    atEof(p)
+					    ? p->tokens.spans[p->cursor - 1].end
+					    : currentSpan(p).start };
 
 	switch (current(p)) {
 	case TOK_NUMBER: {
@@ -135,6 +138,8 @@ static astExpression *expression(parser *p, memory *m)
 		break;
 	}
 
+	e.span.end = p->tokens.spans[p->cursor - 1].end;
+
 	astExpression *ptr = allocateInBump(&m->general, sizeof(astExpression));
 	*ptr = e;
 	return ptr;
@@ -142,7 +147,9 @@ static astExpression *expression(parser *p, memory *m)
 
 static astStatement *statement(parser *p, memory *m)
 {
-	astStatement s = { 0 };
+	astStatement s = { .span.start =
+				   atEof(p) ? p->tokens.spans[p->cursor - 1].end
+					    : currentSpan(p).start };
 
 	switch (current(p)) {
 	case TOK_RETURN: {
@@ -199,6 +206,8 @@ static astStatement *statement(parser *p, memory *m)
 		s.kind = AST_STMT_MISSING;
 		break;
 	}
+
+	s.span.end = p->tokens.spans[p->cursor - 1].end;
 
 	astStatement *ptr = allocateInBump(&m->general, sizeof(astStatement));
 	*ptr = s;

@@ -156,6 +156,7 @@ typedef enum astExpressionKind {
 
 typedef struct astExpression {
 	astExpressionKind kind;
+	span span;
 
 	// int literal
 	u64 value;
@@ -173,6 +174,7 @@ typedef enum astStatementKind {
 
 typedef struct astStatement {
 	astStatementKind kind;
+	span span;
 
 	// return and local definition
 	astExpression *value;
