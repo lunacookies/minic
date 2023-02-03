@@ -125,7 +125,6 @@ typedef struct tokenBuffer {
 	tokenKind *kinds;
 	span *spans;
 	identifierId *identifier_ids;
-	u8 **identifier_contents;
 	usize count;
 } tokenBuffer;
 
@@ -134,6 +133,17 @@ u8 *identifierText(tokenBuffer buf, u32 token_id);
 u8 *showTokenKind(tokenKind kind);
 u8 *debugTokenKind(tokenKind kind);
 void debugTokenBuffer(tokenBuffer buf);
+
+// ----------------------------------------------------------------------------
+// intern.c
+
+typedef struct interner {
+	u8 **contents;
+} interner;
+
+interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count,
+		usize identifier_count, memory *m);
+u8 *lookup(interner i, identifierId id);
 
 // ----------------------------------------------------------------------------
 // parse.c
