@@ -197,3 +197,58 @@ typedef struct astRoot {
 
 astRoot parse(tokenBuffer tokens, u8 *content, memory *m);
 void debugAst(astRoot ast, interner interner);
+
+// ----------------------------------------------------------------------------
+// lower.c
+
+typedef enum hirKind {
+	HIR_MISSING,
+	HIR_INT_LITERAL,
+	HIR_VARIABLE,
+	HIR_ASSIGN,
+	HIR_RETURN,
+	HIR_BLOCK
+} hirKind;
+
+typedef enum hirType { HIR_TYPE_VOID, HIR_TYPE_I64 } hirType;
+
+typedef struct hirLocal {
+	identifierId name;
+	hirType type;
+	u32 offset;
+	struct hirLocal *next;
+} hirLocal;
+
+typedef struct hirNode {
+	hirKind kind;
+	hirType type;
+
+	// int literal
+	u64 value;
+
+	// variable
+	hirLocal *local;
+
+	// assign, return
+	struct hirNode *lhs;
+	struct hirNode *rhs;
+
+	// block
+	struct hirNode **children;
+	usize count;
+} hirNode;
+
+typedef struct hirFunction {
+	identifierId name;
+	hirNode *body;
+	hirLocal *locals;
+	struct hirFunction *next;
+} hirFunction;
+
+typedef struct hirRoot {
+	hirFunction *functions;
+} hirRoot;
+
+hirRoot lower(astRoot ast, memory *m);
+u8 *debugHirType(hirType type);
+void debugHir(hirRoot hir, interner interner);

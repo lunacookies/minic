@@ -36,10 +36,11 @@ int main()
 	for (u16 i = 0; i < current_project.num_files; i++) {
 		setCurrentFile(i);
 
-		debugTokenBuffer(token_buffers[i]);
 		astRoot ast = parse(token_buffers[i],
 				    current_project.file_contents[i], &m);
 		debugAst(ast, interner);
+		hirRoot hir = lower(ast, &m);
+		debugHir(hir, interner);
 
 		assert(m.temp.bytes_used == 0);
 	}
