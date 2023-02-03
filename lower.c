@@ -26,7 +26,7 @@ static hirLocal *addLocal(identifierId name, hirType type, hirLocal **locals,
 static hirNode *lowerExpression(astExpression *ast_expression,
 				hirLocal **locals, memory *m)
 {
-	hirNode node = { 0 };
+	hirNode node = { .span = ast_expression->span };
 
 	switch (ast_expression->kind) {
 	case AST_EXPR_MISSING:
@@ -65,7 +65,7 @@ static hirNode *lowerExpression(astExpression *ast_expression,
 static hirNode *lowerStatement(astStatement *ast_statement, hirLocal **locals,
 			       memory *m)
 {
-	hirNode node = { 0 };
+	hirNode node = { .span = ast_statement->span };
 
 	switch (ast_statement->kind) {
 	case AST_STMT_MISSING:

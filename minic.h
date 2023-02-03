@@ -224,6 +224,7 @@ typedef struct hirLocal {
 typedef struct hirNode {
 	hirKind kind;
 	hirType type;
+	span span;
 
 	// int literal
 	u64 value;
