@@ -53,6 +53,7 @@ typedef struct bump {
 
 typedef struct bumpMark {
 	usize bytes_used;
+	u8 *top;
 } bumpMark;
 
 bump createBump(void *buffer, usize size);

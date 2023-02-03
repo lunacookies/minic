@@ -16,13 +16,16 @@ bumpMark markBump(bump *b)
 {
 	bumpMark mark = {
 		.bytes_used = b->bytes_used,
+		.top = b->top,
 	};
 	return mark;
 }
 
 void clearBumpToMark(bump *b, bumpMark mark)
 {
+	assert(b->top == mark.top);
 	assert(b->bytes_used >= mark.bytes_used);
+
 	usize bytes_allocated_since_mark = b->bytes_used - mark.bytes_used;
 	memset(b->top + mark.bytes_used, UNINIT_SENTINEL,
 	       bytes_allocated_since_mark);
