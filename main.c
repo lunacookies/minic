@@ -42,6 +42,8 @@ int main()
 		hirRoot hir = lower(ast, &m);
 		debugHir(hir, interner);
 
+		codegen(hir, interner);
+
 		assert(m.temp.bytes_used == 0);
 	}
 

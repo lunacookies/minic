@@ -172,6 +172,16 @@ hirRoot lower(astRoot ast, memory *m)
 	return root;
 }
 
+u32 typeSize(hirType type)
+{
+	switch (type) {
+	case HIR_TYPE_VOID:
+		return 0;
+	case HIR_TYPE_I64:
+		return 8;
+	}
+}
+
 static void newline(u32 indentation)
 {
 	printf("\n");

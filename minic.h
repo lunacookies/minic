@@ -244,6 +244,7 @@ typedef struct hirFunction {
 	identifierId name;
 	hirNode *body;
 	hirLocal *locals;
+	u32 stack_size;
 	struct hirFunction *next;
 } hirFunction;
 
@@ -252,5 +253,11 @@ typedef struct hirRoot {
 } hirRoot;
 
 hirRoot lower(astRoot ast, memory *m);
+u32 typeSize(hirType type);
 u8 *debugHirType(hirType type);
 void debugHir(hirRoot hir, interner interner);
+
+// ----------------------------------------------------------------------------
+// codegen.c
+
+void codegen(hirRoot hir, interner interner);
