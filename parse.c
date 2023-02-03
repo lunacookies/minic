@@ -91,19 +91,13 @@ static void expect(parser *p, tokenKind expected)
 	      showTokenKind(actual));
 }
 
-static u8 *expectCopy(parser *p, tokenKind expected, memory *m)
+static identifierId expectIdentifier(parser *p)
 {
-	u8 *ptr = NULL;
-	if (current(p) == expected) {
-		span span = currentSpan(p);
-		usize length = span.end - span.start;
-		ptr = allocateInBump(&m->general,
-				     length + 1); // null-terminated
-		memcpy(ptr, p->content + span.start, length);
-		ptr[length] = '\0';
-	}
-	expect(p, expected);
-	return ptr;
+	identifierId id = { .raw = -1 };
+	if (current(p) == TOK_IDENTIFIER)
+		id = p->tokens.identifier_ids[p->cursor];
+	expect(p, TOK_IDENTIFIER);
+	return id;
 }
 
 static astExpression *expression(parser *p, memory *m)
@@ -129,7 +123,7 @@ static astExpression *expression(parser *p, memory *m)
 	}
 
 	case TOK_IDENTIFIER: {
-		u8 *name = expectCopy(p, TOK_IDENTIFIER, m);
+		identifierId name = expectIdentifier(p);
 		e.kind = AST_EXPR_VARIABLE;
 		e.name = name;
 		break;
@@ -161,7 +155,7 @@ static astStatement *statement(parser *p, memory *m)
 
 	case TOK_VAR: {
 		expect(p, TOK_VAR);
-		u8 *name = expectCopy(p, TOK_IDENTIFIER, m);
+		identifierId name = expectIdentifier(p);
 		expect(p, TOK_EQUAL);
 		astExpression *value = expression(p, m);
 		s.kind = AST_STMT_LOCAL_DEFINITION;
@@ -216,7 +210,7 @@ static astFunction *function(parser *p, memory *m)
 	assert(at(p, TOK_FUNC));
 	expect(p, TOK_FUNC);
 
-	u8 *name = expectCopy(p, TOK_IDENTIFIER, m);
+	identifierId name = expectIdentifier(p);
 	astStatement *body = statement(p, m);
 
 	astFunction f = {
@@ -272,7 +266,7 @@ static void newline(u32 indentation)
 		printf("\t");
 }
 
-static void debugExpression(astExpression *expression)
+static void debugExpression(astExpression *expression, interner interner)
 {
 	switch (expression->kind) {
 	case AST_EXPR_MISSING:
@@ -284,12 +278,13 @@ static void debugExpression(astExpression *expression)
 		break;
 
 	case AST_EXPR_VARIABLE:
-		printf("\033[35m%s\033[0m", expression->name);
+		printf("\033[35m%s\033[0m", lookup(interner, expression->name));
 		break;
 	}
 }
 
-static void debugStatement(astStatement *statement, u32 indentation)
+static void debugStatement(astStatement *statement, interner interner,
+			   u32 indentation)
 {
 	switch (statement->kind) {
 	case AST_STMT_MISSING:
@@ -298,13 +293,13 @@ static void debugStatement(astStatement *statement, u32 indentation)
 
 	case AST_STMT_RETURN:
 		printf("\033[32mreturn\033[0m ");
-		debugExpression(statement->value);
+		debugExpression(statement->value, interner);
 		break;
 
 	case AST_STMT_LOCAL_DEFINITION:
 		printf("\033[32mvar\033[0m \033[35m%s\033[0m = ",
-		       statement->name);
-		debugExpression(statement->value);
+		       lookup(interner, statement->name));
+		debugExpression(statement->value, interner);
 		break;
 
 	case AST_STMT_BLOCK:
@@ -316,7 +311,8 @@ static void debugStatement(astStatement *statement, u32 indentation)
 		indentation++;
 		for (u32 i = 0; i < statement->count; i++) {
 			newline(indentation);
-			debugStatement(statement->statements[i], indentation);
+			debugStatement(statement->statements[i], interner,
+				       indentation);
 		}
 		indentation--;
 		newline(indentation);
@@ -325,16 +321,18 @@ static void debugStatement(astStatement *statement, u32 indentation)
 	}
 }
 
-static void debugFunction(astFunction function, u32 indentation)
+static void debugFunction(astFunction function, interner interner,
+			  u32 indentation)
 {
-	printf("\033[32mfunc \033[33m%s\033[0m", function.name);
+	printf("\033[32mfunc \033[33m%s\033[0m",
+	       lookup(interner, function.name));
 	indentation++;
 	newline(indentation);
-	debugStatement(function.body, indentation);
+	debugStatement(function.body, interner, indentation);
 	indentation--;
 }
 
-void debugAst(astRoot ast)
+void debugAst(astRoot ast, interner interner)
 {
 	astFunction *f = ast.functions;
 	bool first = true;
@@ -346,7 +344,7 @@ void debugAst(astRoot ast)
 		else
 			newline(indentation);
 
-		debugFunction(*f, indentation);
+		debugFunction(*f, interner, indentation);
 		newline(indentation);
 		f = f->next;
 	}

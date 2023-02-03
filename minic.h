@@ -161,7 +161,7 @@ typedef struct astExpression {
 	u64 value;
 
 	// variable
-	u8 *name;
+	identifierId name;
 } astExpression;
 
 typedef enum astStatementKind {
@@ -178,7 +178,7 @@ typedef struct astStatement {
 	astExpression *value;
 
 	// local definition
-	u8 *name;
+	identifierId name;
 
 	// block
 	struct astStatement **statements;
@@ -186,7 +186,7 @@ typedef struct astStatement {
 } astStatement;
 
 typedef struct astFunction {
-	u8 *name;
+	identifierId name;
 	astStatement *body;
 	struct astFunction *next;
 } astFunction;
@@ -196,4 +196,4 @@ typedef struct astRoot {
 } astRoot;
 
 astRoot parse(tokenBuffer tokens, u8 *content, memory *m);
-void debugAst(astRoot ast);
+void debugAst(astRoot ast, interner interner);

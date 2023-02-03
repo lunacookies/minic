@@ -39,7 +39,7 @@ int main()
 		debugTokenBuffer(token_buffers[i]);
 		astRoot ast = parse(token_buffers[i],
 				    current_project.file_contents[i], &m);
-		debugAst(ast);
+		debugAst(ast, interner);
 
 		assert(m.temp.bytes_used == 0);
 	}
