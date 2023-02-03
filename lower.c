@@ -41,6 +41,12 @@ static hirNode *lowerExpression(astExpression *ast_expression,
 		break;
 
 	case AST_EXPR_VARIABLE: {
+		if (ast_expression->name.raw == (u32)-1) {
+			node.kind = HIR_MISSING;
+			node.type = HIR_TYPE_VOID;
+			break;
+		}
+
 		hirLocal *local = lookupLocal(ast_expression->name, *locals);
 		if (local == NULL) {
 			sendDiagnosticToSink(DIAG_ERROR, ast_expression->span,
@@ -87,6 +93,12 @@ static hirNode *lowerStatement(astStatement *ast_statement, hirLocal **locals,
 					     "cannot shadow existing variable");
 
 		hirNode *rhs = lowerExpression(ast_statement->value, locals, m);
+
+		if (ast_statement->name.raw == (u32)-1) {
+			node.kind = HIR_MISSING;
+			node.type = HIR_TYPE_VOID;
+			break;
+		}
 
 		hirLocal *local =
 			addLocal(ast_statement->name, rhs->type, locals, m);
@@ -147,6 +159,9 @@ hirRoot lower(astRoot ast, memory *m)
 
 	for (astFunction *ast_function = ast.functions; ast_function != NULL;
 	     ast_function = ast_function->next) {
+		if (ast_function->name.raw == (u32)-1)
+			continue;
+
 		hirLocal *locals = NULL;
 		hirNode *body = lowerStatement(ast_function->body, &locals, m);
 

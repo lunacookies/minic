@@ -287,7 +287,11 @@ static void debugExpression(astExpression *expression, interner interner)
 		break;
 
 	case AST_EXPR_VARIABLE:
-		printf("\033[35m%s\033[0m", lookup(interner, expression->name));
+		if (expression->name.raw == (u32)-1)
+			printf("\033[7;31m<missing>\033[0m");
+		else
+			printf("\033[35m%s\033[0m",
+			       lookup(interner, expression->name));
 		break;
 	}
 }
@@ -306,8 +310,15 @@ static void debugStatement(astStatement *statement, interner interner,
 		break;
 
 	case AST_STMT_LOCAL_DEFINITION:
-		printf("\033[32mvar\033[0m \033[35m%s\033[0m = ",
-		       lookup(interner, statement->name));
+		printf("\033[32mvar\033[0m ");
+
+		if (statement->name.raw == (u32)-1)
+			printf("\033[7;31m<missing>\033[0m");
+		else
+			printf("\033[35m%s\033[0m",
+			       lookup(interner, statement->name));
+
+		printf(" = ");
 		debugExpression(statement->value, interner);
 		break;
 
@@ -333,8 +344,12 @@ static void debugStatement(astStatement *statement, interner interner,
 static void debugFunction(astFunction function, interner interner,
 			  u32 indentation)
 {
-	printf("\033[32mfunc \033[33m%s\033[0m",
-	       lookup(interner, function.name));
+	printf("\033[32mfunc ");
+	if (function.name.raw == (u32)-1)
+		printf("\033[7;31m<missing>\033[0m");
+	else
+		printf("\033[33m%s\033[0m", lookup(interner, function.name));
+
 	indentation++;
 	newline(indentation);
 	debugStatement(function.body, interner, indentation);
