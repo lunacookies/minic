@@ -83,7 +83,8 @@ interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count,
 	// allocate space for load factor of 0.75
 	usize slot_count = identifier_count * 4 / 3;
 	usize map_size = slot_count * sizeof(slot);
-	clearBump(&m->temp);
+
+	bumpMark mark = markBump(&m->temp);
 	slot *map = allocateInBump(&m->temp, map_size);
 	memset(map, 0, map_size); // each ptr in map starts out as null
 
@@ -104,7 +105,7 @@ interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count,
 	// we have no use for the map any longer
 	// now that identifier IDs have been allocated
 	// and identifier contents have been copied
-	clearBump(&m->temp);
+	clearBumpToMark(&m->temp, mark);
 
 	interner i = {
 		.contents = c.identifier_contents,

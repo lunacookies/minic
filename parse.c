@@ -234,7 +234,7 @@ astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 	astFunction *head = NULL;
 	astFunction *current_function = NULL;
 
-	clearBump(&m->temp);
+	bumpMark mark = markBump(&m->temp);
 	while (!atEof(&p)) {
 		switch (current(&p)) {
 		case TOK_FUNC: {
@@ -253,7 +253,7 @@ astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 			break;
 		}
 	}
-	clearBump(&m->temp);
+	clearBumpToMark(&m->temp, mark);
 
 	astRoot root = { .functions = head };
 	return root;

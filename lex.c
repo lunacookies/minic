@@ -53,7 +53,7 @@ static void convertKeywords(u8 *input, tokenBuffer *buf)
 
 tokenBuffer lex(u8 *input, memory *m)
 {
-	clearBump(&m->temp);
+	bumpMark mark = markBump(&m->temp);
 
 	tokenBuffer buf = {
 		.kinds = (tokenKind *)(m->general.top + m->general.bytes_used),
@@ -127,7 +127,7 @@ tokenBuffer lex(u8 *input, memory *m)
 	span *spans = allocateInBump(&m->general, spans_size);
 	memcpy(spans, buf.spans, spans_size);
 	buf.spans = spans;
-	clearBump(&m->temp);
+	clearBumpToMark(&m->temp, mark);
 
 	usize identifier_ids_size = buf.count * sizeof(u32);
 	buf.identifier_ids = allocateInBump(&m->general, identifier_ids_size);

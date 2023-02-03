@@ -12,7 +12,7 @@ projectSpec discoverProject(memory *m)
 	// contents of the file. We allocate these aux arrays in temporary
 	// memory for now since allocations are occurring in general memory
 	// while the aux arrays are being populated.
-	clearBump(&m->temp);
+	bumpMark mark = markBump(&m->temp);
 	u8 **file_names = allocateInBump(&m->temp, PTR_PER_FILE_SIZE);
 	u8 **file_contents = allocateInBump(&m->temp, PTR_PER_FILE_SIZE);
 
@@ -67,7 +67,7 @@ projectSpec discoverProject(memory *m)
 	u8 **permanent_file_contents = allocateInBump(&m->general, bytes_used);
 	memcpy(permanent_file_names, file_names, bytes_used);
 	memcpy(permanent_file_contents, file_contents, bytes_used);
-	clearBump(&m->temp);
+	clearBumpToMark(&m->temp, mark);
 
 	projectSpec p = {
 		.num_files = num_files,

@@ -20,12 +20,6 @@ bumpMark markBump(bump *b)
 	return mark;
 }
 
-void clearBump(bump *b)
-{
-	memset(b->top, UNINIT_SENTINEL, b->bytes_used);
-	b->bytes_used = 0;
-}
-
 void clearBumpToMark(bump *b, bumpMark mark)
 {
 	assert(b->bytes_used >= mark.bytes_used);
