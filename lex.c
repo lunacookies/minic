@@ -1,7 +1,8 @@
 #include "minic.h"
 
-static const char *keywords[] = { "func", "return", "var" };
-static const tokenKind keywordKinds[] = { TOK_FUNC, TOK_RETURN, TOK_VAR };
+static const char *keywords[] = { "func", "return", "var", "set" };
+static const tokenKind keywordKinds[] = { TOK_FUNC, TOK_RETURN, TOK_VAR,
+					  TOK_SET };
 
 static void pushToken(tokenKind kind, u32 start, u32 end, tokenBuffer *buf,
 		      memory *m)
@@ -153,6 +154,8 @@ u8 *showTokenKind(tokenKind kind)
 		return (u8 *)"“return”";
 	case TOK_VAR:
 		return (u8 *)"“var”";
+	case TOK_SET:
+		return (u8 *)"“set”";
 	case TOK_EQUAL:
 		return (u8 *)"“=”";
 	case TOK_LBRACE:
@@ -179,6 +182,8 @@ u8 *debugTokenKind(tokenKind kind)
 		return (u8 *)"RETURN";
 	case TOK_VAR:
 		return (u8 *)"VAR";
+	case TOK_SET:
+		return (u8 *)"SET";
 	case TOK_EQUAL:
 		return (u8 *)"EQUAL";
 	case TOK_LBRACE:
