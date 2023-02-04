@@ -6,6 +6,10 @@ static const char *keywords[] = {
 static const tokenKind keywordKinds[] = { TOK_FUNC, TOK_RETURN, TOK_VAR,
 					  TOK_SET,  TOK_IF,	TOK_ELSE };
 
+static const char singleCharTokens[] = { '=', '{', '}' };
+static const tokenKind singleCharTokenKinds[] = { TOK_EQUAL, TOK_LBRACE,
+						  TOK_RBRACE };
+
 static void pushToken(tokenKind kind, u32 start, u32 end, tokenBuffer *buf,
 		      memory *m)
 {
@@ -36,7 +40,7 @@ static bool isIdentifierFirst(u8 c)
 
 static void convertKeywords(u8 *input, tokenBuffer *buf)
 {
-	usize num_keywords = sizeof(keywords) / sizeof(keywords[0]);
+	usize keywords_count = sizeof(keywords) / sizeof(keywords[0]);
 
 	for (usize i = 0; i < buf->count; i++) {
 		tokenKind *kind = &buf->kinds[i];
@@ -47,7 +51,7 @@ static void convertKeywords(u8 *input, tokenBuffer *buf)
 		span span = buf->spans[i];
 		usize length = span.end - span.start;
 
-		for (usize j = 0; j < num_keywords; j++)
+		for (usize j = 0; j < keywords_count; j++)
 			if (strncmp((char *)input + span.start, keywords[j],
 				    length) == 0)
 				*kind = keywordKinds[j];
@@ -70,7 +74,7 @@ tokenBuffer lex(u8 *input, memory *m)
 	while (input[i] != '\0') {
 		if (isWhitespace(input[i])) {
 			i++;
-			continue;
+			goto next;
 		}
 
 		if (isDigit(input[i])) {
@@ -79,7 +83,7 @@ tokenBuffer lex(u8 *input, memory *m)
 				i++;
 			u32 end = i;
 			pushToken(TOK_NUMBER, start, end, &buf, m);
-			continue;
+			goto next;
 		}
 
 		if (isIdentifierFirst(input[i])) {
@@ -88,29 +92,20 @@ tokenBuffer lex(u8 *input, memory *m)
 				i++;
 			u32 end = i;
 			pushToken(TOK_IDENTIFIER, start, end, &buf, m);
-			continue;
+			goto next;
 		}
 
-		if (input[i] == '=') {
+		usize single_char_tokens_count =
+			sizeof(singleCharTokens) / sizeof(singleCharTokens[0]);
+		for (usize j = 0; j < single_char_tokens_count; j++) {
+			if (input[i] != singleCharTokens[j])
+				continue;
+			tokenKind kind = singleCharTokenKinds[j];
 			u32 start = i;
 			i++;
 			u32 end = i;
-			pushToken(TOK_EQUAL, start, end, &buf, m);
-			continue;
-		}
-		if (input[i] == '{') {
-			u32 start = i;
-			i++;
-			u32 end = i;
-			pushToken(TOK_LBRACE, start, end, &buf, m);
-			continue;
-		}
-		if (input[i] == '}') {
-			u32 start = i;
-			i++;
-			u32 end = i;
-			pushToken(TOK_RBRACE, start, end, &buf, m);
-			continue;
+			pushToken(kind, start, end, &buf, m);
+			goto next;
 		}
 
 		span span = {
@@ -121,6 +116,8 @@ tokenBuffer lex(u8 *input, memory *m)
 				     input[i]);
 		i++;
 		pushToken(TOK_ERROR, span.start, span.end, &buf, m);
+
+	next:;
 	}
 
 	convertKeywords(input, &buf);
