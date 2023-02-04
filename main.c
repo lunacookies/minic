@@ -1,7 +1,9 @@
 #include "minic.h"
 
-int main()
+int main(int argc, char **argv)
 {
+	bool debug = argc == 2 && strcmp(argv[1], "-d") == 0;
+
 	memory m = initMemory();
 	initializeDiagnosticSink();
 
@@ -38,17 +40,25 @@ int main()
 
 		astRoot ast = parse(token_buffers[i],
 				    current_project.file_contents[i], &m);
-		debugAst(ast, interner);
+		if (debug)
+			debugAst(ast, interner);
+
 		hirRoot hir = lower(ast, &m);
-		debugHir(hir, interner);
+		if (debug)
+			debugHir(hir, interner);
+
 		codegen(hir, interner, &m);
 
 		assert(m.temp.bytes_used == 0);
 	}
 
-	debugLog("compiled %u files using", current_project.num_files);
-	debugLog("    %zu bytes of general memory", m.general.bytes_used);
-	debugLog("    %zu bytes of assembly memory", m.assembly.bytes_used);
+	if (debug) {
+		debugLog("compiled %u files using", current_project.num_files);
+		debugLog("    %zu bytes of general memory",
+			 m.general.bytes_used);
+		debugLog("    %zu bytes of assembly memory",
+			 m.assembly.bytes_used);
+	}
 
 	int fd = open("out.s", O_WRONLY | O_CREAT | O_TRUNC, 0666);
 	write(fd, m.assembly.top, m.assembly.bytes_used);
