@@ -171,6 +171,7 @@ typedef enum astStatementKind {
 	AST_STMT_MISSING,
 	AST_STMT_RETURN,
 	AST_STMT_LOCAL_DEFINITION,
+	AST_STMT_ASSIGN,
 	AST_STMT_BLOCK
 } astStatementKind;
 
@@ -183,6 +184,10 @@ typedef struct astStatement {
 
 	// local definition
 	identifierId name;
+
+	// assign
+	astExpression *lhs;
+	astExpression *rhs;
 
 	// block
 	struct astStatement **statements;

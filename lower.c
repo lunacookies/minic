@@ -117,6 +117,13 @@ static hirNode *lowerStatement(astStatement *ast_statement, hirLocal **locals,
 		break;
 	}
 
+	case AST_STMT_ASSIGN:
+		node.kind = HIR_ASSIGN;
+		node.type = HIR_TYPE_VOID;
+		node.lhs = lowerExpression(ast_statement->lhs, locals, m);
+		node.rhs = lowerExpression(ast_statement->rhs, locals, m);
+		break;
+
 	case AST_STMT_BLOCK: {
 		bumpMark mark = markBump(&m->temp);
 		hirNode *children_top =

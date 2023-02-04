@@ -171,6 +171,17 @@ static astStatement *statement(parser *p, memory *m)
 		break;
 	}
 
+	case TOK_SET: {
+		expect(p, TOK_SET);
+		astExpression *lhs = expression(p, m);
+		expect(p, TOK_EQUAL);
+		astExpression *rhs = expression(p, m);
+		s.kind = AST_STMT_ASSIGN;
+		s.lhs = lhs;
+		s.rhs = rhs;
+		break;
+	}
+
 	case TOK_LBRACE: {
 		expect(p, TOK_LBRACE);
 		astStatement *statements_start =
@@ -320,6 +331,13 @@ static void debugStatement(astStatement *statement, interner interner,
 
 		printf(" = ");
 		debugExpression(statement->value, interner);
+		break;
+
+	case AST_STMT_ASSIGN:
+		printf("\033[32mset\033[0m ");
+		debugExpression(statement->lhs, interner);
+		printf(" = ");
+		debugExpression(statement->rhs, interner);
 		break;
 
 	case AST_STMT_BLOCK:
