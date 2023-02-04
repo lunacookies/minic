@@ -52,4 +52,8 @@ int main()
 
 	int fd = open("out.s", O_WRONLY | O_CREAT | O_TRUNC, 0666);
 	write(fd, m.assembly.top, m.assembly.bytes_used);
+	system("as -o out.o out.s");
+	system("ld -o out -syslibroot "
+	       "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -lSystem "
+	       "out.o");
 }
