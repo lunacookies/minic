@@ -114,6 +114,8 @@ typedef enum tokenKind {
 	TOK_RETURN,
 	TOK_VAR,
 	TOK_SET,
+	TOK_IF,
+	TOK_ELSE,
 	TOK_EQUAL,
 	TOK_LBRACE,
 	TOK_RBRACE
