@@ -24,7 +24,6 @@ a tiny c-ish language, hopefully.
 
 - written in C11 for now
 - compiles to aarch64 asm
-  (once I get around to it)
 - currently only works on macOS running on Apple Silicon
 - allocates all memory at startup –
   no dynamic memory allocation whatsoever
