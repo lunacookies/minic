@@ -7,7 +7,7 @@ assert() {
 	expected="$1"
 	input="$2"
 
-	echo $input > main.mc
+	echo "$input" > main.mc
 	../minic
 	./out
 	actual="$?"
