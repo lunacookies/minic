@@ -54,6 +54,7 @@ static void processToken(tokenBuffer *buf, u8 *contents, usize token, ctx *c,
 
 	no_match:
 		slot_index++;
+		slot_index %= c->slot_count;
 		slot = &c->map[slot_index];
 	}
 
