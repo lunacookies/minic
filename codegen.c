@@ -74,8 +74,7 @@ static void genAddress(char **s, hirNode *node)
 	}
 }
 
-static void gen(char **s, hirNode *node, identifierId function_name,
-		interner interner)
+static void gen(char **s, hirNode *node, char *function_name, u32 *id)
 {
 	switch (node->kind) {
 	case HIR_MISSING:
@@ -92,21 +91,33 @@ static void gen(char **s, hirNode *node, identifierId function_name,
 	case HIR_ASSIGN:
 		genAddress(s, node->lhs);
 		push(s);
-		gen(s, node->rhs, function_name, interner);
+		gen(s, node->rhs, function_name, id);
 		pop(s, "x9");
 		instruction(s, "str", "x8, [x9]");
 		break;
 
+	case HIR_IF: {
+		u32 i = *id;
+		(*id)++;
+		gen(s, node->condition, function_name, id);
+		instruction(s, "cbz", "x8, ELSE_%s_%u", function_name, i);
+		gen(s, node->true_branch, function_name, id);
+		instruction(s, "b", "ENDIF_%s_%u", function_name, i);
+		label(s, "ELSE_%s_%u", function_name, i);
+		gen(s, node->false_branch, function_name, id);
+		label(s, "ENDIF_%s_%u", function_name, i);
+		break;
+	}
+
 	case HIR_RETURN:
-		gen(s, node->lhs, function_name, interner);
+		gen(s, node->lhs, function_name, id);
 		instruction(s, "mov", "x0, x8");
-		instruction(s, "b", "RETURN_%s",
-			    lookup(interner, function_name));
+		instruction(s, "b", "RETURN_%s", function_name);
 		break;
 
 	case HIR_BLOCK:
 		for (usize i = 0; i < node->count; i++)
-			gen(s, node->children[i], function_name, interner);
+			gen(s, node->children[i], function_name, id);
 		break;
 	}
 }
@@ -149,14 +160,18 @@ void codegen(hirRoot hir, interner interner, memory *m)
 	     function = function->next) {
 		calculateStackLayout(function);
 
-		directive(s, "global", "_%s", lookup(interner, function->name));
+		char *function_name = (char *)lookup(interner, function->name);
+
+		directive(s, "global", "_%s", function_name);
 		directive(s, "align", "2");
-		label(s, "_%s", lookup(interner, function->name));
+		label(s, "_%s", function_name);
 
 		genPrologue(s, function);
-		gen(s, function->body, function->name, interner);
 
-		label(s, "RETURN_%s", lookup(interner, function->name));
+		u32 id = 0;
+		gen(s, function->body, function_name, &id);
+
+		label(s, "RETURN_%s", function_name);
 		genEpilogue(s, function);
 		instruction(s, "ret", "");
 

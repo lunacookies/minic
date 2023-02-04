@@ -174,6 +174,7 @@ typedef enum astStatementKind {
 	AST_STMT_RETURN,
 	AST_STMT_LOCAL_DEFINITION,
 	AST_STMT_ASSIGN,
+	AST_STMT_IF,
 	AST_STMT_BLOCK
 } astStatementKind;
 
@@ -190,6 +191,11 @@ typedef struct astStatement {
 	// assign
 	astExpression *lhs;
 	astExpression *rhs;
+
+	// if
+	astExpression *condition;
+	struct astStatement *true_branch;
+	struct astStatement *false_branch;
 
 	// block
 	struct astStatement **statements;
@@ -217,6 +223,7 @@ typedef enum hirKind {
 	HIR_INT_LITERAL,
 	HIR_VARIABLE,
 	HIR_ASSIGN,
+	HIR_IF,
 	HIR_RETURN,
 	HIR_BLOCK
 } hirKind;
@@ -244,6 +251,11 @@ typedef struct hirNode {
 	// assign, return
 	struct hirNode *lhs;
 	struct hirNode *rhs;
+
+	// if
+	struct hirNode *condition;
+	struct hirNode *true_branch;
+	struct hirNode *false_branch;
 
 	// block
 	struct hirNode **children;

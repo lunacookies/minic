@@ -182,6 +182,19 @@ static astStatement *statement(parser *p, memory *m)
 		break;
 	}
 
+	case TOK_IF: {
+		expect(p, TOK_IF);
+		astExpression *condition = expression(p, m);
+		astStatement *true_branch = statement(p, m);
+		expect(p, TOK_ELSE);
+		astStatement *false_branch = statement(p, m);
+		s.kind = AST_STMT_IF;
+		s.condition = condition;
+		s.true_branch = true_branch;
+		s.false_branch = false_branch;
+		break;
+	}
+
 	case TOK_LBRACE: {
 		expect(p, TOK_LBRACE);
 		astStatement *statements_start =
@@ -338,6 +351,24 @@ static void debugStatement(astStatement *statement, interner interner,
 		debugExpression(statement->lhs, interner);
 		printf(" = ");
 		debugExpression(statement->rhs, interner);
+		break;
+
+	case AST_STMT_IF:
+		printf("\033[32mif\033[0m ");
+		debugExpression(statement->condition, interner);
+		indentation++;
+		newline(indentation);
+
+		debugStatement(statement->true_branch, interner, indentation);
+		indentation--;
+		newline(indentation);
+
+		printf("\033[32melse\033[0m");
+		indentation++;
+		newline(indentation);
+
+		debugStatement(statement->false_branch, interner, indentation);
+		indentation--;
 		break;
 
 	case AST_STMT_BLOCK:
