@@ -22,9 +22,11 @@ assert() {
 assert 0 'func main { return 0 }'
 assert 92 'func main { return 92 }'
 assert 210 'func main { return 1234 }'
+
 assert 5 'func main { var x=5 return x }'
 assert 10 'func main { var x=10 var y=x return y }'
 assert 20 'func main { var x=1 set x=20 return x }'
+
 assert 4 'func main { if 0 return 2 else return 4 }'
 assert 2 'func main { if 1 return 2 else return 4 }'
 
