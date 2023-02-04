@@ -117,6 +117,10 @@ typedef enum tokenKind {
 	TOK_IF,
 	TOK_ELSE,
 	TOK_EQUAL,
+	TOK_PLUS,
+	TOK_DASH,
+	TOK_STAR,
+	TOK_SLASH,
 	TOK_LBRACE,
 	TOK_RBRACE
 } tokenKind;

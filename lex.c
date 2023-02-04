@@ -6,8 +6,10 @@ static const char *keywords[] = {
 static const tokenKind keywordKinds[] = { TOK_FUNC, TOK_RETURN, TOK_VAR,
 					  TOK_SET,  TOK_IF,	TOK_ELSE };
 
-static const char singleCharTokens[] = { '=', '{', '}' };
-static const tokenKind singleCharTokenKinds[] = { TOK_EQUAL, TOK_LBRACE,
+static const char singleCharTokens[] = { '=', '+', '-', '*', '/', '{', '}' };
+static const tokenKind singleCharTokenKinds[] = { TOK_EQUAL, TOK_PLUS,
+						  TOK_DASH,  TOK_STAR,
+						  TOK_SLASH, TOK_LBRACE,
 						  TOK_RBRACE };
 
 static void pushToken(tokenKind kind, u32 start, u32 end, tokenBuffer *buf,
@@ -161,6 +163,14 @@ u8 *showTokenKind(tokenKind kind)
 		return (u8 *)"“else”";
 	case TOK_EQUAL:
 		return (u8 *)"“=”";
+	case TOK_PLUS:
+		return (u8 *)"“+”";
+	case TOK_DASH:
+		return (u8 *)"“-”";
+	case TOK_STAR:
+		return (u8 *)"“*”";
+	case TOK_SLASH:
+		return (u8 *)"“/”";
 	case TOK_LBRACE:
 		return (u8 *)"“{”";
 	case TOK_RBRACE:
@@ -193,6 +203,14 @@ u8 *debugTokenKind(tokenKind kind)
 		return (u8 *)"ELSE";
 	case TOK_EQUAL:
 		return (u8 *)"EQUAL";
+	case TOK_PLUS:
+		return (u8 *)"PLUS";
+	case TOK_DASH:
+		return (u8 *)"DASH";
+	case TOK_STAR:
+		return (u8 *)"STAR";
+	case TOK_SLASH:
+		return (u8 *)"SLASH";
 	case TOK_LBRACE:
 		return (u8 *)"LBRACE";
 	case TOK_RBRACE:
