@@ -143,6 +143,15 @@ static hirNode *lowerStatement(astStatement *ast_statement, hirLocal **locals,
 			lowerStatement(ast_statement->false_branch, locals, m);
 		break;
 
+	case AST_STMT_WHILE:
+		node.kind = HIR_WHILE;
+		node.type = HIR_TYPE_VOID;
+		node.condition =
+			lowerExpression(ast_statement->condition, locals, m);
+		node.true_branch =
+			lowerStatement(ast_statement->true_branch, locals, m);
+		break;
+
 	case AST_STMT_BLOCK: {
 		bumpMark mark = markBump(&m->temp);
 		hirNode *children_top =
@@ -307,6 +316,15 @@ static void debugNode(hirNode *node, interner interner, u32 indentation)
 		newline(indentation);
 
 		debugNode(node->false_branch, interner, indentation);
+		indentation--;
+		break;
+
+	case HIR_WHILE:
+		printf("\033[32mwhile\033[0m ");
+		debugNode(node->condition, interner, indentation);
+		indentation++;
+		newline(indentation);
+		debugNode(node->true_branch, interner, indentation);
 		indentation--;
 		break;
 

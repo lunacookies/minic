@@ -139,6 +139,18 @@ static void gen(char **s, hirNode *node, char *function_name, u32 *id)
 		break;
 	}
 
+	case HIR_WHILE: {
+		u32 i = *id;
+		(*id)++;
+		label(s, "WHILE_%s_%u", function_name, i);
+		gen(s, node->condition, function_name, id);
+		instruction(s, "cbz", "x8, ENDWHILE_%s_%u", function_name, i);
+		gen(s, node->true_branch, function_name, id);
+		instruction(s, "b", "WHILE_%s_%u", function_name, i);
+		label(s, "ENDWHILE_%s_%u", function_name, i);
+		break;
+	}
+
 	case HIR_RETURN:
 		gen(s, node->lhs, function_name, id);
 		instruction(s, "mov", "x0, x8");

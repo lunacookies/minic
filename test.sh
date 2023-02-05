@@ -49,5 +49,7 @@ assert 0 'func main { return 4==8 }'
 assert 0 'func main { return 5!=5 }'
 assert 1 'func main { return 4!=8 }'
 
+assert 32 'func main { var x=1 var i=0 while i!=5 { set x=x*2 set i=i+1 } return x }'
+
 cd ..
 rm -r test

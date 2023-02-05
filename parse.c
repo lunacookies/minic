@@ -276,6 +276,16 @@ static astStatement *statement(parser *p, memory *m)
 		break;
 	}
 
+	case TOK_WHILE: {
+		expect(p, TOK_WHILE);
+		astExpression *condition = expression(p, m);
+		astStatement *body = statement(p, m);
+		s.kind = AST_STMT_WHILE;
+		s.condition = condition;
+		s.true_branch = body;
+		break;
+	}
+
 	case TOK_LBRACE: {
 		expect(p, TOK_LBRACE);
 		astStatement *statements_start =
@@ -478,6 +488,15 @@ static void debugStatement(astStatement *statement, interner interner,
 		newline(indentation);
 
 		debugStatement(statement->false_branch, interner, indentation);
+		indentation--;
+		break;
+
+	case AST_STMT_WHILE:
+		printf("\033[32mwhile\033[0m ");
+		debugExpression(statement->condition, interner);
+		indentation++;
+		newline(indentation);
+		debugStatement(statement->true_branch, interner, indentation);
 		indentation--;
 		break;
 
