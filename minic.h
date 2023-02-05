@@ -159,8 +159,16 @@ u8 *lookup(interner i, identifierId id);
 typedef enum astExpressionKind {
 	AST_EXPR_MISSING,
 	AST_EXPR_INT_LITERAL,
-	AST_EXPR_VARIABLE
+	AST_EXPR_VARIABLE,
+	AST_EXPR_BINARY_OPERATION,
 } astExpressionKind;
+
+typedef enum astBinaryOperator {
+	AST_BINOP_ADD,
+	AST_BINOP_SUBTRACT,
+	AST_BINOP_MULTIPLY,
+	AST_BINOP_DIVIDE,
+} astBinaryOperator;
 
 typedef struct astExpression {
 	astExpressionKind kind;
@@ -171,6 +179,11 @@ typedef struct astExpression {
 
 	// variable
 	identifierId name;
+
+	// binary operation
+	struct astExpression *lhs;
+	struct astExpression *rhs;
+	astBinaryOperator op;
 } astExpression;
 
 typedef enum astStatementKind {
@@ -226,6 +239,7 @@ typedef enum hirKind {
 	HIR_MISSING,
 	HIR_INT_LITERAL,
 	HIR_VARIABLE,
+	HIR_BINARY_OPERATION,
 	HIR_ASSIGN,
 	HIR_IF,
 	HIR_RETURN,
@@ -252,7 +266,10 @@ typedef struct hirNode {
 	// variable
 	hirLocal *local;
 
-	// assign, return
+	// binary operation
+	astBinaryOperator op;
+
+	// binary operation, assign, return
 	struct hirNode *lhs;
 	struct hirNode *rhs;
 

@@ -88,6 +88,28 @@ static void gen(char **s, hirNode *node, char *function_name, u32 *id)
 		instruction(s, "ldr", "x8, [fp, #-%u]", node->local->offset);
 		break;
 
+	case HIR_BINARY_OPERATION:
+		gen(s, node->lhs, function_name, id);
+		push(s);
+		gen(s, node->rhs, function_name, id);
+		instruction(s, "mov", "x9, x8");
+		pop(s, "x8");
+		switch (node->op) {
+		case AST_BINOP_ADD:
+			instruction(s, "add", "x8, x8, x9");
+			break;
+		case AST_BINOP_SUBTRACT:
+			instruction(s, "sub", "x8, x8, x9");
+			break;
+		case AST_BINOP_MULTIPLY:
+			instruction(s, "mul", "x8, x8, x9");
+			break;
+		case AST_BINOP_DIVIDE:
+			instruction(s, "sdiv", "x8, x8, x9");
+			break;
+		}
+		break;
+
 	case HIR_ASSIGN:
 		genAddress(s, node->lhs);
 		push(s);

@@ -100,7 +100,7 @@ static identifierId expectIdentifier(parser *p)
 	return id;
 }
 
-static astExpression *expression(parser *p, memory *m)
+static astExpression *expressionLhs(parser *p, memory *m)
 {
 	astExpression e = { .span.start =
 				    atEof(p)
@@ -143,6 +143,70 @@ static astExpression *expression(parser *p, memory *m)
 	astExpression *ptr = allocateInBump(&m->general, sizeof(astExpression));
 	*ptr = e;
 	return ptr;
+}
+
+static astExpression *expressionBindingPower(parser *p, u8 min_binding_power,
+					     memory *m)
+{
+	astExpression *lhs = expressionLhs(p, m);
+
+	while (true) {
+		if (atEof(p))
+			return lhs;
+
+		u8 binding_power = 0;
+		astBinaryOperator op = -1;
+		switch (current(p)) {
+		case TOK_PLUS:
+			binding_power = 1;
+			op = AST_BINOP_ADD;
+			break;
+		case TOK_DASH:
+			binding_power = 1;
+			op = AST_BINOP_SUBTRACT;
+			break;
+		case TOK_STAR:
+			binding_power = 2;
+			op = AST_BINOP_MULTIPLY;
+			break;
+		case TOK_SLASH:
+			binding_power = 2;
+			op = AST_BINOP_DIVIDE;
+			break;
+		default:
+			return lhs;
+		}
+		assert(binding_power != 0);
+		assert(op != (u32)-1);
+
+		if (binding_power < min_binding_power)
+			return lhs;
+
+		// skip past operator token
+		addToken(p);
+
+		astExpression *rhs =
+			expressionBindingPower(p, binding_power + 1, m);
+
+		span span = {
+			.start = lhs->span.start,
+			.end = p->tokens.spans[p->cursor - 1].end,
+		};
+		astExpression new_lhs = { .kind = AST_EXPR_BINARY_OPERATION,
+					  .span = span,
+					  .lhs = lhs,
+					  .rhs = rhs,
+					  .op = op };
+		astExpression *ptr =
+			allocateInBump(&m->general, sizeof(astExpression));
+		*ptr = new_lhs;
+		lhs = ptr;
+	}
+}
+
+static astExpression *expression(parser *p, memory *m)
+{
+	return expressionBindingPower(p, 0, m);
 }
 
 static astStatement *statement(parser *p, memory *m)
@@ -316,6 +380,29 @@ static void debugExpression(astExpression *expression, interner interner)
 		else
 			printf("\033[35m%s\033[0m",
 			       lookup(interner, expression->name));
+		break;
+
+	case AST_EXPR_BINARY_OPERATION:
+		printf("(");
+		debugExpression(expression->lhs, interner);
+
+		switch (expression->op) {
+		case AST_BINOP_ADD:
+			printf(" + ");
+			break;
+		case AST_BINOP_SUBTRACT:
+			printf(" - ");
+			break;
+		case AST_BINOP_MULTIPLY:
+			printf(" * ");
+			break;
+		case AST_BINOP_DIVIDE:
+			printf(" / ");
+			break;
+		}
+
+		debugExpression(expression->rhs, interner);
+		printf(")");
 		break;
 	}
 }

@@ -61,6 +61,14 @@ static hirNode *lowerExpression(astExpression *ast_expression,
 		node.local = local;
 		break;
 	}
+
+	case AST_EXPR_BINARY_OPERATION:
+		node.kind = HIR_BINARY_OPERATION;
+		node.lhs = lowerExpression(ast_expression->lhs, locals, m);
+		node.rhs = lowerExpression(ast_expression->rhs, locals, m);
+		node.op = ast_expression->op;
+		node.type = node.lhs->type;
+		break;
 	}
 
 	hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
@@ -248,6 +256,29 @@ static void debugNode(hirNode *node, interner interner, u32 indentation)
 		       lookup(interner, node->local->name));
 		break;
 
+	case HIR_BINARY_OPERATION:
+		printf("(");
+		debugNode(node->lhs, interner, indentation);
+
+		switch (node->op) {
+		case AST_BINOP_ADD:
+			printf(" + ");
+			break;
+		case AST_BINOP_SUBTRACT:
+			printf(" - ");
+			break;
+		case AST_BINOP_MULTIPLY:
+			printf(" * ");
+			break;
+		case AST_BINOP_DIVIDE:
+			printf(" / ");
+			break;
+		}
+
+		debugNode(node->rhs, interner, indentation);
+		printf(")");
+		break;
+
 	case HIR_ASSIGN:
 		printf("\033[32mset\033[0m ");
 		debugNode(node->lhs, interner, indentation);
@@ -255,7 +286,7 @@ static void debugNode(hirNode *node, interner interner, u32 indentation)
 		debugNode(node->rhs, interner, indentation);
 		break;
 
-	case AST_STMT_IF:
+	case HIR_IF:
 		printf("\033[32mif\033[0m ");
 		debugNode(node->condition, interner, indentation);
 		indentation++;
