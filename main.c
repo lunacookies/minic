@@ -60,6 +60,9 @@ int main(int argc, char **argv)
 			 m.assembly.bytes_used);
 	}
 
+	if (anyErrors())
+		return 1;
+
 	int fd = open("out.s", O_WRONLY | O_CREAT | O_TRUNC, 0666);
 	write(fd, m.assembly.top, m.assembly.bytes_used);
 	system("as -o out.o out.s");

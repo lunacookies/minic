@@ -101,6 +101,7 @@ typedef struct span {
 void initializeDiagnosticSink(void);
 void sendDiagnosticToSink(severity severity, span span, char *fmt, ...);
 void sendDiagnosticToSinkV(severity severity, span span, char *fmt, va_list ap);
+bool anyErrors(void);
 
 // ----------------------------------------------------------------------------
 // lex.c

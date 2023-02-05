@@ -2,6 +2,7 @@
 
 pthread_mutex_t stderrMutex;
 bool isInitialized = false;
+bool anyErrors_ = false;
 
 void initializeDiagnosticSink(void)
 {
@@ -70,6 +71,9 @@ void sendDiagnosticToSinkV(severity severity, span span, char *fmt, va_list ap)
 	assert(isInitialized);
 	pthread_mutex_lock(&stderrMutex);
 
+	if (severity == DIAG_ERROR)
+		anyErrors_ = true;
+
 	diagnosticLocation loc = getDiagnosticLocation(span);
 	fprintf(stderr, "%s:%u:%u: ", loc.name, loc.lc.line + 1,
 		loc.lc.column + 1);
@@ -88,4 +92,13 @@ void sendDiagnosticToSinkV(severity severity, span span, char *fmt, va_list ap)
 	fprintf(stderr, "\033[0m\n");
 
 	pthread_mutex_unlock(&stderrMutex);
+}
+
+bool anyErrors(void)
+{
+	assert(isInitialized);
+	pthread_mutex_lock(&stderrMutex);
+	bool b = anyErrors_;
+	pthread_mutex_unlock(&stderrMutex);
+	return b;
 }
