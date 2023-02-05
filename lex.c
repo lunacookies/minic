@@ -57,10 +57,15 @@ static void convertKeywords(u8 *input, tokenBuffer *buf)
 		span span = buf->spans[i];
 		usize length = span.end - span.start;
 
-		for (usize j = 0; j < keywords_count; j++)
+		for (usize j = 0; j < keywords_count; j++) {
+			if (strlen(keywords[j]) != length)
+				continue;
 			if (strncmp((char *)input + span.start, keywords[j],
-				    length) == 0)
-				*kind = keywordKinds[j];
+				    length) != 0)
+				continue;
+			*kind = keywordKinds[j];
+			break;
+		}
 	}
 }
 
