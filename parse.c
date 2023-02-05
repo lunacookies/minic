@@ -100,6 +100,8 @@ static identifierId expectIdentifier(parser *p)
 	return id;
 }
 
+static astExpression *expression(parser *p, memory *m);
+
 static astExpression *expressionLhs(parser *p, memory *m)
 {
 	astExpression e = { .span.start =
@@ -130,6 +132,13 @@ static astExpression *expressionLhs(parser *p, memory *m)
 		e.kind = AST_EXPR_VARIABLE;
 		e.name = name;
 		break;
+	}
+
+	case TOK_LPAREN: {
+		expect(p, TOK_LPAREN);
+		astExpression *inner = expression(p, m);
+		expect(p, TOK_RPAREN);
+		return inner;
 	}
 
 	default:

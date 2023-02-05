@@ -29,6 +29,8 @@ assert 100 'func main { return 5*20 }'
 assert 5 'func main { return 11/2 }'
 assert 7 'func main { return 1+2*3 }'
 assert 5 'func main { return 1*2+3 }'
+assert 9 'func main { return (1+2)*3 }'
+assert 5 'func main { return 1*(2+3) }'
 assert 5 'func main { return 1+1+1+1+1+1-1 }'
 assert 64 'func main { return 2*2*2*2*2*2 }'
 
