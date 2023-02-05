@@ -116,6 +116,7 @@ typedef enum tokenKind {
 	TOK_SET,
 	TOK_IF,
 	TOK_ELSE,
+	TOK_WHILE,
 	TOK_EQUAL,
 	TOK_EQUALEQUAL,
 	TOK_BANGEQUAL,

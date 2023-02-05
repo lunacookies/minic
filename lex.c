@@ -1,10 +1,10 @@
 #include "minic.h"
 
-static const char *keywords[] = {
-	"func", "return", "var", "set", "if", "else"
-};
+static const char *keywords[] = { "func", "return", "var",  "set",
+				  "if",	  "else",   "while" };
 static const tokenKind keywordKinds[] = { TOK_FUNC, TOK_RETURN, TOK_VAR,
-					  TOK_SET,  TOK_IF,	TOK_ELSE };
+					  TOK_SET,  TOK_IF,	TOK_ELSE,
+					  TOK_WHILE };
 
 static const char twoCharTokens[][2] = { { '=', '=' }, { '!', '=' } };
 static const tokenKind twoCharTokenKinds[] = { TOK_EQUALEQUAL, TOK_BANGEQUAL };
@@ -180,6 +180,8 @@ u8 *showTokenKind(tokenKind kind)
 		return (u8 *)"“if”";
 	case TOK_ELSE:
 		return (u8 *)"“else”";
+	case TOK_WHILE:
+		return (u8 *)"“while”";
 	case TOK_EQUAL:
 		return (u8 *)"“=”";
 	case TOK_EQUALEQUAL:
@@ -228,6 +230,8 @@ u8 *debugTokenKind(tokenKind kind)
 		return (u8 *)"IF";
 	case TOK_ELSE:
 		return (u8 *)"ELSE";
+	case TOK_WHILE:
+		return (u8 *)"WHILE";
 	case TOK_EQUAL:
 		return (u8 *)"EQUAL";
 	case TOK_EQUALEQUAL:
