@@ -289,6 +289,18 @@ static void debugNode(hirNode *node, interner interner, u32 indentation)
 		case AST_BINOP_NOT_EQUAL:
 			printf(" != ");
 			break;
+		case AST_BINOP_LESS_THAN:
+			printf(" < ");
+			break;
+		case AST_BINOP_LESS_THAN_EQUAL:
+			printf(" <= ");
+			break;
+		case AST_BINOP_GREATER_THAN:
+			printf(" > ");
+			break;
+		case AST_BINOP_GREATER_THAN_EQUAL:
+			printf(" >= ");
+			break;
 		}
 
 		debugNode(node->rhs, interner, indentation);

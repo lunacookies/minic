@@ -190,6 +190,22 @@ static astExpression *expressionBindingPower(parser *p, u8 min_binding_power,
 			binding_power = 1;
 			op = AST_BINOP_NOT_EQUAL;
 			break;
+		case TOK_LANGLE:
+			binding_power = 1;
+			op = AST_BINOP_LESS_THAN;
+			break;
+		case TOK_LANGLE_EQUAL:
+			binding_power = 1;
+			op = AST_BINOP_LESS_THAN_EQUAL;
+			break;
+		case TOK_RANGLE:
+			binding_power = 1;
+			op = AST_BINOP_GREATER_THAN;
+			break;
+		case TOK_RANGLE_EQUAL:
+			binding_power = 1;
+			op = AST_BINOP_GREATER_THAN_EQUAL;
+			break;
 		default:
 			return lhs;
 		}
@@ -434,6 +450,18 @@ static void debugExpression(astExpression *expression, interner interner)
 			break;
 		case AST_BINOP_NOT_EQUAL:
 			printf(" != ");
+			break;
+		case AST_BINOP_LESS_THAN:
+			printf(" < ");
+			break;
+		case AST_BINOP_LESS_THAN_EQUAL:
+			printf(" <= ");
+			break;
+		case AST_BINOP_GREATER_THAN:
+			printf(" > ");
+			break;
+		case AST_BINOP_GREATER_THAN_EQUAL:
+			printf(" >= ");
 			break;
 		}
 

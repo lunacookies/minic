@@ -179,6 +179,10 @@ typedef enum astBinaryOperator {
 	AST_BINOP_DIVIDE,
 	AST_BINOP_EQUAL,
 	AST_BINOP_NOT_EQUAL,
+	AST_BINOP_LESS_THAN,
+	AST_BINOP_LESS_THAN_EQUAL,
+	AST_BINOP_GREATER_THAN,
+	AST_BINOP_GREATER_THAN_EQUAL
 } astBinaryOperator;
 
 typedef struct astExpression {

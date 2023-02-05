@@ -115,6 +115,22 @@ static void gen(char **s, hirNode *node, char *function_name, u32 *id)
 			instruction(s, "cmp", "x8, x9");
 			instruction(s, "cset", "x8, ne");
 			break;
+		case AST_BINOP_LESS_THAN:
+			instruction(s, "cmp", "x8, x9");
+			instruction(s, "cset", "x8, lt");
+			break;
+		case AST_BINOP_LESS_THAN_EQUAL:
+			instruction(s, "cmp", "x8, x9");
+			instruction(s, "cset", "x8, le");
+			break;
+		case AST_BINOP_GREATER_THAN:
+			instruction(s, "cmp", "x8, x9");
+			instruction(s, "cset", "x8, gt");
+			break;
+		case AST_BINOP_GREATER_THAN_EQUAL:
+			instruction(s, "cmp", "x8, x9");
+			instruction(s, "cset", "x8, ge");
+			break;
 		}
 		break;
 
