@@ -13,9 +13,9 @@ assert() {
 	actual="$?"
 
 	if [ "$actual" = "$expected" ]; then
-		echo "$input => $actual"
+		printf "%s => %s\n" "$input" "$actual"
 	else
-		echo "$input => $expected expected, but got $actual"
+		printf "\033[31m%s => %s expected, but got %s\033[0m\n" "$input" "$expected" "$actual"
 	fi
 }
 
