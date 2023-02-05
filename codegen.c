@@ -107,6 +107,14 @@ static void gen(char **s, hirNode *node, char *function_name, u32 *id)
 		case AST_BINOP_DIVIDE:
 			instruction(s, "sdiv", "x8, x8, x9");
 			break;
+		case AST_BINOP_EQUAL:
+			instruction(s, "cmp", "x8, x9");
+			instruction(s, "cset", "x8, eq");
+			break;
+		case AST_BINOP_NOT_EQUAL:
+			instruction(s, "cmp", "x8, x9");
+			instruction(s, "cset", "x8, ne");
+			break;
 		}
 		break;
 

@@ -167,20 +167,28 @@ static astExpression *expressionBindingPower(parser *p, u8 min_binding_power,
 		astBinaryOperator op = -1;
 		switch (current(p)) {
 		case TOK_PLUS:
-			binding_power = 1;
+			binding_power = 2;
 			op = AST_BINOP_ADD;
 			break;
 		case TOK_DASH:
-			binding_power = 1;
+			binding_power = 2;
 			op = AST_BINOP_SUBTRACT;
 			break;
 		case TOK_STAR:
-			binding_power = 2;
+			binding_power = 3;
 			op = AST_BINOP_MULTIPLY;
 			break;
 		case TOK_SLASH:
-			binding_power = 2;
+			binding_power = 3;
 			op = AST_BINOP_DIVIDE;
+			break;
+		case TOK_EQUALEQUAL:
+			binding_power = 1;
+			op = AST_BINOP_EQUAL;
+			break;
+		case TOK_BANGEQUAL:
+			binding_power = 1;
+			op = AST_BINOP_NOT_EQUAL;
 			break;
 		default:
 			return lhs;
@@ -407,6 +415,12 @@ static void debugExpression(astExpression *expression, interner interner)
 			break;
 		case AST_BINOP_DIVIDE:
 			printf(" / ");
+			break;
+		case AST_BINOP_EQUAL:
+			printf(" == ");
+			break;
+		case AST_BINOP_NOT_EQUAL:
+			printf(" != ");
 			break;
 		}
 

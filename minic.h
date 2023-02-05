@@ -172,6 +172,8 @@ typedef enum astBinaryOperator {
 	AST_BINOP_SUBTRACT,
 	AST_BINOP_MULTIPLY,
 	AST_BINOP_DIVIDE,
+	AST_BINOP_EQUAL,
+	AST_BINOP_NOT_EQUAL,
 } astBinaryOperator;
 
 typedef struct astExpression {

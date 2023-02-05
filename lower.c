@@ -273,6 +273,12 @@ static void debugNode(hirNode *node, interner interner, u32 indentation)
 		case AST_BINOP_DIVIDE:
 			printf(" / ");
 			break;
+		case AST_BINOP_EQUAL:
+			printf(" == ");
+			break;
+		case AST_BINOP_NOT_EQUAL:
+			printf(" != ");
+			break;
 		}
 
 		debugNode(node->rhs, interner, indentation);

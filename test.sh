@@ -42,5 +42,12 @@ assert 9 'func main { var x=2 set x=x+1 set x=x*3 return x }'
 assert 4 'func main { if 0 return 2 else return 4 }'
 assert 2 'func main { if 1 return 2 else return 4 }'
 
+assert 1 'func main { return 0==0 }'
+assert 1 'func main { return 5==5 }'
+assert 1 'func main { var a=99 var b=a return a==b }'
+assert 0 'func main { return 4==8 }'
+assert 0 'func main { return 5!=5 }'
+assert 1 'func main { return 4!=8 }'
+
 cd ..
 rm -r test
