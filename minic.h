@@ -122,7 +122,9 @@ typedef enum tokenKind {
 	TOK_STAR,
 	TOK_SLASH,
 	TOK_LBRACE,
-	TOK_RBRACE
+	TOK_RBRACE,
+	TOK_LPAREN,
+	TOK_RPAREN
 } tokenKind;
 
 typedef struct identifierId {
