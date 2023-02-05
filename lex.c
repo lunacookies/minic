@@ -6,9 +6,12 @@ static const char *keywords[] = {
 static const tokenKind keywordKinds[] = { TOK_FUNC, TOK_RETURN, TOK_VAR,
 					  TOK_SET,  TOK_IF,	TOK_ELSE };
 
-static const char singleCharTokens[] = { '=', '+', '-', '*', '/',
-					 '{', '}', '(', ')' };
-static const tokenKind singleCharTokenKinds[] = {
+static const char twoCharTokens[][2] = { { '=', '=' }, { '!', '=' } };
+static const tokenKind twoCharTokenKinds[] = { TOK_EQUALEQUAL, TOK_BANGEQUAL };
+
+static const char oneCharTokens[] = { '=', '+', '-', '*', '/',
+				      '{', '}', '(', ')' };
+static const tokenKind oneCharTokenKinds[] = {
 	TOK_EQUAL,  TOK_PLUS,	TOK_DASH,   TOK_STAR,  TOK_SLASH,
 	TOK_LBRACE, TOK_RBRACE, TOK_LPAREN, TOK_RPAREN
 };
@@ -98,16 +101,31 @@ tokenBuffer lex(u8 *input, memory *m)
 			goto next;
 		}
 
-		usize single_char_tokens_count =
-			sizeof(singleCharTokens) / sizeof(singleCharTokens[0]);
-		for (usize j = 0; j < single_char_tokens_count; j++) {
-			if (input[i] != singleCharTokens[j])
+		usize two_char_tokens_count =
+			sizeof(twoCharTokens) / sizeof(twoCharTokens[0]);
+		for (usize j = 0; j < two_char_tokens_count; j++) {
+			char first = twoCharTokens[j][0];
+			char second = twoCharTokens[j][1];
+			u32 start = i;
+			if (input[i] != first)
 				continue;
-			tokenKind kind = singleCharTokenKinds[j];
+			if (input[i + 1] != second)
+				continue;
+			i += 2;
+			u32 end = i;
+			pushToken(twoCharTokenKinds[j], start, end, &buf, m);
+			goto next;
+		}
+
+		usize one_char_tokens_count =
+			sizeof(oneCharTokens) / sizeof(oneCharTokens[0]);
+		for (usize j = 0; j < one_char_tokens_count; j++) {
+			if (input[i] != oneCharTokens[j])
+				continue;
 			u32 start = i;
 			i++;
 			u32 end = i;
-			pushToken(kind, start, end, &buf, m);
+			pushToken(oneCharTokenKinds[j], start, end, &buf, m);
 			goto next;
 		}
 
@@ -164,6 +182,10 @@ u8 *showTokenKind(tokenKind kind)
 		return (u8 *)"“else”";
 	case TOK_EQUAL:
 		return (u8 *)"“=”";
+	case TOK_EQUALEQUAL:
+		return (u8 *)"“==”";
+	case TOK_BANGEQUAL:
+		return (u8 *)"“!=”";
 	case TOK_PLUS:
 		return (u8 *)"“+”";
 	case TOK_DASH:
@@ -208,6 +230,10 @@ u8 *debugTokenKind(tokenKind kind)
 		return (u8 *)"ELSE";
 	case TOK_EQUAL:
 		return (u8 *)"EQUAL";
+	case TOK_EQUALEQUAL:
+		return (u8 *)"EQUALEQUAL";
+	case TOK_BANGEQUAL:
+		return (u8 *)"BANGEQUAL";
 	case TOK_PLUS:
 		return (u8 *)"PLUS";
 	case TOK_DASH:
