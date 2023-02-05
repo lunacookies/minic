@@ -28,6 +28,6 @@ test: all
 	./test.sh
 
 clean:
-	rm minic *.o tmp*
+	rm minic *.o
 
 .PHONY: tidy test clean
