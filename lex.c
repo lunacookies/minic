@@ -6,14 +6,18 @@ static const tokenKind keywordKinds[] = { TOK_FUNC, TOK_RETURN, TOK_VAR,
 					  TOK_SET,  TOK_IF,	TOK_ELSE,
 					  TOK_WHILE };
 
-static const char twoCharTokens[][2] = { { '=', '=' }, { '!', '=' } };
-static const tokenKind twoCharTokenKinds[] = { TOK_EQUALEQUAL, TOK_BANGEQUAL };
+static const char twoCharTokens[][2] = {
+	{ '=', '=' }, { '!', '=' }, { '<', '=' }, { '>', '=' }
+};
+static const tokenKind twoCharTokenKinds[] = { TOK_EQUAL_EQUAL, TOK_BANG_EQUAL,
+					       TOK_LANGLE_EQUAL,
+					       TOK_RANGLE_EQUAL };
 
-static const char oneCharTokens[] = { '=', '+', '-', '*', '/',
-				      '{', '}', '(', ')' };
+static const char oneCharTokens[] = { '=', '+', '-', '*', '/', '{',
+				      '}', '(', ')', '<', '>' };
 static const tokenKind oneCharTokenKinds[] = {
-	TOK_EQUAL,  TOK_PLUS,	TOK_DASH,   TOK_STAR,  TOK_SLASH,
-	TOK_LBRACE, TOK_RBRACE, TOK_LPAREN, TOK_RPAREN
+	TOK_EQUAL,  TOK_PLUS,	TOK_DASH,   TOK_STAR,	TOK_SLASH, TOK_LBRACE,
+	TOK_RBRACE, TOK_LPAREN, TOK_RPAREN, TOK_LANGLE, TOK_RANGLE
 };
 
 static void pushToken(tokenKind kind, u32 start, u32 end, tokenBuffer *buf,
@@ -189,9 +193,9 @@ u8 *showTokenKind(tokenKind kind)
 		return (u8 *)"“while”";
 	case TOK_EQUAL:
 		return (u8 *)"“=”";
-	case TOK_EQUALEQUAL:
+	case TOK_EQUAL_EQUAL:
 		return (u8 *)"“==”";
-	case TOK_BANGEQUAL:
+	case TOK_BANG_EQUAL:
 		return (u8 *)"“!=”";
 	case TOK_PLUS:
 		return (u8 *)"“+”";
@@ -209,6 +213,14 @@ u8 *showTokenKind(tokenKind kind)
 		return (u8 *)"“(”";
 	case TOK_RPAREN:
 		return (u8 *)"“)”";
+	case TOK_LANGLE:
+		return (u8 *)"“<”";
+	case TOK_LANGLE_EQUAL:
+		return (u8 *)"“<=”";
+	case TOK_RANGLE:
+		return (u8 *)"“>”";
+	case TOK_RANGLE_EQUAL:
+		return (u8 *)"“>=”";
 	}
 }
 
@@ -239,10 +251,10 @@ u8 *debugTokenKind(tokenKind kind)
 		return (u8 *)"WHILE";
 	case TOK_EQUAL:
 		return (u8 *)"EQUAL";
-	case TOK_EQUALEQUAL:
-		return (u8 *)"EQUALEQUAL";
-	case TOK_BANGEQUAL:
-		return (u8 *)"BANGEQUAL";
+	case TOK_EQUAL_EQUAL:
+		return (u8 *)"EQUAL_EQUAL";
+	case TOK_BANG_EQUAL:
+		return (u8 *)"BANG_EQUAL";
 	case TOK_PLUS:
 		return (u8 *)"PLUS";
 	case TOK_DASH:
@@ -259,6 +271,14 @@ u8 *debugTokenKind(tokenKind kind)
 		return (u8 *)"LPAREN";
 	case TOK_RPAREN:
 		return (u8 *)"RPAREN";
+	case TOK_LANGLE:
+		return (u8 *)"LANGLE";
+	case TOK_LANGLE_EQUAL:
+		return (u8 *)"LANGLE_EQUAL";
+	case TOK_RANGLE:
+		return (u8 *)"RANGLE";
+	case TOK_RANGLE_EQUAL:
+		return (u8 *)"RANGLE_EQUAL";
 	}
 }
 

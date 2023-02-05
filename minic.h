@@ -118,8 +118,8 @@ typedef enum tokenKind {
 	TOK_ELSE,
 	TOK_WHILE,
 	TOK_EQUAL,
-	TOK_EQUALEQUAL,
-	TOK_BANGEQUAL,
+	TOK_EQUAL_EQUAL,
+	TOK_BANG_EQUAL,
 	TOK_PLUS,
 	TOK_DASH,
 	TOK_STAR,
@@ -127,7 +127,11 @@ typedef enum tokenKind {
 	TOK_LBRACE,
 	TOK_RBRACE,
 	TOK_LPAREN,
-	TOK_RPAREN
+	TOK_RPAREN,
+	TOK_LANGLE,
+	TOK_LANGLE_EQUAL,
+	TOK_RANGLE,
+	TOK_RANGLE_EQUAL
 } tokenKind;
 
 typedef struct identifierId {

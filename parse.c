@@ -182,11 +182,11 @@ static astExpression *expressionBindingPower(parser *p, u8 min_binding_power,
 			binding_power = 3;
 			op = AST_BINOP_DIVIDE;
 			break;
-		case TOK_EQUALEQUAL:
+		case TOK_EQUAL_EQUAL:
 			binding_power = 1;
 			op = AST_BINOP_EQUAL;
 			break;
-		case TOK_BANGEQUAL:
+		case TOK_BANG_EQUAL:
 			binding_power = 1;
 			op = AST_BINOP_NOT_EQUAL;
 			break;
