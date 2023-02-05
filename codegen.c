@@ -134,7 +134,8 @@ static void gen(char **s, hirNode *node, char *function_name, u32 *id)
 		gen(s, node->true_branch, function_name, id);
 		instruction(s, "b", "ENDIF_%s_%u", function_name, i);
 		label(s, "ELSE_%s_%u", function_name, i);
-		gen(s, node->false_branch, function_name, id);
+		if (node->false_branch != NULL)
+			gen(s, node->false_branch, function_name, id);
 		label(s, "ENDIF_%s_%u", function_name, i);
 		break;
 	}

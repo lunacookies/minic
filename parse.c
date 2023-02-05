@@ -267,8 +267,11 @@ static astStatement *statement(parser *p, memory *m)
 		expect(p, TOK_IF);
 		astExpression *condition = expression(p, m);
 		astStatement *true_branch = statement(p, m);
-		expect(p, TOK_ELSE);
-		astStatement *false_branch = statement(p, m);
+		astStatement *false_branch = NULL;
+		if (at(p, TOK_ELSE)) {
+			expect(p, TOK_ELSE);
+			false_branch = statement(p, m);
+		}
 		s.kind = AST_STMT_IF;
 		s.condition = condition;
 		s.true_branch = true_branch;
@@ -477,18 +480,21 @@ static void debugStatement(astStatement *statement, interner interner,
 		printf("\033[32mif\033[0m ");
 		debugExpression(statement->condition, interner);
 		indentation++;
-		newline(indentation);
 
+		newline(indentation);
 		debugStatement(statement->true_branch, interner, indentation);
 		indentation--;
-		newline(indentation);
 
-		printf("\033[32melse\033[0m");
-		indentation++;
-		newline(indentation);
+		if (statement->false_branch != NULL) {
+			newline(indentation);
+			printf("\033[32melse\033[0m");
+			indentation++;
 
-		debugStatement(statement->false_branch, interner, indentation);
-		indentation--;
+			newline(indentation);
+			debugStatement(statement->false_branch, interner,
+				       indentation);
+			indentation--;
+		}
 		break;
 
 	case AST_STMT_WHILE:

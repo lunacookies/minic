@@ -139,8 +139,9 @@ static hirNode *lowerStatement(astStatement *ast_statement, hirLocal **locals,
 			lowerExpression(ast_statement->condition, locals, m);
 		node.true_branch =
 			lowerStatement(ast_statement->true_branch, locals, m);
-		node.false_branch =
-			lowerStatement(ast_statement->false_branch, locals, m);
+		if (ast_statement->false_branch != NULL)
+			node.false_branch = lowerStatement(
+				ast_statement->false_branch, locals, m);
 		break;
 
 	case AST_STMT_WHILE:
@@ -305,18 +306,20 @@ static void debugNode(hirNode *node, interner interner, u32 indentation)
 		printf("\033[32mif\033[0m ");
 		debugNode(node->condition, interner, indentation);
 		indentation++;
-		newline(indentation);
 
+		newline(indentation);
 		debugNode(node->true_branch, interner, indentation);
 		indentation--;
-		newline(indentation);
 
-		printf("\033[32melse\033[0m");
-		indentation++;
-		newline(indentation);
+		if (node->false_branch != NULL) {
+			newline(indentation);
+			printf("\033[32melse\033[0m");
+			indentation++;
 
-		debugNode(node->false_branch, interner, indentation);
-		indentation--;
+			newline(indentation);
+			debugNode(node->false_branch, interner, indentation);
+			indentation--;
+		}
 		break;
 
 	case HIR_WHILE:
