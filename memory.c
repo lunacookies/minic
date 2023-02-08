@@ -7,8 +7,8 @@
 
 static u8 *allocFromOs(usize size, u8 *desired_addr)
 {
-	void *ptr = mmap(desired_addr, size, PROT_READ | PROT_WRITE,
-			 MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+	u8 *ptr = mmap(desired_addr, size, PROT_READ | PROT_WRITE,
+		       MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
 	assert(ptr == desired_addr);
 	return ptr;
 }
