@@ -210,7 +210,7 @@ static astExpression *expressionBindingPower(parser *p, u8 min_binding_power,
 			return lhs;
 		}
 		assert(binding_power != 0);
-		assert(op != (u32)-1);
+		assert(op != (u8)-1);
 
 		if (binding_power < min_binding_power)
 			return lhs;

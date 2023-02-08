@@ -1,5 +1,6 @@
 CFLAGS=\
 	-std=c11 \
+	-fshort-enums \
 	-fsanitize=address \
 	-g \
 	-W \
