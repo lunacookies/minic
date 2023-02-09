@@ -47,3 +47,10 @@ void *allocateInBump(bump *b, usize size)
 	memset(ptr, UNINIT_SENTINEL, size);
 	return ptr;
 }
+
+void *copyInBump(bump *b, void *buffer, usize size)
+{
+	void *ptr = allocateInBump(b, size);
+	memcpy(ptr, buffer, size);
+	return ptr;
+}

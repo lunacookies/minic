@@ -23,34 +23,42 @@ static hirLocal *addLocal(identifierId name, hirType type, hirLocal **locals,
 	return ptr;
 }
 
-static hirNode *lowerExpression(astExpression *ast_expression,
+static hirNode *lowerExpression(astRoot ast, astExpression ast_expression,
 				hirLocal **locals, memory *m)
 {
-	hirNode node = { .span = ast_expression->span };
+	hirNode node = { .span = astGetExpressionSpan(ast, ast_expression) };
 
-	switch (ast_expression->kind) {
+	switch (astGetExpressionKind(ast, ast_expression)) {
 	case AST_EXPR_MISSING:
 		node.kind = HIR_MISSING;
 		node.type = HIR_TYPE_VOID;
 		break;
 
-	case AST_EXPR_INT_LITERAL:
+	case AST_EXPR_INT_LITERAL: {
+		astIntLiteral ast_int_literal =
+			astGetExpression(ast, ast_expression).int_literal;
 		node.kind = HIR_INT_LITERAL;
 		node.type = HIR_TYPE_I64;
-		node.value = ast_expression->value;
+		node.value = ast_int_literal.value;
 		break;
+	}
 
 	case AST_EXPR_VARIABLE: {
-		if (ast_expression->name.raw == (u32)-1) {
+		astVariable ast_variable =
+			astGetExpression(ast, ast_expression).variable;
+
+		if (ast_variable.name.raw == (u32)-1) {
 			node.kind = HIR_MISSING;
 			node.type = HIR_TYPE_VOID;
 			break;
 		}
 
-		hirLocal *local = lookupLocal(ast_expression->name, *locals);
+		hirLocal *local = lookupLocal(ast_variable.name, *locals);
 		if (local == NULL) {
-			sendDiagnosticToSink(DIAG_ERROR, ast_expression->span,
-					     "undefined variable");
+			sendDiagnosticToSink(
+				DIAG_ERROR,
+				astGetExpressionSpan(ast, ast_expression),
+				"undefined variable");
 			node.kind = HIR_MISSING;
 			node.type = HIR_TYPE_VOID;
 			break;
@@ -62,13 +70,18 @@ static hirNode *lowerExpression(astExpression *ast_expression,
 		break;
 	}
 
-	case AST_EXPR_BINARY_OPERATION:
+	case AST_EXPR_BINARY_OPERATION: {
+		astBinaryOperation ast_binary_operation =
+			astGetExpression(ast, ast_expression).binary_operation;
 		node.kind = HIR_BINARY_OPERATION;
-		node.lhs = lowerExpression(ast_expression->lhs, locals, m);
-		node.rhs = lowerExpression(ast_expression->rhs, locals, m);
-		node.op = ast_expression->op;
+		node.lhs = lowerExpression(ast, ast_binary_operation.lhs,
+					   locals, m);
+		node.rhs = lowerExpression(ast, ast_binary_operation.rhs,
+					   locals, m);
+		node.op = ast_binary_operation.op;
 		node.type = node.lhs->type;
 		break;
+	}
 	}
 
 	hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
@@ -76,40 +89,48 @@ static hirNode *lowerExpression(astExpression *ast_expression,
 	return ptr;
 }
 
-static hirNode *lowerStatement(astStatement *ast_statement, hirLocal **locals,
-			       memory *m)
+static hirNode *lowerStatement(astRoot ast, astStatement ast_statement,
+			       hirLocal **locals, memory *m)
 {
-	hirNode node = { .span = ast_statement->span };
+	hirNode node = { .span = astGetStatementSpan(ast, ast_statement) };
 
-	switch (ast_statement->kind) {
+	switch (astGetStatementKind(ast, ast_statement)) {
 	case AST_STMT_MISSING:
 		node.kind = HIR_MISSING;
 		node.type = HIR_TYPE_VOID;
 		break;
 
-	case AST_STMT_RETURN:
+	case AST_STMT_RETURN: {
+		astReturn ast_retrn = astGetStatement(ast, ast_statement).retrn;
 		node.kind = HIR_RETURN;
 		node.type = HIR_TYPE_VOID;
-		node.lhs = lowerExpression(ast_statement->value, locals, m);
+		node.lhs = lowerExpression(ast, ast_retrn.value, locals, m);
 		break;
+	}
 
 	case AST_STMT_LOCAL_DEFINITION: {
+		astLocalDefinition ast_local_definition =
+			astGetStatement(ast, ast_statement).local_definition;
+
 		hirLocal *existing_local =
-			lookupLocal(ast_statement->name, *locals);
+			lookupLocal(ast_local_definition.name, *locals);
 		if (existing_local != NULL)
-			sendDiagnosticToSink(DIAG_ERROR, ast_statement->span,
-					     "cannot shadow existing variable");
+			sendDiagnosticToSink(
+				DIAG_ERROR,
+				astGetStatementSpan(ast, ast_statement),
+				"cannot shadow existing variable");
 
-		hirNode *rhs = lowerExpression(ast_statement->value, locals, m);
+		hirNode *rhs = lowerExpression(ast, ast_local_definition.value,
+					       locals, m);
 
-		if (ast_statement->name.raw == (u32)-1) {
+		if (ast_local_definition.name.raw == (u32)-1) {
 			node.kind = HIR_MISSING;
 			node.type = HIR_TYPE_VOID;
 			break;
 		}
 
-		hirLocal *local =
-			addLocal(ast_statement->name, rhs->type, locals, m);
+		hirLocal *local = addLocal(ast_local_definition.name, rhs->type,
+					   locals, m);
 		hirNode lhs_no_ptr = {
 			.kind = HIR_VARIABLE,
 			.type = local->type,
@@ -125,43 +146,53 @@ static hirNode *lowerStatement(astStatement *ast_statement, hirLocal **locals,
 		break;
 	}
 
-	case AST_STMT_ASSIGN:
+	case AST_STMT_ASSIGN: {
+		astAssign ast_assign =
+			astGetStatement(ast, ast_statement).assign;
 		node.kind = HIR_ASSIGN;
 		node.type = HIR_TYPE_VOID;
-		node.lhs = lowerExpression(ast_statement->lhs, locals, m);
-		node.rhs = lowerExpression(ast_statement->rhs, locals, m);
+		node.lhs = lowerExpression(ast, ast_assign.lhs, locals, m);
+		node.rhs = lowerExpression(ast, ast_assign.rhs, locals, m);
 		break;
+	}
 
-	case AST_STMT_IF:
+	case AST_STMT_IF: {
+		astIf ast_if = astGetStatement(ast, ast_statement).if_;
 		node.kind = HIR_IF;
 		node.type = HIR_TYPE_VOID;
 		node.condition =
-			lowerExpression(ast_statement->condition, locals, m);
+			lowerExpression(ast, ast_if.condition, locals, m);
 		node.true_branch =
-			lowerStatement(ast_statement->true_branch, locals, m);
-		if (ast_statement->false_branch != NULL)
+			lowerStatement(ast, ast_if.true_branch, locals, m);
+		if (ast_if.false_branch.index != (u16)-1)
 			node.false_branch = lowerStatement(
-				ast_statement->false_branch, locals, m);
+				ast, ast_if.false_branch, locals, m);
 		break;
+	}
 
-	case AST_STMT_WHILE:
+	case AST_STMT_WHILE: {
+		astWhile ast_while = astGetStatement(ast, ast_statement).while_;
 		node.kind = HIR_WHILE;
 		node.type = HIR_TYPE_VOID;
 		node.condition =
-			lowerExpression(ast_statement->condition, locals, m);
+			lowerExpression(ast, ast_while.condition, locals, m);
 		node.true_branch =
-			lowerStatement(ast_statement->true_branch, locals, m);
+			lowerStatement(ast, ast_while.true_branch, locals, m);
 		break;
+	}
 
 	case AST_STMT_BLOCK: {
+		astBlock ast_block = astGetStatement(ast, ast_statement).block;
+
 		bumpMark mark = markBump(&m->temp);
 		hirNode *children_top =
 			(hirNode *)(m->temp.top + m->temp.bytes_used);
 		usize count = 0;
 
-		for (usize i = 0; i < ast_statement->count; i++) {
-			astStatement *ast_child = ast_statement->statements[i];
-			hirNode *child = lowerStatement(ast_child, locals, m);
+		for (astStatement ast_child = ast_block.start;
+		     ast_child.index < ast_block.end.index; ast_child.index++) {
+			hirNode *child =
+				lowerStatement(ast, ast_child, locals, m);
 			if (child == NULL)
 				continue;
 			hirNode **ptr =
@@ -193,16 +224,18 @@ hirRoot lower(astRoot ast, memory *m)
 	hirFunction *head = NULL;
 	hirFunction *current_function = NULL;
 
-	for (astFunction *ast_function = ast.functions; ast_function != NULL;
-	     ast_function = ast_function->next) {
-		if (ast_function->name.raw == (u32)-1)
+	for (u16 i = 0; i < ast.function_count; i++) {
+		astFunction ast_function = ast.functions[i];
+
+		if (ast_function.name.raw == (u32)-1)
 			continue;
 
 		hirLocal *locals = NULL;
-		hirNode *body = lowerStatement(ast_function->body, &locals, m);
+		hirNode *body =
+			lowerStatement(ast, ast_function.body, &locals, m);
 
 		hirFunction function = {
-			.name = ast_function->name,
+			.name = ast_function.name,
 			.body = body,
 			.locals = locals,
 		};

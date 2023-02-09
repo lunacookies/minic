@@ -1,10 +1,62 @@
 #include "minic.h"
 
+#define MAX_EXPRESSION_COUNT (63 * 1024)
+#define MAX_STATEMENT_COUNT (63 * 1024)
+
+typedef struct fullExpression {
+	astExpressionData data;
+	astExpressionKind kind;
+	span span;
+} fullExpression;
+
+typedef struct fullStatement {
+	astStatementData data;
+	astStatementKind kind;
+	span span;
+} fullStatement;
+
 typedef struct parser {
 	tokenBuffer tokens;
 	usize cursor;
 	u8 *content;
+	astRoot ast;
 } parser;
+
+static astExpression allocateExpression(parser *p, fullExpression expression)
+{
+	if (p->ast.expression_count >= MAX_EXPRESSION_COUNT) {
+		sendDiagnosticToSink(DIAG_ERROR, expression.span,
+				     "reached limit of %u expressions",
+				     MAX_EXPRESSION_COUNT);
+		internalError("ran out of expression slots");
+	}
+
+	u16 i = p->ast.expression_count;
+	p->ast.expression_count++;
+	p->ast.expressions[i] = expression.data;
+	p->ast.expression_kinds[i] = expression.kind;
+	p->ast.expression_spans[i] = expression.span;
+	astExpression e = { .index = i };
+	return e;
+}
+
+static astStatement allocateStatement(parser *p, fullStatement statement)
+{
+	if (p->ast.statement_count >= MAX_STATEMENT_COUNT) {
+		sendDiagnosticToSink(DIAG_ERROR, statement.span,
+				     "reached limit of %u statements",
+				     MAX_STATEMENT_COUNT);
+		internalError("ran out of statement slots");
+	}
+
+	u16 i = p->ast.statement_count;
+	p->ast.statement_count++;
+	p->ast.statements[i] = statement.data;
+	p->ast.statement_kinds[i] = statement.kind;
+	p->ast.statement_spans[i] = statement.span;
+	astStatement s = { .index = i };
+	return s;
+}
 
 static bool atEof(parser *p)
 {
@@ -100,14 +152,16 @@ static identifierId expectIdentifier(parser *p)
 	return id;
 }
 
-static astExpression *expression(parser *p, memory *m);
+static fullExpression expression(parser *p, memory *m);
 
-static astExpression *expressionLhs(parser *p, memory *m)
+static fullExpression expressionLhs(parser *p, memory *m)
 {
-	astExpression e = { .span.start =
-				    atEof(p)
-					    ? p->tokens.spans[p->cursor - 1].end
-					    : currentSpan(p).start };
+	fullExpression e = {
+		.data = { 0 },
+		.kind = -1,
+		.span = { .start = atEof(p) ? p->tokens.spans[p->cursor - 1].end
+					    : currentSpan(p).start },
+	};
 
 	switch (current(p)) {
 	case TOK_NUMBER: {
@@ -123,20 +177,20 @@ static astExpression *expressionLhs(parser *p, memory *m)
 		assert(num_bytes_converted == token_length);
 
 		e.kind = AST_EXPR_INT_LITERAL;
-		e.value = value;
+		e.data.int_literal.value = value;
 		break;
 	}
 
 	case TOK_IDENTIFIER: {
 		identifierId name = expectIdentifier(p);
 		e.kind = AST_EXPR_VARIABLE;
-		e.name = name;
+		e.data.variable.name = name;
 		break;
 	}
 
 	case TOK_LPAREN: {
 		expect(p, TOK_LPAREN);
-		astExpression *inner = expression(p, m);
+		fullExpression inner = expression(p, m);
 		expect(p, TOK_RPAREN);
 		return inner;
 	}
@@ -147,17 +201,15 @@ static astExpression *expressionLhs(parser *p, memory *m)
 		break;
 	}
 
+	assert(e.kind != (u8)-1);
 	e.span.end = p->tokens.spans[p->cursor - 1].end;
-
-	astExpression *ptr = allocateInBump(&m->general, sizeof(astExpression));
-	*ptr = e;
-	return ptr;
+	return e;
 }
 
-static astExpression *expressionBindingPower(parser *p, u8 min_binding_power,
+static fullExpression expressionBindingPower(parser *p, u8 min_binding_power,
 					     memory *m)
 {
-	astExpression *lhs = expressionLhs(p, m);
+	fullExpression lhs = expressionLhs(p, m);
 
 	while (true) {
 		if (atEof(p))
@@ -218,42 +270,44 @@ static astExpression *expressionBindingPower(parser *p, u8 min_binding_power,
 		// skip past operator token
 		addToken(p);
 
-		astExpression *rhs =
+		fullExpression rhs =
 			expressionBindingPower(p, binding_power + 1, m);
 
-		span span = {
-			.start = lhs->span.start,
+		astExpression allocd_lhs = allocateExpression(p, lhs);
+		astExpression allocd_rhs = allocateExpression(p, rhs);
+
+		fullExpression new_lhs = { .data = {.binary_operation = {
+						      .lhs = allocd_lhs,
+						      .rhs = allocd_rhs,
+								      .op = op,
+					      }}, .kind = AST_EXPR_BINARY_OPERATION, .span = {
+			.start = astGetExpressionSpan(p->ast, allocd_lhs).start,
 			.end = p->tokens.spans[p->cursor - 1].end,
-		};
-		astExpression new_lhs = { .kind = AST_EXPR_BINARY_OPERATION,
-					  .span = span,
-					  .lhs = lhs,
-					  .rhs = rhs,
-					  .op = op };
-		astExpression *ptr =
-			allocateInBump(&m->general, sizeof(astExpression));
-		*ptr = new_lhs;
-		lhs = ptr;
+		}, };
+		lhs = new_lhs;
 	}
 }
 
-static astExpression *expression(parser *p, memory *m)
+static fullExpression expression(parser *p, memory *m)
 {
 	return expressionBindingPower(p, 0, m);
 }
 
-static astStatement *statement(parser *p, memory *m)
+static fullStatement statement(parser *p, memory *m)
 {
-	astStatement s = { .span.start =
-				   atEof(p) ? p->tokens.spans[p->cursor - 1].end
-					    : currentSpan(p).start };
+	fullStatement s = {
+		.data = { 0 },
+		.kind = -1,
+		.span = { .start = atEof(p) ? p->tokens.spans[p->cursor - 1].end
+					    : currentSpan(p).start },
+	};
 
 	switch (current(p)) {
 	case TOK_RETURN: {
 		expect(p, TOK_RETURN);
-		astExpression *value = expression(p, m);
+		astExpression value = allocateExpression(p, expression(p, m));
 		s.kind = AST_STMT_RETURN;
-		s.value = value;
+		s.data.retrn.value = value;
 		break;
 	}
 
@@ -261,77 +315,87 @@ static astStatement *statement(parser *p, memory *m)
 		expect(p, TOK_VAR);
 		identifierId name = expectIdentifier(p);
 		expect(p, TOK_EQUAL);
-		astExpression *value = expression(p, m);
+		astExpression value = allocateExpression(p, expression(p, m));
 		s.kind = AST_STMT_LOCAL_DEFINITION;
-		s.name = name;
-		s.value = value;
+		s.data.local_definition.name = name;
+		s.data.local_definition.value = value;
 		break;
 	}
 
 	case TOK_SET: {
 		expect(p, TOK_SET);
-		astExpression *lhs = expression(p, m);
+		astExpression lhs = allocateExpression(p, expression(p, m));
 		expect(p, TOK_EQUAL);
-		astExpression *rhs = expression(p, m);
+		astExpression rhs = allocateExpression(p, expression(p, m));
 		s.kind = AST_STMT_ASSIGN;
-		s.lhs = lhs;
-		s.rhs = rhs;
+		s.data.assign.lhs = lhs;
+		s.data.assign.rhs = rhs;
 		break;
 	}
 
 	case TOK_IF: {
 		expect(p, TOK_IF);
-		astExpression *condition = expression(p, m);
-		astStatement *true_branch = statement(p, m);
-		astStatement *false_branch = NULL;
+		astExpression condition =
+			allocateExpression(p, expression(p, m));
+		astStatement true_branch =
+			allocateStatement(p, statement(p, m));
+		astStatement false_branch = { .index = -1 };
 		if (at(p, TOK_ELSE)) {
 			expect(p, TOK_ELSE);
-			false_branch = statement(p, m);
+			false_branch = allocateStatement(p, statement(p, m));
 		}
 		s.kind = AST_STMT_IF;
-		s.condition = condition;
-		s.true_branch = true_branch;
-		s.false_branch = false_branch;
+		s.data.if_.condition = condition;
+		s.data.if_.true_branch = true_branch;
+		s.data.if_.false_branch = false_branch;
 		break;
 	}
 
 	case TOK_WHILE: {
 		expect(p, TOK_WHILE);
-		astExpression *condition = expression(p, m);
-		astStatement *body = statement(p, m);
+		astExpression condition =
+			allocateExpression(p, expression(p, m));
+		astStatement body = allocateStatement(p, statement(p, m));
 		s.kind = AST_STMT_WHILE;
-		s.condition = condition;
-		s.true_branch = body;
+		s.data.while_.condition = condition;
+		s.data.while_.true_branch = body;
 		break;
 	}
 
 	case TOK_LBRACE: {
 		expect(p, TOK_LBRACE);
-		astStatement *statements_start =
-			(astStatement *)(m->temp.top + m->temp.bytes_used);
-		u32 count = 0;
+		fullStatement *statements_start =
+			(fullStatement *)(m->temp.top + m->temp.bytes_used);
+		u16 count = 0;
 
 		bumpMark mark = markBump(&m->temp);
 
 		while (!at(p, TOK_RBRACE) && !atEof(p) && !atItemFirst(p)) {
-			astStatement *stmt = statement(p, m);
-			astStatement **stmt_ptr = allocateInBump(
-				&m->temp, sizeof(astStatement *));
+			fullStatement stmt = statement(p, m);
+			fullStatement *stmt_ptr =
+				allocateInBump(&m->temp, sizeof(fullStatement));
 			*stmt_ptr = stmt;
 			count++;
 		}
 		expect(p, TOK_RBRACE);
 
-		astStatement **statements = allocateInBump(
-			&m->general, sizeof(astStatement *) * count);
-		memcpy(statements, statements_start,
-		       sizeof(astStatement *) * count);
+		astStatement start = { .index = -1 };
+		astStatement end = { .index = -1 };
+
+		for (u16 i = 0; i < count; i++) {
+			astStatement this =
+				allocateStatement(p, statements_start[i]);
+			if (start.index == (u16)-1)
+				start = this;
+			end = this;
+			end.index++; // inclusive start, exclusive end
+		}
 
 		clearBumpToMark(&m->temp, mark);
 
 		s.kind = AST_STMT_BLOCK;
-		s.statements = statements;
-		s.count = count;
+		s.data.block.start = start;
+		s.data.block.end = end;
 		break;
 	}
 
@@ -341,54 +405,56 @@ static astStatement *statement(parser *p, memory *m)
 		break;
 	}
 
+	assert(s.kind != (u8)-1);
 	s.span.end = p->tokens.spans[p->cursor - 1].end;
-
-	astStatement *ptr = allocateInBump(&m->general, sizeof(astStatement));
-	*ptr = s;
-	return ptr;
+	return s;
 }
 
-static astFunction *function(parser *p, memory *m)
+static astFunction function(parser *p, memory *m)
 {
 	assert(at(p, TOK_FUNC));
 	expect(p, TOK_FUNC);
 
 	identifierId name = expectIdentifier(p);
-	astStatement *body = statement(p, m);
+	astStatement body = allocateStatement(p, statement(p, m));
 
 	astFunction f = {
 		.name = name,
 		.body = body,
-		.next = NULL,
 	};
-	astFunction *ptr = allocateInBump(&m->general, sizeof(astFunction));
-	*ptr = f;
-	return ptr;
+	return f;
 }
 
 astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 {
+	bumpMark mark = markBump(&m->temp);
+
 	parser p = {
 		.tokens = tokens,
 		.cursor = 0,
 		.content = content,
+		.ast = {
+			.functions = (astFunction *)(m->general.top + m->general.bytes_used),
+			.statements = allocateInBump(&m->temp, sizeof(astStatementData) * MAX_STATEMENT_COUNT),
+			.statement_kinds = allocateInBump(&m->temp, sizeof(astStatementKind) * MAX_STATEMENT_COUNT),
+			.statement_spans = allocateInBump(&m->temp, sizeof(span) * MAX_STATEMENT_COUNT),
+			.expressions = allocateInBump(&m->temp, sizeof(astStatementData) * MAX_EXPRESSION_COUNT),
+			.expression_kinds = allocateInBump(&m->temp, sizeof(astStatementKind) * MAX_EXPRESSION_COUNT),
+			.expression_spans = allocateInBump(&m->temp, sizeof(span) * MAX_EXPRESSION_COUNT),
+			.function_count = 0,
+			.statement_count = 0,
+			.expression_count = 0,
+		},
 	};
 
-	astFunction *head = NULL;
-	astFunction *current_function = NULL;
-
-	bumpMark mark = markBump(&m->temp);
 	while (!atEof(&p)) {
 		switch (current(&p)) {
 		case TOK_FUNC: {
-			astFunction *new_function = function(&p, m);
-			if (head == NULL) {
-				head = new_function;
-				current_function = new_function;
-			} else {
-				current_function->next = new_function;
-				current_function = new_function;
-			}
+			astFunction f = function(&p, m);
+			astFunction *ptr = allocateInBump(&m->general,
+							  sizeof(astFunction));
+			*ptr = f;
+			p.ast.function_count++;
 			break;
 		}
 		default:
@@ -396,43 +462,113 @@ astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 			break;
 		}
 	}
+
+	p.ast.statements =
+		copyInBump(&m->general, p.ast.statements,
+			   sizeof(astStatementData) * p.ast.statement_count);
+	p.ast.statement_kinds =
+		copyInBump(&m->general, p.ast.statement_kinds,
+			   sizeof(astStatementKind) * p.ast.statement_count);
+	p.ast.statement_spans =
+		copyInBump(&m->general, p.ast.statement_spans,
+			   sizeof(span) * p.ast.statement_count);
+
+	p.ast.expressions =
+		copyInBump(&m->general, p.ast.expressions,
+			   sizeof(astExpressionData) * p.ast.expression_count);
+	p.ast.expression_kinds =
+		copyInBump(&m->general, p.ast.expression_kinds,
+			   sizeof(astExpressionKind) * p.ast.expression_count);
+	p.ast.expression_spans =
+		copyInBump(&m->general, p.ast.expression_spans,
+			   sizeof(span) * p.ast.expression_count);
+
 	clearBumpToMark(&m->temp, mark);
 
-	astRoot root = { .functions = head };
-	return root;
+	return p.ast;
 }
 
-static void newline(u32 indentation)
+astStatementData astGetStatement(astRoot ast, astStatement statement)
+{
+	assert(statement.index < ast.statement_count);
+	return ast.statements[statement.index];
+}
+
+astStatementKind astGetStatementKind(astRoot ast, astStatement statement)
+{
+	assert(statement.index < ast.statement_count);
+	return ast.statement_kinds[statement.index];
+}
+
+span astGetStatementSpan(astRoot ast, astStatement statement)
+{
+	assert(statement.index < ast.statement_count);
+	return ast.statement_spans[statement.index];
+}
+
+astExpressionData astGetExpression(astRoot ast, astExpression expression)
+{
+	assert(expression.index < ast.expression_count);
+	return ast.expressions[expression.index];
+}
+
+astExpressionKind astGetExpressionKind(astRoot ast, astExpression expression)
+{
+	assert(expression.index < ast.expression_count);
+	return ast.expression_kinds[expression.index];
+}
+
+span astGetExpressionSpan(astRoot ast, astExpression expression)
+{
+	assert(expression.index < ast.expression_count);
+	return ast.expression_spans[expression.index];
+}
+
+typedef struct ctx {
+	astRoot ast;
+	interner interner;
+	u32 indentation;
+} ctx;
+
+static void newline(ctx *c)
 {
 	printf("\n");
-	for (u32 i = 0; i < indentation; i++)
+	for (u32 i = 0; i < c->indentation; i++)
 		printf("\t");
 }
 
-static void debugExpression(astExpression *expression, interner interner)
+static void debugExpression(ctx *c, astExpression expression)
 {
-	switch (expression->kind) {
+	switch (astGetExpressionKind(c->ast, expression)) {
 	case AST_EXPR_MISSING:
 		printf("\033[7;31m<missing>\033[0m");
 		break;
 
-	case AST_EXPR_INT_LITERAL:
-		printf("\033[36m%llu\033[0m", expression->value);
+	case AST_EXPR_INT_LITERAL: {
+		astIntLiteral int_literal =
+			astGetExpression(c->ast, expression).int_literal;
+		printf("\033[36m%llu\033[0m", int_literal.value);
 		break;
+	}
 
-	case AST_EXPR_VARIABLE:
-		if (expression->name.raw == (u32)-1)
+	case AST_EXPR_VARIABLE: {
+		astVariable variable =
+			astGetExpression(c->ast, expression).variable;
+		if (variable.name.raw == (u32)-1)
 			printf("\033[7;31m<missing>\033[0m");
 		else
 			printf("\033[35m%s\033[0m",
-			       lookup(interner, expression->name));
+			       lookup(c->interner, variable.name));
 		break;
+	}
 
-	case AST_EXPR_BINARY_OPERATION:
+	case AST_EXPR_BINARY_OPERATION: {
+		astBinaryOperation binary_operation =
+			astGetExpression(c->ast, expression).binary_operation;
 		printf("(");
-		debugExpression(expression->lhs, interner);
+		debugExpression(c, binary_operation.lhs);
 
-		switch (expression->op) {
+		switch (binary_operation.op) {
 		case AST_BINOP_ADD:
 			printf(" + ");
 			break;
@@ -465,123 +601,137 @@ static void debugExpression(astExpression *expression, interner interner)
 			break;
 		}
 
-		debugExpression(expression->rhs, interner);
+		debugExpression(c, binary_operation.rhs);
 		printf(")");
 		break;
 	}
+	}
 }
 
-static void debugStatement(astStatement *statement, interner interner,
-			   u32 indentation)
+static void debugStatement(ctx *c, astStatement statement)
 {
-	switch (statement->kind) {
+	switch (astGetStatementKind(c->ast, statement)) {
 	case AST_STMT_MISSING:
 		printf("\033[7;31m<missing>\033[0m");
 		break;
 
-	case AST_STMT_RETURN:
+	case AST_STMT_RETURN: {
+		astReturn retrn = astGetStatement(c->ast, statement).retrn;
 		printf("\033[32mreturn\033[0m ");
-		debugExpression(statement->value, interner);
+		debugExpression(c, retrn.value);
 		break;
+	}
 
-	case AST_STMT_LOCAL_DEFINITION:
+	case AST_STMT_LOCAL_DEFINITION: {
+		astLocalDefinition local_definition =
+			astGetStatement(c->ast, statement).local_definition;
 		printf("\033[32mvar\033[0m ");
 
-		if (statement->name.raw == (u32)-1)
+		if (local_definition.name.raw == (u32)-1)
 			printf("\033[7;31m<missing>\033[0m");
 		else
 			printf("\033[35m%s\033[0m",
-			       lookup(interner, statement->name));
+			       lookup(c->interner, local_definition.name));
 
 		printf(" = ");
-		debugExpression(statement->value, interner);
+		debugExpression(c, local_definition.value);
 		break;
+	}
 
-	case AST_STMT_ASSIGN:
+	case AST_STMT_ASSIGN: {
+		astAssign assign = astGetStatement(c->ast, statement).assign;
 		printf("\033[32mset\033[0m ");
-		debugExpression(statement->lhs, interner);
+		debugExpression(c, assign.lhs);
 		printf(" = ");
-		debugExpression(statement->rhs, interner);
+		debugExpression(c, assign.rhs);
 		break;
+	}
 
-	case AST_STMT_IF:
+	case AST_STMT_IF: {
+		astIf if_ = astGetStatement(c->ast, statement).if_;
 		printf("\033[32mif\033[0m ");
-		debugExpression(statement->condition, interner);
-		indentation++;
+		debugExpression(c, if_.condition);
+		c->indentation++;
 
-		newline(indentation);
-		debugStatement(statement->true_branch, interner, indentation);
-		indentation--;
+		newline(c);
+		debugStatement(c, if_.true_branch);
+		c->indentation--;
 
-		if (statement->false_branch != NULL) {
-			newline(indentation);
+		if (if_.false_branch.index != (u16)-1) {
+			newline(c);
 			printf("\033[32melse\033[0m");
-			indentation++;
+			c->indentation++;
 
-			newline(indentation);
-			debugStatement(statement->false_branch, interner,
-				       indentation);
-			indentation--;
+			newline(c);
+			debugStatement(c, if_.false_branch);
+			c->indentation--;
 		}
 		break;
+	}
 
-	case AST_STMT_WHILE:
+	case AST_STMT_WHILE: {
+		astWhile while_ = astGetStatement(c->ast, statement).while_;
 		printf("\033[32mwhile\033[0m ");
-		debugExpression(statement->condition, interner);
-		indentation++;
-		newline(indentation);
-		debugStatement(statement->true_branch, interner, indentation);
-		indentation--;
+		debugExpression(c, while_.condition);
+		c->indentation++;
+		newline(c);
+		debugStatement(c, while_.true_branch);
+		c->indentation--;
 		break;
+	}
 
-	case AST_STMT_BLOCK:
-		if (statement->count == 0) {
+	case AST_STMT_BLOCK: {
+		astBlock block = astGetStatement(c->ast, statement).block;
+		bool is_empty = block.start.index == block.end.index;
+		if (is_empty) {
 			printf("{}");
 			break;
 		}
 		printf("{");
-		indentation++;
-		for (u32 i = 0; i < statement->count; i++) {
-			newline(indentation);
-			debugStatement(statement->statements[i], interner,
-				       indentation);
+		c->indentation++;
+		for (astStatement s = block.start; s.index < block.end.index;
+		     s.index++) {
+			newline(c);
+			debugStatement(c, s);
 		}
-		indentation--;
-		newline(indentation);
+		c->indentation--;
+		newline(c);
 		printf("}");
 		break;
 	}
+	}
 }
 
-static void debugFunction(astFunction function, interner interner,
-			  u32 indentation)
+static void debugFunction(ctx *c, astFunction function)
 {
 	printf("\033[32mfunc ");
 	if (function.name.raw == (u32)-1)
 		printf("\033[7;31m<missing>\033[0m");
 	else
-		printf("\033[33m%s\033[0m", lookup(interner, function.name));
+		printf("\033[33m%s\033[0m", lookup(c->interner, function.name));
 
-	indentation++;
-	newline(indentation);
-	debugStatement(function.body, interner, indentation);
-	indentation--;
+	c->indentation++;
+	newline(c);
+	debugStatement(c, function.body);
+	c->indentation--;
 }
 
 void debugAst(astRoot ast, interner interner)
 {
-	astFunction *f = ast.functions;
-	bool first = true;
-	u32 indentation = 0;
+	ctx c = {
+		.ast = ast,
+		.interner = interner,
+		.indentation = 0,
+	};
 
-	while (f != NULL) {
+	bool first = true;
+	for (u16 i = 0; i < ast.function_count; i++) {
 		if (first)
 			first = false;
 		else
-			newline(indentation);
+			newline(&c);
 
-		debugFunction(*f, interner, indentation);
-		newline(indentation);
-		f = f->next;
+		debugFunction(&c, ast.functions[i]);
+		newline(&c);
 	}
 }

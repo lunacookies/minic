@@ -60,6 +60,7 @@ bump createBump(void *buffer, usize size);
 bumpMark markBump(bump *b);
 void clearBumpToMark(bump *b, bumpMark mark);
 void *allocateInBump(bump *b, usize size);
+void *copyInBump(bump *b, void *buffer, usize size);
 
 // ----------------------------------------------------------------------------
 // memory.c
@@ -166,6 +167,14 @@ u8 *lookup(interner i, identifierId id);
 // ----------------------------------------------------------------------------
 // parse.c
 
+typedef struct astExpression {
+	u16 index;
+} astExpression;
+
+typedef struct astStatement {
+	u16 index;
+} astStatement;
+
 typedef enum astExpressionKind {
 	AST_EXPR_MISSING,
 	AST_EXPR_INT_LITERAL,
@@ -186,21 +195,25 @@ typedef enum astBinaryOperator {
 	AST_BINOP_GREATER_THAN_EQUAL
 } astBinaryOperator;
 
-typedef struct astExpression {
-	astExpressionKind kind;
-	span span;
-
-	// int literal
+typedef struct astIntLiteral {
 	u64 value;
+} astIntLiteral;
 
-	// variable
+typedef struct astVariable {
 	identifierId name;
+} astVariable;
 
-	// binary operation
-	struct astExpression *lhs;
-	struct astExpression *rhs;
+typedef struct astBinaryOperation {
+	astExpression lhs;
+	astExpression rhs;
 	astBinaryOperator op;
-} astExpression;
+} astBinaryOperation;
+
+typedef union astExpressionData {
+	astIntLiteral int_literal;
+	astVariable variable;
+	astBinaryOperation binary_operation;
+} astExpressionData;
 
 typedef enum astStatementKind {
 	AST_STMT_MISSING,
@@ -212,41 +225,73 @@ typedef enum astStatementKind {
 	AST_STMT_BLOCK
 } astStatementKind;
 
-typedef struct astStatement {
-	astStatementKind kind;
-	span span;
+typedef struct astReturn {
+	astExpression value;
+} astReturn;
 
-	// return and local definition
-	astExpression *value;
-
-	// local definition
+typedef struct astLocalDefinition {
 	identifierId name;
+	astExpression value;
+} astLocalDefinition;
 
-	// assign
-	astExpression *lhs;
-	astExpression *rhs;
+typedef struct astAssign {
+	astExpression lhs;
+	astExpression rhs;
+} astAssign;
 
-	// if and while
-	astExpression *condition;
-	struct astStatement *true_branch;
-	struct astStatement *false_branch;
+typedef struct astIf {
+	astExpression condition;
+	astStatement true_branch;
+	astStatement false_branch;
+} astIf;
 
-	// block
-	struct astStatement **statements;
-	u32 count;
-} astStatement;
+typedef struct astWhile {
+	astExpression condition;
+	astStatement true_branch;
+} astWhile;
+
+typedef struct astBlock {
+	astStatement start;
+	astStatement end;
+} astBlock;
+
+typedef union astStatementData {
+	astReturn retrn;
+	astLocalDefinition local_definition;
+	astAssign assign;
+	astIf if_;
+	astWhile while_;
+	astBlock block;
+} astStatementData;
 
 typedef struct astFunction {
 	identifierId name;
-	astStatement *body;
-	struct astFunction *next;
+	astStatement body;
 } astFunction;
 
 typedef struct astRoot {
 	astFunction *functions;
+
+	astStatementData *statements;
+	u8 *statement_kinds;
+	span *statement_spans;
+
+	astExpressionData *expressions;
+	u8 *expression_kinds;
+	span *expression_spans;
+
+	u16 function_count;
+	u16 statement_count;
+	u16 expression_count;
 } astRoot;
 
 astRoot parse(tokenBuffer tokens, u8 *content, memory *m);
+astStatementData astGetStatement(astRoot ast, astStatement statement);
+astStatementKind astGetStatementKind(astRoot ast, astStatement statement);
+span astGetStatementSpan(astRoot ast, astStatement statement);
+astExpressionData astGetExpression(astRoot ast, astExpression expression);
+astExpressionKind astGetExpressionKind(astRoot ast, astExpression expression);
+span astGetExpressionSpan(astRoot ast, astExpression expression);
 void debugAst(astRoot ast, interner interner);
 
 // ----------------------------------------------------------------------------
