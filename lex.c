@@ -153,10 +153,8 @@ tokenBuffer lex(u8 *input, memory *m)
 	convertKeywords(input, &buf);
 
 	// copy spans from temp memory into general memory
-	usize spans_size = sizeof(span) * buf.count;
-	span *spans = allocateInBump(&m->general, spans_size);
-	memcpy(spans, buf.spans, spans_size);
-	buf.spans = spans;
+	buf.spans =
+		copyInBump(&m->general, buf.spans, sizeof(span) * buf.count);
 	clearBumpToMark(&m->temp, mark);
 
 	usize identifier_ids_size = buf.count * sizeof(u32);

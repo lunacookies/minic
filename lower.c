@@ -201,9 +201,8 @@ static hirNode *lowerStatement(astRoot ast, astStatement ast_statement,
 			count++;
 		}
 
-		usize children_size = sizeof(hirNode *) * count;
-		hirNode **children = allocateInBump(&m->general, children_size);
-		memcpy(children, children_top, children_size);
+		hirNode **children = copyInBump(&m->general, children_top,
+						sizeof(hirNode *) * count);
 		clearBumpToMark(&m->temp, mark);
 
 		node.kind = HIR_BLOCK;

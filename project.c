@@ -41,10 +41,9 @@ projectSpec discoverProject(memory *m)
 		usize size = stat.st_size;
 
 		// Copy file name into general memory.
-		u8 *name = allocateInBump(&m->general,
-					  entry->d_namlen +
-						  1); // for null terminator
-		memcpy(name, entry->d_name, entry->d_namlen + 1);
+		u8 *name =
+			copyInBump(&m->general, entry->d_name,
+				   entry->d_namlen + 1); // for null terminator
 
 		// Read file content into general memory.
 		u8 *content = allocateInBump(&m->general,
@@ -63,16 +62,14 @@ projectSpec discoverProject(memory *m)
 	// Now that general memory isn’t being touched anymore, we can copy the
 	// aux arrays there.
 	usize bytes_used = num_files * sizeof(u8 *);
-	u8 **permanent_file_names = allocateInBump(&m->general, bytes_used);
-	u8 **permanent_file_contents = allocateInBump(&m->general, bytes_used);
-	memcpy(permanent_file_names, file_names, bytes_used);
-	memcpy(permanent_file_contents, file_contents, bytes_used);
+	file_names = copyInBump(&m->general, file_names, bytes_used);
+	file_contents = copyInBump(&m->general, file_contents, bytes_used);
 	clearBumpToMark(&m->temp, mark);
 
 	projectSpec p = {
 		.num_files = num_files,
-		.file_names = permanent_file_names,
-		.file_contents = permanent_file_contents,
+		.file_names = file_names,
+		.file_contents = file_contents,
 	};
 	return p;
 }

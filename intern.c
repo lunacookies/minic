@@ -70,8 +70,7 @@ static void processToken(tokenBuffer *buf, u8 *contents, usize token, ctx *c,
 
 	buf->identifier_ids[token] = c->ident_id;
 
-	u8 *s = allocateInBump(&m->general, length + 1);
-	memcpy(s, ptr, length);
+	u8 *s = copyInBump(&m->general, ptr, length + 1);
 	s[length] = '\0';
 	c->identifier_contents[c->ident_id.raw] = s;
 
