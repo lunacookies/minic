@@ -201,7 +201,7 @@ static fullExpression expressionLhs(parser *p, memory *m)
 		break;
 	}
 
-	assert(e.kind != (u8)-1);
+	assert(e.kind != (astExpressionKind)-1);
 	e.span.end = p->tokens.spans[p->cursor - 1].end;
 	return e;
 }
@@ -262,7 +262,7 @@ static fullExpression expressionBindingPower(parser *p, u8 min_binding_power,
 			return lhs;
 		}
 		assert(binding_power != 0);
-		assert(op != (u8)-1);
+		assert(op != (astBinaryOperator)-1);
 
 		if (binding_power < min_binding_power)
 			return lhs;
@@ -405,7 +405,7 @@ static fullStatement statement(parser *p, memory *m)
 		break;
 	}
 
-	assert(s.kind != (u8)-1);
+	assert(s.kind != (astStatementKind)-1);
 	s.span.end = p->tokens.spans[p->cursor - 1].end;
 	return s;
 }
