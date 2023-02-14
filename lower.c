@@ -414,20 +414,20 @@ static void debugNode(ctx *c, hirNode node)
 {
 	switch (hirGetNodeKind(c->hir, node)) {
 	case HIR_MISSING:
-		printf("\033[7;31m<missing>\033[0m");
+		printf("<missing>");
 		break;
 
 	case HIR_INT_LITERAL: {
 		hirIntLiteral int_literal =
 			hirGetNode(c->hir, node).int_literal;
-		printf("\033[36m%llu\033[0m", int_literal.value);
+		printf("%llu", int_literal.value);
 		break;
 	}
 
 	case HIR_VARIABLE: {
 		hirVariable variable = hirGetNode(c->hir, node).variable;
 		identifierId name = hirGetLocalName(c->hir, variable.local);
-		printf("\033[35m%s\033[0m", lookup(c->interner, name));
+		printf("%s", lookup(c->interner, name));
 		break;
 	}
 
@@ -477,7 +477,7 @@ static void debugNode(ctx *c, hirNode node)
 
 	case HIR_ASSIGN: {
 		hirAssign assign = hirGetNode(c->hir, node).assign;
-		printf("\033[32mset\033[0m ");
+		printf("set ");
 		debugNode(c, assign.lhs);
 		printf(" = ");
 		debugNode(c, assign.rhs);
@@ -486,7 +486,7 @@ static void debugNode(ctx *c, hirNode node)
 
 	case HIR_IF: {
 		hirIf if_ = hirGetNode(c->hir, node).if_;
-		printf("\033[32mif\033[0m ");
+		printf("if ");
 		debugNode(c, if_.condition);
 		c->indentation++;
 
@@ -496,7 +496,7 @@ static void debugNode(ctx *c, hirNode node)
 
 		if (if_.false_branch.index != (u16)-1) {
 			newline(c);
-			printf("\033[32melse\033[0m");
+			printf("else");
 			c->indentation++;
 
 			newline(c);
@@ -508,7 +508,7 @@ static void debugNode(ctx *c, hirNode node)
 
 	case HIR_WHILE: {
 		hirWhile while_ = hirGetNode(c->hir, node).while_;
-		printf("\033[32mwhile\033[0m ");
+		printf("while ");
 		debugNode(c, while_.condition);
 		c->indentation++;
 		newline(c);
@@ -519,7 +519,7 @@ static void debugNode(ctx *c, hirNode node)
 
 	case HIR_RETURN: {
 		hirReturn retrn = hirGetNode(c->hir, node).retrn;
-		printf("\033[32mreturn\033[0m ");
+		printf("return ");
 		debugNode(c, retrn.value);
 		break;
 	}
@@ -547,14 +547,13 @@ static void debugNode(ctx *c, hirNode node)
 
 static void debugFunction(ctx *c, hirFunction function)
 {
-	printf("\033[32mfunc \033[33m%s\033[0m",
-	       lookup(c->interner, function.name));
+	printf("func %s", lookup(c->interner, function.name));
 
 	c->indentation++;
 	for (u16 i = 0; i < function.locals_count; i++) {
 		hirLocal local = { .index = function.locals_start.index + i };
 		newline(c);
-		printf("\033[32mvar \033[35m%s \033[91m%s\033[0m",
+		printf("var %s %s",
 		       lookup(c->interner, hirGetLocalName(c->hir, local)),
 		       debugHirType(hirGetLocalType(c->hir, local)));
 	}

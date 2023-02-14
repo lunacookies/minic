@@ -538,13 +538,13 @@ static void debugExpression(ctx *c, astExpression expression)
 {
 	switch (astGetExpressionKind(c->ast, expression)) {
 	case AST_EXPR_MISSING:
-		printf("\033[7;31m<missing>\033[0m");
+		printf("<missing>");
 		break;
 
 	case AST_EXPR_INT_LITERAL: {
 		astIntLiteral int_literal =
 			astGetExpression(c->ast, expression).int_literal;
-		printf("\033[36m%llu\033[0m", int_literal.value);
+		printf("%llu", int_literal.value);
 		break;
 	}
 
@@ -552,10 +552,9 @@ static void debugExpression(ctx *c, astExpression expression)
 		astVariable variable =
 			astGetExpression(c->ast, expression).variable;
 		if (variable.name.raw == (u32)-1)
-			printf("\033[7;31m<missing>\033[0m");
+			printf("<missing>");
 		else
-			printf("\033[35m%s\033[0m",
-			       lookup(c->interner, variable.name));
+			printf("%s", lookup(c->interner, variable.name));
 		break;
 	}
 
@@ -609,12 +608,12 @@ static void debugStatement(ctx *c, astStatement statement)
 {
 	switch (astGetStatementKind(c->ast, statement)) {
 	case AST_STMT_MISSING:
-		printf("\033[7;31m<missing>\033[0m");
+		printf("<missing>");
 		break;
 
 	case AST_STMT_RETURN: {
 		astReturn retrn = astGetStatement(c->ast, statement).retrn;
-		printf("\033[32mreturn\033[0m ");
+		printf("return ");
 		debugExpression(c, retrn.value);
 		break;
 	}
@@ -622,12 +621,12 @@ static void debugStatement(ctx *c, astStatement statement)
 	case AST_STMT_LOCAL_DEFINITION: {
 		astLocalDefinition local_definition =
 			astGetStatement(c->ast, statement).local_definition;
-		printf("\033[32mvar\033[0m ");
+		printf("var ");
 
 		if (local_definition.name.raw == (u32)-1)
-			printf("\033[7;31m<missing>\033[0m");
+			printf("<missing>");
 		else
-			printf("\033[35m%s\033[0m",
+			printf("%s",
 			       lookup(c->interner, local_definition.name));
 
 		printf(" = ");
@@ -637,7 +636,7 @@ static void debugStatement(ctx *c, astStatement statement)
 
 	case AST_STMT_ASSIGN: {
 		astAssign assign = astGetStatement(c->ast, statement).assign;
-		printf("\033[32mset\033[0m ");
+		printf("set ");
 		debugExpression(c, assign.lhs);
 		printf(" = ");
 		debugExpression(c, assign.rhs);
@@ -646,7 +645,7 @@ static void debugStatement(ctx *c, astStatement statement)
 
 	case AST_STMT_IF: {
 		astIf if_ = astGetStatement(c->ast, statement).if_;
-		printf("\033[32mif\033[0m ");
+		printf("if ");
 		debugExpression(c, if_.condition);
 		c->indentation++;
 
@@ -656,7 +655,7 @@ static void debugStatement(ctx *c, astStatement statement)
 
 		if (if_.false_branch.index != (u16)-1) {
 			newline(c);
-			printf("\033[32melse\033[0m");
+			printf("else");
 			c->indentation++;
 
 			newline(c);
@@ -668,7 +667,7 @@ static void debugStatement(ctx *c, astStatement statement)
 
 	case AST_STMT_WHILE: {
 		astWhile while_ = astGetStatement(c->ast, statement).while_;
-		printf("\033[32mwhile\033[0m ");
+		printf("while ");
 		debugExpression(c, while_.condition);
 		c->indentation++;
 		newline(c);
@@ -700,11 +699,11 @@ static void debugStatement(ctx *c, astStatement statement)
 
 static void debugFunction(ctx *c, astFunction function)
 {
-	printf("\033[32mfunc ");
+	printf("func ");
 	if (function.name.raw == (u32)-1)
-		printf("\033[7;31m<missing>\033[0m");
+		printf("<missing>");
 	else
-		printf("\033[33m%s\033[0m", lookup(c->interner, function.name));
+		printf("%s", lookup(c->interner, function.name));
 
 	c->indentation++;
 	newline(c);
