@@ -297,7 +297,17 @@ void debugAst(astRoot ast, interner interner);
 // ----------------------------------------------------------------------------
 // lower.c
 
-typedef enum hirKind {
+typedef struct hirNode {
+	u16 index;
+} hirNode;
+
+typedef struct hirLocal {
+	u16 index;
+} hirLocal;
+
+typedef enum hirType { HIR_TYPE_VOID, HIR_TYPE_I64 } hirType;
+
+typedef enum hirNodeKind {
 	HIR_MISSING,
 	HIR_INT_LITERAL,
 	HIR_VARIABLE,
@@ -307,58 +317,90 @@ typedef enum hirKind {
 	HIR_WHILE,
 	HIR_RETURN,
 	HIR_BLOCK
-} hirKind;
+} hirNodeKind;
 
-typedef enum hirType { HIR_TYPE_VOID, HIR_TYPE_I64 } hirType;
-
-typedef struct hirLocal {
-	identifierId name;
-	hirType type;
-	u32 offset;
-	struct hirLocal *next;
-} hirLocal;
-
-typedef struct hirNode {
-	hirKind kind;
-	hirType type;
-	span span;
-
-	// int literal
+typedef struct hirIntLiteral {
 	u64 value;
+} hirIntLiteral;
 
-	// variable
-	hirLocal *local;
+typedef struct hirVariable {
+	hirLocal local;
+} hirVariable;
 
-	// binary operation
+typedef struct hirBinaryOperation {
+	hirNode lhs;
+	hirNode rhs;
 	astBinaryOperator op;
+} hirBinaryOperation;
 
-	// binary operation, assign, return
-	struct hirNode *lhs;
-	struct hirNode *rhs;
+typedef struct hirAssign {
+	hirNode lhs;
+	hirNode rhs;
+} hirAssign;
 
-	// if and while
-	struct hirNode *condition;
-	struct hirNode *true_branch;
-	struct hirNode *false_branch;
+typedef struct hirIf {
+	hirNode condition;
+	hirNode true_branch;
+	hirNode false_branch;
+} hirIf;
 
-	// block
-	struct hirNode **children;
-	usize count;
-} hirNode;
+typedef struct hirWhile {
+	hirNode condition;
+	hirNode true_branch;
+} hirWhile;
+
+typedef struct hirReturn {
+	hirNode value;
+} hirReturn;
+
+typedef struct hirBlock {
+	hirNode start;
+	hirNode end;
+} hirBlock;
+
+typedef struct hirNodeData {
+	hirIntLiteral int_literal;
+	hirVariable variable;
+	hirBinaryOperation binary_operation;
+	hirAssign assign;
+	hirIf if_;
+	hirWhile while_;
+	hirReturn retrn;
+	hirBlock block;
+} hirNodeData;
 
 typedef struct hirFunction {
+	hirLocal locals_start;
+	hirLocal locals_end;
+	hirNode body;
 	identifierId name;
-	hirNode *body;
-	hirLocal *locals;
-	u32 stack_size;
-	struct hirFunction *next;
 } hirFunction;
 
 typedef struct hirRoot {
 	hirFunction *functions;
+
+	hirNodeData *nodes;
+	hirNodeKind *node_kinds;
+	hirType *node_types;
+	span *node_spans;
+
+	identifierId *local_names;
+	hirType *local_types;
+
+	u16 function_count;
+	u16 node_count;
+	u16 local_count;
+
+	hirLocal current_function_locals_start;
 } hirRoot;
 
 hirRoot lower(astRoot ast, memory *m);
+hirNodeData hirGetNode(hirRoot hir, hirNode node);
+hirNodeKind hirGetNodeKind(hirRoot hir, hirNode node);
+hirType hirGetNodeType(hirRoot hir, hirNode node);
+span hirGetNodeSpan(hirRoot hir, hirNode node);
+identifierId hirGetLocalName(hirRoot hir, hirLocal local);
+hirType hirGetLocalType(hirRoot hir, hirLocal local);
 u32 typeSize(hirType type);
 u8 *debugHirType(hirType type);
 void debugHir(hirRoot hir, interner interner);

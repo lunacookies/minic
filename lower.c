@@ -1,45 +1,77 @@
 #include "minic.h"
 
-static hirLocal *lookupLocal(identifierId name, hirLocal *locals)
+#define MAX_NODE_COUNT (63 * 1024)
+#define MAX_LOCAL_COUNT (63 * 1024)
+
+typedef struct fullNode {
+	hirNodeData data;
+	hirNodeKind kind;
+	hirType type;
+	span span;
+} fullNode;
+
+static hirLocal lookupLocal(hirRoot *hir, identifierId name)
 {
-	for (hirLocal *local = locals; local != NULL; local = local->next)
-		if (local->name.raw == name.raw)
+	for (hirLocal local = hir->current_function_locals_start;
+	     local.index < hir->local_count; local.index++) {
+		if (hirGetLocalName(*hir, local).raw == name.raw)
 			return local;
-	return NULL;
+	}
+
+	hirLocal local = { .index = -1 };
+	return local;
 }
 
-static hirLocal *addLocal(identifierId name, hirType type, hirLocal **locals,
-			  memory *m)
+static hirNode allocateNode(hirRoot *hir, fullNode node)
 {
-	hirLocal new_local = {
-		.name = name,
-		.type = type,
-		.offset = 0,
-		.next = *locals,
-	};
-	hirLocal *ptr = allocateInBump(&m->general, sizeof(hirLocal));
-	*ptr = new_local;
-	*locals = ptr;
-	return ptr;
+	if (hir->node_count >= MAX_NODE_COUNT) {
+		sendDiagnosticToSink(DIAG_ERROR, node.span,
+				     "reached limit of %u nodes",
+				     MAX_NODE_COUNT);
+		internalError("ran out of node slots");
+	}
+
+	u16 i = hir->node_count;
+	hir->node_count++;
+	hir->nodes[i] = node.data;
+	hir->node_kinds[i] = node.kind;
+	hir->node_types[i] = node.type;
+	hir->node_spans[i] = node.span;
+	hirNode n = { .index = i };
+	return n;
 }
 
-static hirNode *lowerExpression(astRoot ast, astExpression ast_expression,
-				hirLocal **locals, memory *m)
+static hirLocal allocateLocal(hirRoot *hir, identifierId name, hirType type)
 {
-	hirNode node = { .span = astGetExpressionSpan(ast, ast_expression) };
+	assert(hir->local_count < MAX_LOCAL_COUNT);
+	u16 i = hir->local_count;
+	hir->local_count++;
+	hir->local_names[i] = name;
+	hir->local_types[i] = type;
+	hirLocal l = { .index = i };
+	return l;
+}
+
+static fullNode lowerExpression(hirRoot *hir, astRoot ast,
+				astExpression ast_expression, memory *m)
+{
+	fullNode n = { .data = { 0 },
+		       .kind = -1,
+		       .type = -1,
+		       .span = astGetExpressionSpan(ast, ast_expression) };
 
 	switch (astGetExpressionKind(ast, ast_expression)) {
 	case AST_EXPR_MISSING:
-		node.kind = HIR_MISSING;
-		node.type = HIR_TYPE_VOID;
+		n.kind = HIR_MISSING;
+		n.type = HIR_TYPE_VOID;
 		break;
 
 	case AST_EXPR_INT_LITERAL: {
 		astIntLiteral ast_int_literal =
 			astGetExpression(ast, ast_expression).int_literal;
-		node.kind = HIR_INT_LITERAL;
-		node.type = HIR_TYPE_I64;
-		node.value = ast_int_literal.value;
+		n.kind = HIR_INT_LITERAL;
+		n.type = HIR_TYPE_I64;
+		n.data.int_literal.value = ast_int_literal.value;
 		break;
 	}
 
@@ -48,63 +80,73 @@ static hirNode *lowerExpression(astRoot ast, astExpression ast_expression,
 			astGetExpression(ast, ast_expression).variable;
 
 		if (ast_variable.name.raw == (u32)-1) {
-			node.kind = HIR_MISSING;
-			node.type = HIR_TYPE_VOID;
+			n.kind = HIR_MISSING;
+			n.type = HIR_TYPE_VOID;
 			break;
 		}
 
-		hirLocal *local = lookupLocal(ast_variable.name, *locals);
-		if (local == NULL) {
+		hirLocal local = lookupLocal(hir, ast_variable.name);
+		if (local.index == (u16)-1) {
 			sendDiagnosticToSink(
 				DIAG_ERROR,
 				astGetExpressionSpan(ast, ast_expression),
 				"undefined variable");
-			node.kind = HIR_MISSING;
-			node.type = HIR_TYPE_VOID;
+			n.kind = HIR_MISSING;
+			n.type = HIR_TYPE_VOID;
 			break;
 		}
 
-		node.kind = HIR_VARIABLE;
-		node.type = local->type;
-		node.local = local;
+		n.kind = HIR_VARIABLE;
+		n.type = hirGetLocalType(*hir, local);
+		n.data.variable.local = local;
 		break;
 	}
 
 	case AST_EXPR_BINARY_OPERATION: {
 		astBinaryOperation ast_binary_operation =
 			astGetExpression(ast, ast_expression).binary_operation;
-		node.kind = HIR_BINARY_OPERATION;
-		node.lhs = lowerExpression(ast, ast_binary_operation.lhs,
-					   locals, m);
-		node.rhs = lowerExpression(ast, ast_binary_operation.rhs,
-					   locals, m);
-		node.op = ast_binary_operation.op;
-		node.type = node.lhs->type;
+
+		hirNode lhs = allocateNode(
+			hir,
+			lowerExpression(hir, ast, ast_binary_operation.lhs, m));
+		hirNode rhs = allocateNode(
+			hir,
+			lowerExpression(hir, ast, ast_binary_operation.rhs, m));
+
+		n.kind = HIR_BINARY_OPERATION;
+		n.type = hirGetNodeType(*hir, lhs);
+		n.data.binary_operation.lhs = lhs;
+		n.data.binary_operation.rhs = rhs;
+		n.data.binary_operation.op = ast_binary_operation.op;
 		break;
 	}
 	}
 
-	hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
-	*ptr = node;
-	return ptr;
+	assert(n.kind != (hirNodeKind)-1);
+	assert(n.type != (hirType)-1);
+	return n;
 }
 
-static hirNode *lowerStatement(astRoot ast, astStatement ast_statement,
-			       hirLocal **locals, memory *m)
+static fullNode lowerStatement(hirRoot *hir, astRoot ast,
+			       astStatement ast_statement, memory *m)
 {
-	hirNode node = { .span = astGetStatementSpan(ast, ast_statement) };
+	fullNode n = { .data = { 0 },
+		       .kind = -1,
+		       .type = -1,
+		       .span = astGetStatementSpan(ast, ast_statement) };
 
 	switch (astGetStatementKind(ast, ast_statement)) {
 	case AST_STMT_MISSING:
-		node.kind = HIR_MISSING;
-		node.type = HIR_TYPE_VOID;
+		n.kind = HIR_MISSING;
+		n.type = HIR_TYPE_VOID;
 		break;
 
 	case AST_STMT_RETURN: {
 		astReturn ast_retrn = astGetStatement(ast, ast_statement).retrn;
-		node.kind = HIR_RETURN;
-		node.type = HIR_TYPE_VOID;
-		node.lhs = lowerExpression(ast, ast_retrn.value, locals, m);
+		n.kind = HIR_RETURN;
+		n.type = HIR_TYPE_VOID;
+		n.data.retrn.value = allocateNode(
+			hir, lowerExpression(hir, ast, ast_retrn.value, m));
 		break;
 	}
 
@@ -112,116 +154,152 @@ static hirNode *lowerStatement(astRoot ast, astStatement ast_statement,
 		astLocalDefinition ast_local_definition =
 			astGetStatement(ast, ast_statement).local_definition;
 
-		hirLocal *existing_local =
-			lookupLocal(ast_local_definition.name, *locals);
-		if (existing_local != NULL)
+		hirLocal existing_local =
+			lookupLocal(hir, ast_local_definition.name);
+		if (existing_local.index != (u16)-1)
 			sendDiagnosticToSink(
 				DIAG_ERROR,
 				astGetStatementSpan(ast, ast_statement),
 				"cannot shadow existing variable");
 
-		hirNode *rhs = lowerExpression(ast, ast_local_definition.value,
-					       locals, m);
+		hirNode rhs = allocateNode(
+			hir, lowerExpression(hir, ast,
+					     ast_local_definition.value, m));
 
 		if (ast_local_definition.name.raw == (u32)-1) {
-			node.kind = HIR_MISSING;
-			node.type = HIR_TYPE_VOID;
+			n.kind = HIR_MISSING;
+			n.type = HIR_TYPE_VOID;
 			break;
 		}
 
-		hirLocal *local = addLocal(ast_local_definition.name, rhs->type,
-					   locals, m);
-		hirNode lhs_no_ptr = {
-			.kind = HIR_VARIABLE,
-			.type = local->type,
-			.local = local,
-		};
-		hirNode *lhs = allocateInBump(&m->general, sizeof(hirNode));
-		*lhs = lhs_no_ptr;
+		hirLocal local = allocateLocal(hir, ast_local_definition.name,
+					       hirGetNodeType(*hir, rhs));
 
-		node.kind = HIR_ASSIGN;
-		node.type = HIR_TYPE_VOID;
-		node.lhs = lhs;
-		node.rhs = rhs;
+		fullNode lhs_unallocd = {
+			.data.variable.local = local,
+			.kind = HIR_VARIABLE,
+			.type = hirGetLocalType(*hir, local),
+		};
+		hirNode lhs = allocateNode(hir, lhs_unallocd);
+
+		n.kind = HIR_ASSIGN;
+		n.type = HIR_TYPE_VOID;
+		n.data.assign.lhs = lhs;
+		n.data.assign.rhs = rhs;
 		break;
 	}
 
 	case AST_STMT_ASSIGN: {
 		astAssign ast_assign =
 			astGetStatement(ast, ast_statement).assign;
-		node.kind = HIR_ASSIGN;
-		node.type = HIR_TYPE_VOID;
-		node.lhs = lowerExpression(ast, ast_assign.lhs, locals, m);
-		node.rhs = lowerExpression(ast, ast_assign.rhs, locals, m);
+		n.kind = HIR_ASSIGN;
+		n.type = HIR_TYPE_VOID;
+		n.data.assign.lhs = allocateNode(
+			hir, lowerExpression(hir, ast, ast_assign.lhs, m));
+		n.data.assign.rhs = allocateNode(
+			hir, lowerExpression(hir, ast, ast_assign.rhs, m));
 		break;
 	}
 
 	case AST_STMT_IF: {
 		astIf ast_if = astGetStatement(ast, ast_statement).if_;
-		node.kind = HIR_IF;
-		node.type = HIR_TYPE_VOID;
-		node.condition =
-			lowerExpression(ast, ast_if.condition, locals, m);
-		node.true_branch =
-			lowerStatement(ast, ast_if.true_branch, locals, m);
+		n.kind = HIR_IF;
+		n.type = HIR_TYPE_VOID;
+
+		n.data.if_.condition = allocateNode(
+			hir, lowerExpression(hir, ast, ast_if.condition, m));
+
+		n.data.if_.true_branch = allocateNode(
+			hir, lowerStatement(hir, ast, ast_if.true_branch, m));
+
 		if (ast_if.false_branch.index != (u16)-1)
-			node.false_branch = lowerStatement(
-				ast, ast_if.false_branch, locals, m);
+			n.data.if_.false_branch = allocateNode(
+				hir, lowerStatement(hir, ast,
+						    ast_if.false_branch, m));
+		else
+			n.data.if_.false_branch.index = -1;
+
 		break;
 	}
 
 	case AST_STMT_WHILE: {
 		astWhile ast_while = astGetStatement(ast, ast_statement).while_;
-		node.kind = HIR_WHILE;
-		node.type = HIR_TYPE_VOID;
-		node.condition =
-			lowerExpression(ast, ast_while.condition, locals, m);
-		node.true_branch =
-			lowerStatement(ast, ast_while.true_branch, locals, m);
+		n.kind = HIR_WHILE;
+		n.type = HIR_TYPE_VOID;
+		n.data.while_.condition = allocateNode(
+			hir, lowerExpression(hir, ast, ast_while.condition, m));
+		n.data.while_.true_branch = allocateNode(
+			hir,
+			lowerStatement(hir, ast, ast_while.true_branch, m));
 		break;
 	}
 
 	case AST_STMT_BLOCK: {
 		astBlock ast_block = astGetStatement(ast, ast_statement).block;
 
-		bumpMark mark = markBump(&m->temp);
-		hirNode *children_top =
-			(hirNode *)(m->temp.top + m->temp.bytes_used);
-		usize count = 0;
+		fullNode *nodes_start =
+			(fullNode *)(m->temp.top + m->temp.bytes_used);
 
-		for (astStatement ast_child = ast_block.start;
-		     ast_child.index < ast_block.end.index; ast_child.index++) {
-			hirNode *child =
-				lowerStatement(ast, ast_child, locals, m);
-			if (child == NULL)
-				continue;
-			hirNode **ptr =
-				allocateInBump(&m->temp, sizeof(hirNode *));
-			*ptr = child;
-			count++;
+		bumpMark mark = markBump(&m->temp);
+
+		for (astStatement ast_s = ast_block.start;
+		     ast_s.index < ast_block.end.index; ast_s.index++) {
+			fullNode *ptr =
+				allocateInBump(&m->temp, sizeof(fullNode));
+			*ptr = lowerStatement(hir, ast, ast_s, m);
 		}
 
-		hirNode **children = copyInBump(&m->general, children_top,
-						sizeof(hirNode *) * count);
+		hirNode start = { .index = -1 };
+		hirNode end = { .index = -1 };
+
+		u16 count = ast_block.end.index - ast_block.start.index;
+		for (u16 i = 0; i < count; i++) {
+			hirNode this = allocateNode(hir, nodes_start[i]);
+			if (start.index == (u16)-1)
+				start = this;
+			end = this;
+			end.index++; // inclusive start, exclusive end
+		}
+
 		clearBumpToMark(&m->temp, mark);
 
-		node.kind = HIR_BLOCK;
-		node.type = HIR_TYPE_VOID;
-		node.children = children;
-		node.count = count;
+		n.kind = HIR_BLOCK;
+		n.type = HIR_TYPE_VOID;
+		n.data.block.start = start;
+		n.data.block.end = end;
 		break;
 	}
 	}
 
-	hirNode *ptr = allocateInBump(&m->general, sizeof(hirNode));
-	*ptr = node;
-	return ptr;
+	assert(n.kind != (hirNodeKind)-1);
+	assert(n.type != (hirType)-1);
+	return n;
 }
 
 hirRoot lower(astRoot ast, memory *m)
 {
-	hirFunction *head = NULL;
-	hirFunction *current_function = NULL;
+	bumpMark mark = markBump(&m->temp);
+
+	hirRoot hir = {
+		.functions =
+			(hirFunction *)(m->general.top + m->general.bytes_used),
+		.nodes = allocateInBump(&m->temp,
+					sizeof(hirNodeData) * MAX_NODE_COUNT),
+		.node_kinds = allocateInBump(&m->temp, sizeof(hirNodeKind) *
+							       MAX_NODE_COUNT),
+		.node_types = allocateInBump(&m->temp,
+					     sizeof(hirType) * MAX_NODE_COUNT),
+		.node_spans =
+			allocateInBump(&m->temp, sizeof(span) * MAX_NODE_COUNT),
+		.local_names = allocateInBump(
+			&m->temp, sizeof(identifierId) * MAX_LOCAL_COUNT),
+		.local_types = allocateInBump(
+			&m->temp, sizeof(hirType) * MAX_LOCAL_COUNT),
+		.function_count = 0,
+		.node_count = 0,
+		.local_count = 0,
+		.current_function_locals_start = { .index = -1 },
+	};
 
 	for (u16 i = 0; i < ast.function_count; i++) {
 		astFunction ast_function = ast.functions[i];
@@ -229,30 +307,77 @@ hirRoot lower(astRoot ast, memory *m)
 		if (ast_function.name.raw == (u32)-1)
 			continue;
 
-		hirLocal *locals = NULL;
-		hirNode *body =
-			lowerStatement(ast, ast_function.body, &locals, m);
+		hirLocal locals_start = { .index = hir.local_count };
+		hir.current_function_locals_start = locals_start;
+		hirNode body = allocateNode(
+			&hir, lowerStatement(&hir, ast, ast_function.body, m));
+		hirLocal locals_end = { .index = hir.local_count };
 
 		hirFunction function = {
-			.name = ast_function.name,
+			.locals_start = locals_start,
+			.locals_end = locals_end,
 			.body = body,
-			.locals = locals,
+			.name = ast_function.name,
 		};
 		hirFunction *ptr =
 			allocateInBump(&m->general, sizeof(hirFunction));
 		*ptr = function;
-
-		if (head == NULL) {
-			head = ptr;
-			current_function = ptr;
-		} else {
-			current_function->next = ptr;
-			current_function = ptr;
-		}
+		hir.function_count++;
 	}
 
-	hirRoot root = { .functions = head };
-	return root;
+	hir.nodes = copyInBump(&m->general, hir.nodes,
+			       sizeof(hirNodeData) * hir.node_count);
+	hir.node_kinds = copyInBump(&m->general, hir.node_kinds,
+				    sizeof(hirNodeKind) * hir.node_count);
+	hir.node_types = copyInBump(&m->general, hir.node_kinds,
+				    sizeof(hirType) * hir.node_count);
+	hir.node_spans = copyInBump(&m->general, hir.node_spans,
+				    sizeof(span) * hir.node_count);
+
+	hir.local_names = copyInBump(&m->general, hir.local_names,
+				     sizeof(identifierId) * hir.local_count);
+	hir.local_types = copyInBump(&m->general, hir.local_types,
+				     sizeof(hirType) * hir.local_count);
+
+	clearBumpToMark(&m->temp, mark);
+
+	return hir;
+}
+
+hirNodeData hirGetNode(hirRoot hir, hirNode node)
+{
+	assert(node.index < hir.node_count);
+	return hir.nodes[node.index];
+}
+
+hirNodeKind hirGetNodeKind(hirRoot hir, hirNode node)
+{
+	assert(node.index < hir.node_count);
+	return hir.node_kinds[node.index];
+}
+
+hirType hirGetNodeType(hirRoot hir, hirNode node)
+{
+	assert(node.index < hir.node_count);
+	return hir.node_types[node.index];
+}
+
+span hirGetNodeSpan(hirRoot hir, hirNode node)
+{
+	assert(node.index < hir.node_count);
+	return hir.node_spans[node.index];
+}
+
+identifierId hirGetLocalName(hirRoot hir, hirLocal local)
+{
+	assert(local.index < hir.local_count);
+	return hir.local_names[local.index];
+}
+
+hirType hirGetLocalType(hirRoot hir, hirLocal local)
+{
+	assert(local.index < hir.local_count);
+	return hir.local_types[local.index];
 }
 
 u32 typeSize(hirType type)
@@ -265,10 +390,16 @@ u32 typeSize(hirType type)
 	}
 }
 
-static void newline(u32 indentation)
+typedef struct ctx {
+	hirRoot hir;
+	interner interner;
+	u32 indentation;
+} ctx;
+
+static void newline(ctx *c)
 {
 	printf("\n");
-	for (u32 i = 0; i < indentation; i++)
+	for (u32 i = 0; i < c->indentation; i++)
 		printf("\t");
 }
 
@@ -282,27 +413,34 @@ u8 *debugHirType(hirType type)
 	}
 }
 
-static void debugNode(hirNode *node, interner interner, u32 indentation)
+static void debugNode(ctx *c, hirNode node)
 {
-	switch (node->kind) {
+	switch (hirGetNodeKind(c->hir, node)) {
 	case HIR_MISSING:
 		printf("\033[7;31m<missing>\033[0m");
 		break;
 
-	case HIR_INT_LITERAL:
-		printf("\033[36m%llu\033[0m", node->value);
+	case HIR_INT_LITERAL: {
+		hirIntLiteral int_literal =
+			hirGetNode(c->hir, node).int_literal;
+		printf("\033[36m%llu\033[0m", int_literal.value);
 		break;
+	}
 
-	case HIR_VARIABLE:
-		printf("\033[35m%s\033[0m",
-		       lookup(interner, node->local->name));
+	case HIR_VARIABLE: {
+		hirVariable variable = hirGetNode(c->hir, node).variable;
+		identifierId name = hirGetLocalName(c->hir, variable.local);
+		printf("\033[35m%s\033[0m", lookup(c->interner, name));
 		break;
+	}
 
-	case HIR_BINARY_OPERATION:
+	case HIR_BINARY_OPERATION: {
+		hirBinaryOperation binary_operation =
+			hirGetNode(c->hir, node).binary_operation;
 		printf("(");
-		debugNode(node->lhs, interner, indentation);
+		debugNode(c, binary_operation.lhs);
 
-		switch (node->op) {
+		switch (binary_operation.op) {
 		case AST_BINOP_ADD:
 			printf(" + ");
 			break;
@@ -335,103 +473,117 @@ static void debugNode(hirNode *node, interner interner, u32 indentation)
 			break;
 		}
 
-		debugNode(node->rhs, interner, indentation);
+		debugNode(c, binary_operation.rhs);
 		printf(")");
 		break;
+	}
 
-	case HIR_ASSIGN:
+	case HIR_ASSIGN: {
+		hirAssign assign = hirGetNode(c->hir, node).assign;
 		printf("\033[32mset\033[0m ");
-		debugNode(node->lhs, interner, indentation);
+		debugNode(c, assign.lhs);
 		printf(" = ");
-		debugNode(node->rhs, interner, indentation);
+		debugNode(c, assign.rhs);
 		break;
+	}
 
-	case HIR_IF:
+	case HIR_IF: {
+		hirIf if_ = hirGetNode(c->hir, node).if_;
 		printf("\033[32mif\033[0m ");
-		debugNode(node->condition, interner, indentation);
-		indentation++;
+		debugNode(c, if_.condition);
+		c->indentation++;
 
-		newline(indentation);
-		debugNode(node->true_branch, interner, indentation);
-		indentation--;
+		newline(c);
+		debugNode(c, if_.true_branch);
+		c->indentation--;
 
-		if (node->false_branch != NULL) {
-			newline(indentation);
+		if (if_.false_branch.index != (u16)-1) {
+			newline(c);
 			printf("\033[32melse\033[0m");
-			indentation++;
+			c->indentation++;
 
-			newline(indentation);
-			debugNode(node->false_branch, interner, indentation);
-			indentation--;
+			newline(c);
+			debugNode(c, if_.false_branch);
+			c->indentation--;
 		}
 		break;
+	}
 
-	case HIR_WHILE:
+	case HIR_WHILE: {
+		hirWhile while_ = hirGetNode(c->hir, node).while_;
 		printf("\033[32mwhile\033[0m ");
-		debugNode(node->condition, interner, indentation);
-		indentation++;
-		newline(indentation);
-		debugNode(node->true_branch, interner, indentation);
-		indentation--;
+		debugNode(c, while_.condition);
+		c->indentation++;
+		newline(c);
+		debugNode(c, while_.true_branch);
+		c->indentation--;
 		break;
+	}
 
-	case HIR_RETURN:
+	case HIR_RETURN: {
+		hirReturn retrn = hirGetNode(c->hir, node).retrn;
 		printf("\033[32mreturn\033[0m ");
-		debugNode(node->lhs, interner, indentation);
+		debugNode(c, retrn.value);
 		break;
+	}
 
-	case HIR_BLOCK:
-		if (node->count == 0) {
+	case HIR_BLOCK: {
+		hirBlock block = hirGetNode(c->hir, node).block;
+		bool is_empty = block.start.index == block.end.index;
+		if (is_empty) {
 			printf("{}");
 			break;
 		}
 		printf("{");
-		indentation++;
-		for (usize i = 0; i < node->count; i++) {
-			newline(indentation);
-			debugNode(node->children[i], interner, indentation);
+		c->indentation++;
+		for (hirNode n = block.start; n.index < block.end.index;
+		     n.index++) {
+			newline(c);
+			debugNode(c, n);
 		}
-		indentation--;
-		newline(indentation);
+		c->indentation--;
+		newline(c);
 		printf("}");
 		break;
 	}
+	}
 }
 
-static void debugFunction(hirFunction *function, interner interner,
-			  u32 indentation)
+static void debugFunction(ctx *c, hirFunction function)
 {
 	printf("\033[32mfunc \033[33m%s\033[0m",
-	       lookup(interner, function->name));
+	       lookup(c->interner, function.name));
 
-	indentation++;
-	for (hirLocal *local = function->locals; local != NULL;
-	     local = local->next) {
-		newline(indentation);
+	c->indentation++;
+	for (hirLocal local = function.locals_start;
+	     local.index < function.locals_end.index; local.index++) {
+		newline(c);
 		printf("\033[32mvar \033[35m%s \033[91m%s\033[0m",
-		       lookup(interner, local->name),
-		       debugHirType(local->type));
+		       lookup(c->interner, hirGetLocalName(c->hir, local)),
+		       debugHirType(hirGetLocalType(c->hir, local)));
 	}
 
-	newline(indentation);
-	debugNode(function->body, interner, indentation);
-	indentation--;
+	newline(c);
+	debugNode(c, function.body);
+	c->indentation--;
 }
 
 void debugHir(hirRoot hir, interner interner)
 {
-	hirFunction *f = hir.functions;
-	bool first = true;
-	u32 indentation = 0;
+	ctx c = {
+		.hir = hir,
+		.interner = interner,
+		.indentation = 0,
+	};
 
-	while (f != NULL) {
+	bool first = true;
+	for (u16 i = 0; i < hir.function_count; i++) {
 		if (first)
 			first = false;
 		else
-			newline(indentation);
+			newline(&c);
 
-		debugFunction(f, interner, indentation);
-		newline(indentation);
-		f = f->next;
+		debugFunction(&c, hir.functions[i]);
+		newline(&c);
 	}
 }

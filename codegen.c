@@ -1,242 +1,281 @@
 #include "minic.h"
 
+typedef struct ctx {
+	hirRoot hir;
+	u32 id;
+	char *function_name;
+	char *s;
+	u32 *local_offsets;
+} ctx;
+
 static u32 roundUpTo(u32 x, u32 multiple_of)
 {
 	return ((x + multiple_of - 1) / multiple_of) * multiple_of;
 }
 
-static void calculateStackLayout(hirFunction *function)
+static u32 calculateStackLayout(ctx *c, hirFunction function)
 {
 	u32 offset = 0;
-	for (hirLocal *local = function->locals; local != NULL;
-	     local = local->next) {
-		u32 size = typeSize(local->type);
+	for (hirLocal local = function.locals_start;
+	     local.index < function.locals_end.index; local.index++) {
+		u32 size = typeSize(hirGetLocalType(c->hir, local));
 		offset = roundUpTo(offset, size); // align
-		local->offset = offset;
+		c->local_offsets[local.index] = offset;
 		offset += size;
 	}
 
 	// in AArch64 sp must always be aligned to 16
-	function->stack_size = roundUpTo(offset, 16);
+	return roundUpTo(offset, 16);
 }
 
-static void directive(char **s, char *directive_name, char *fmt, ...)
+static void directive(ctx *c, char *directive_name, char *fmt, ...)
 {
-	*s += snprintf(*s, 1024, ".%s ", directive_name);
+	c->s += snprintf(c->s, 1024, ".%s ", directive_name);
 	va_list ap;
 	va_start(ap, fmt);
-	*s += vsnprintf(*s, 1024, fmt, ap);
+	c->s += vsnprintf(c->s, 1024, fmt, ap);
 	va_end(ap);
-	*s += snprintf(*s, 2, "\n");
+	c->s += snprintf(c->s, 2, "\n");
 }
 
-static void label(char **s, char *fmt, ...)
+static void label(ctx *c, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	*s += vsnprintf(*s, 1024, fmt, ap);
+	c->s += vsnprintf(c->s, 1024, fmt, ap);
 	va_end(ap);
-	*s += snprintf(*s, 3, ":\n");
+	c->s += snprintf(c->s, 3, ":\n");
 }
 
-static void instruction(char **s, char *instruction_mnemonic, char *fmt, ...)
+static void instruction(ctx *c, char *instruction_mnemonic, char *fmt, ...)
 {
-	*s += snprintf(*s, 1024, "\t%s\t", instruction_mnemonic);
+	c->s += snprintf(c->s, 1024, "\t%s\t", instruction_mnemonic);
 	va_list ap;
 	va_start(ap, fmt);
-	*s += vsnprintf(*s, 1024, fmt, ap);
+	c->s += vsnprintf(c->s, 1024, fmt, ap);
 	va_end(ap);
-	*s += snprintf(*s, 2, "\n");
+	c->s += snprintf(c->s, 2, "\n");
 }
 
-static void push(char **s)
+static void push(ctx *c)
 {
-	instruction(s, "sub", "sp, sp, #16");
-	instruction(s, "str", "x8, [sp]");
+	instruction(c, "sub", "sp, sp, #16");
+	instruction(c, "str", "x8, [sp]");
 }
 
-static void pop(char **s, char *reg)
+static void pop(ctx *c, char *reg)
 {
-	instruction(s, "ldr", "%s, [sp]", reg);
-	instruction(s, "add", "sp, sp, #16");
+	instruction(c, "ldr", "%s, [sp]", reg);
+	instruction(c, "add", "sp, sp, #16");
 }
 
-static void genAddress(char **s, hirNode *node)
+static void genAddress(ctx *c, hirNode node)
 {
-	switch (node->kind) {
-	case HIR_VARIABLE:
-		instruction(s, "sub", "x8, fp, #%u", node->local->offset);
+	switch (hirGetNodeKind(c->hir, node)) {
+	case HIR_VARIABLE: {
+		hirVariable variable = hirGetNode(c->hir, node).variable;
+		u32 offset = c->local_offsets[variable.local.index];
+		instruction(c, "sub", "x8, fp, #%u", offset);
 		break;
+	}
 
 	default:
-		sendDiagnosticToSink(DIAG_ERROR, node->span, "not an lvalue");
+		sendDiagnosticToSink(DIAG_ERROR, hirGetNodeSpan(c->hir, node),
+				     "not an lvalue");
 		break;
 	}
 }
 
-static void gen(char **s, hirNode *node, char *function_name, u32 *id)
+static void gen(ctx *c, hirNode node)
 {
-	switch (node->kind) {
+	switch (hirGetNodeKind(c->hir, node)) {
 	case HIR_MISSING:
 		break;
 
-	case HIR_INT_LITERAL:
-		instruction(s, "mov", "x8, #%d", node->value);
+	case HIR_INT_LITERAL: {
+		hirIntLiteral int_literal =
+			hirGetNode(c->hir, node).int_literal;
+		instruction(c, "mov", "x8, #%d", int_literal.value);
 		break;
+	}
 
-	case HIR_VARIABLE:
-		instruction(s, "ldr", "x8, [fp, #-%u]", node->local->offset);
+	case HIR_VARIABLE: {
+		hirVariable variable = hirGetNode(c->hir, node).variable;
+		u32 offset = c->local_offsets[variable.local.index];
+		instruction(c, "ldr", "x8, [fp, #-%u]", offset);
 		break;
+	}
 
-	case HIR_BINARY_OPERATION:
-		gen(s, node->lhs, function_name, id);
-		push(s);
-		gen(s, node->rhs, function_name, id);
-		instruction(s, "mov", "x9, x8");
-		pop(s, "x8");
-		switch (node->op) {
+	case HIR_BINARY_OPERATION: {
+		hirBinaryOperation binary_operation =
+			hirGetNode(c->hir, node).binary_operation;
+		gen(c, binary_operation.lhs);
+		push(c);
+		gen(c, binary_operation.rhs);
+		instruction(c, "mov", "x9, x8");
+		pop(c, "x8");
+		switch (binary_operation.op) {
 		case AST_BINOP_ADD:
-			instruction(s, "add", "x8, x8, x9");
+			instruction(c, "add", "x8, x8, x9");
 			break;
 		case AST_BINOP_SUBTRACT:
-			instruction(s, "sub", "x8, x8, x9");
+			instruction(c, "sub", "x8, x8, x9");
 			break;
 		case AST_BINOP_MULTIPLY:
-			instruction(s, "mul", "x8, x8, x9");
+			instruction(c, "mul", "x8, x8, x9");
 			break;
 		case AST_BINOP_DIVIDE:
-			instruction(s, "sdiv", "x8, x8, x9");
+			instruction(c, "sdiv", "x8, x8, x9");
 			break;
 		case AST_BINOP_EQUAL:
-			instruction(s, "cmp", "x8, x9");
-			instruction(s, "cset", "x8, eq");
+			instruction(c, "cmp", "x8, x9");
+			instruction(c, "cset", "x8, eq");
 			break;
 		case AST_BINOP_NOT_EQUAL:
-			instruction(s, "cmp", "x8, x9");
-			instruction(s, "cset", "x8, ne");
+			instruction(c, "cmp", "x8, x9");
+			instruction(c, "cset", "x8, ne");
 			break;
 		case AST_BINOP_LESS_THAN:
-			instruction(s, "cmp", "x8, x9");
-			instruction(s, "cset", "x8, lt");
+			instruction(c, "cmp", "x8, x9");
+			instruction(c, "cset", "x8, lt");
 			break;
 		case AST_BINOP_LESS_THAN_EQUAL:
-			instruction(s, "cmp", "x8, x9");
-			instruction(s, "cset", "x8, le");
+			instruction(c, "cmp", "x8, x9");
+			instruction(c, "cset", "x8, le");
 			break;
 		case AST_BINOP_GREATER_THAN:
-			instruction(s, "cmp", "x8, x9");
-			instruction(s, "cset", "x8, gt");
+			instruction(c, "cmp", "x8, x9");
+			instruction(c, "cset", "x8, gt");
 			break;
 		case AST_BINOP_GREATER_THAN_EQUAL:
-			instruction(s, "cmp", "x8, x9");
-			instruction(s, "cset", "x8, ge");
+			instruction(c, "cmp", "x8, x9");
+			instruction(c, "cset", "x8, ge");
 			break;
 		}
 		break;
+	}
 
-	case HIR_ASSIGN:
-		genAddress(s, node->lhs);
-		push(s);
-		gen(s, node->rhs, function_name, id);
-		pop(s, "x9");
-		instruction(s, "str", "x8, [x9]");
+	case HIR_ASSIGN: {
+		hirAssign assign = hirGetNode(c->hir, node).assign;
+		genAddress(c, assign.lhs);
+		push(c);
+		gen(c, assign.rhs);
+		pop(c, "x9");
+		instruction(c, "str", "x8, [x9]");
 		break;
+	}
 
 	case HIR_IF: {
-		u32 i = *id;
-		(*id)++;
-		gen(s, node->condition, function_name, id);
-		instruction(s, "cbz", "x8, ELSE_%s_%u", function_name, i);
-		gen(s, node->true_branch, function_name, id);
-		instruction(s, "b", "ENDIF_%s_%u", function_name, i);
-		label(s, "ELSE_%s_%u", function_name, i);
-		if (node->false_branch != NULL)
-			gen(s, node->false_branch, function_name, id);
-		label(s, "ENDIF_%s_%u", function_name, i);
+		hirIf if_ = hirGetNode(c->hir, node).if_;
+		u32 i = c->id;
+		c->id++;
+		gen(c, if_.condition);
+		instruction(c, "cbz", "x8, ELSE_%s_%u", c->function_name, i);
+		gen(c, if_.true_branch);
+		instruction(c, "b", "ENDIF_%s_%u", c->function_name, i);
+		label(c, "ELSE_%s_%u", c->function_name, i);
+		if (if_.false_branch.index != (u16)-1)
+			gen(c, if_.false_branch);
+		label(c, "ENDIF_%s_%u", c->function_name, i);
 		break;
 	}
 
 	case HIR_WHILE: {
-		u32 i = *id;
-		(*id)++;
-		label(s, "WHILE_%s_%u", function_name, i);
-		gen(s, node->condition, function_name, id);
-		instruction(s, "cbz", "x8, ENDWHILE_%s_%u", function_name, i);
-		gen(s, node->true_branch, function_name, id);
-		instruction(s, "b", "WHILE_%s_%u", function_name, i);
-		label(s, "ENDWHILE_%s_%u", function_name, i);
+		hirWhile while_ = hirGetNode(c->hir, node).while_;
+		u32 i = c->id;
+		c->id++;
+		label(c, "WHILE_%s_%u", c->function_name, i);
+		gen(c, while_.condition);
+		instruction(c, "cbz", "x8, ENDWHILE_%s_%u", c->function_name,
+			    i);
+		gen(c, while_.true_branch);
+		instruction(c, "b", "WHILE_%s_%u", c->function_name, i);
+		label(c, "ENDWHILE_%s_%u", c->function_name, i);
 		break;
 	}
 
-	case HIR_RETURN:
-		gen(s, node->lhs, function_name, id);
-		instruction(s, "mov", "x0, x8");
-		instruction(s, "b", "RETURN_%s", function_name);
+	case HIR_RETURN: {
+		hirReturn retrn = hirGetNode(c->hir, node).retrn;
+		gen(c, retrn.value);
+		instruction(c, "mov", "x0, x8");
+		instruction(c, "b", "RETURN_%s", c->function_name);
 		break;
+	}
 
-	case HIR_BLOCK:
-		for (usize i = 0; i < node->count; i++)
-			gen(s, node->children[i], function_name, id);
+	case HIR_BLOCK: {
+		hirBlock block = hirGetNode(c->hir, node).block;
+		for (hirNode n = block.start; n.index < block.end.index;
+		     n.index++)
+			gen(c, n);
 		break;
+	}
 	}
 }
 
-static void genPrologue(char **s, hirFunction *function)
+static void genPrologue(ctx *c, u32 stack_size)
 {
 	// allocate 16 bytes on the stack for the frame record
-	instruction(s, "sub", "sp, sp, #16");
-	instruction(s, "stp", "fp, lr, [sp]");
+	instruction(c, "sub", "sp, sp, #16");
+	instruction(c, "stp", "fp, lr, [sp]");
 
 	// now sp points at the frame record
 
 	// the frame pointer always points to the frame record
-	instruction(s, "mov", "fp, sp");
+	instruction(c, "mov", "fp, sp");
 
 	// allocate enough space for all local variables
-	instruction(s, "sub", "sp, sp, #%u", function->stack_size);
+	instruction(c, "sub", "sp, sp, #%u", stack_size);
 }
 
-static void genEpilogue(char **s, hirFunction *function)
+static void genEpilogue(ctx *c, u32 stack_size)
 {
 	// deallocate locals
-	instruction(s, "add", "sp, sp, #%u", function->stack_size);
+	instruction(c, "add", "sp, sp, #%u", stack_size);
 
 	// now sp points at the frame record
 
 	// restore link register and caller’s frame pointer
-	instruction(s, "ldp", "fp, lr, [sp]");
+	instruction(c, "ldp", "fp, lr, [sp]");
 
 	// deallocate frame record
-	instruction(s, "add", "sp, sp, #16");
+	instruction(c, "add", "sp, sp, #16");
 }
 
 void codegen(hirRoot hir, interner interner, memory *m)
 {
 	char *assembly_top = (char *)(m->assembly.top + m->assembly.bytes_used);
-	char **s = &assembly_top;
+	ctx c = {
+		.hir = hir,
+		.id = 0,
+		.function_name = NULL,
+		.s = assembly_top,
+		.local_offsets = allocateInBump(&m->general,
+						sizeof(u32) * hir.local_count),
+	};
 
-	for (hirFunction *function = hir.functions; function != NULL;
-	     function = function->next) {
-		calculateStackLayout(function);
+	for (u16 i = 0; i < hir.function_count; i++) {
+		hirFunction function = hir.functions[i];
 
-		char *function_name = (char *)lookup(interner, function->name);
+		c.function_name = (char *)lookup(interner, function.name);
+		c.id = 0;
 
-		directive(s, "global", "_%s", function_name);
-		directive(s, "align", "2");
-		label(s, "_%s", function_name);
+		u32 stack_size = calculateStackLayout(&c, function);
 
-		genPrologue(s, function);
+		directive(&c, "global", "_%s", c.function_name);
+		directive(&c, "align", "2");
+		label(&c, "_%s", c.function_name);
 
-		u32 id = 0;
-		gen(s, function->body, function_name, &id);
+		genPrologue(&c, stack_size);
 
-		label(s, "RETURN_%s", function_name);
-		genEpilogue(s, function);
-		instruction(s, "ret", "");
+		gen(&c, function.body);
 
-		snprintf(*s, 2, "\n");
-		(*s)++;
+		label(&c, "RETURN_%s", c.function_name);
+		genEpilogue(&c, stack_size);
+		instruction(&c, "ret", "");
+
+		snprintf(c.s, 2, "\n");
+		c.s++;
 	}
 
-	m->assembly.bytes_used = assembly_top - (char *)m->assembly.top;
+	m->assembly.bytes_used = c.s - (char *)m->assembly.top;
 }
