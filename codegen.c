@@ -16,8 +16,8 @@ static u32 roundUpTo(u32 x, u32 multiple_of)
 static u32 calculateStackLayout(ctx *c, hirFunction function)
 {
 	u32 offset = 0;
-	for (hirLocal local = function.locals_start;
-	     local.index < function.locals_end.index; local.index++) {
+	for (u16 i = 0; i < function.locals_count; i++) {
+		hirLocal local = { .index = function.locals_start.index + i };
 		u32 size = typeSize(hirGetLocalType(c->hir, local));
 		offset = roundUpTo(offset, size); // align
 		c->local_offsets[local.index] = offset;
@@ -204,9 +204,10 @@ static void gen(ctx *c, hirNode node)
 
 	case HIR_BLOCK: {
 		hirBlock block = hirGetNode(c->hir, node).block;
-		for (hirNode n = block.start; n.index < block.end.index;
-		     n.index++)
+		for (u16 i = 0; i < block.count; i++) {
+			hirNode n = { .index = block.start.index + i };
 			gen(c, n);
+		}
 		break;
 	}
 	}

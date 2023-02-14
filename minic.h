@@ -252,7 +252,7 @@ typedef struct astWhile {
 
 typedef struct astBlock {
 	astStatement start;
-	astStatement end;
+	u16 count;
 } astBlock;
 
 typedef union astStatementData {
@@ -355,7 +355,7 @@ typedef struct hirReturn {
 
 typedef struct hirBlock {
 	hirNode start;
-	hirNode end;
+	u16 count;
 } hirBlock;
 
 typedef struct hirNodeData {
@@ -371,7 +371,7 @@ typedef struct hirNodeData {
 
 typedef struct hirFunction {
 	hirLocal locals_start;
-	hirLocal locals_end;
+	u16 locals_count;
 	hirNode body;
 	identifierId name;
 } hirFunction;

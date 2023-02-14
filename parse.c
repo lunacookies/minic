@@ -380,22 +380,19 @@ static fullStatement statement(parser *p, memory *m)
 		expect(p, TOK_RBRACE);
 
 		astStatement start = { .index = -1 };
-		astStatement end = { .index = -1 };
 
 		for (u16 i = 0; i < count; i++) {
 			astStatement this =
 				allocateStatement(p, statements_start[i]);
 			if (start.index == (u16)-1)
 				start = this;
-			end = this;
-			end.index++; // inclusive start, exclusive end
 		}
 
 		clearBumpToMark(&m->temp, mark);
 
 		s.kind = AST_STMT_BLOCK;
 		s.data.block.start = start;
-		s.data.block.end = end;
+		s.data.block.count = count;
 		break;
 	}
 
@@ -682,15 +679,14 @@ static void debugStatement(ctx *c, astStatement statement)
 
 	case AST_STMT_BLOCK: {
 		astBlock block = astGetStatement(c->ast, statement).block;
-		bool is_empty = block.start.index == block.end.index;
-		if (is_empty) {
+		if (block.count == 0) {
 			printf("{}");
 			break;
 		}
 		printf("{");
 		c->indentation++;
-		for (astStatement s = block.start; s.index < block.end.index;
-		     s.index++) {
+		for (u16 i = 0; i < block.count; i++) {
+			astStatement s = { .index = block.start.index + i };
 			newline(c);
 			debugStatement(c, s);
 		}

@@ -242,23 +242,20 @@ static fullNode lowerStatement(hirRoot *hir, astRoot ast,
 
 		bumpMark mark = markBump(&m->temp);
 
-		for (astStatement ast_s = ast_block.start;
-		     ast_s.index < ast_block.end.index; ast_s.index++) {
+		for (u16 i = 0; i < ast_block.count; i++) {
+			astStatement ast_s = { .index = ast_block.start.index +
+							i };
 			fullNode *ptr =
 				allocateInBump(&m->temp, sizeof(fullNode));
 			*ptr = lowerStatement(hir, ast, ast_s, m);
 		}
 
 		hirNode start = { .index = -1 };
-		hirNode end = { .index = -1 };
 
-		u16 count = ast_block.end.index - ast_block.start.index;
-		for (u16 i = 0; i < count; i++) {
+		for (u16 i = 0; i < ast_block.count; i++) {
 			hirNode this = allocateNode(hir, nodes_start[i]);
 			if (start.index == (u16)-1)
 				start = this;
-			end = this;
-			end.index++; // inclusive start, exclusive end
 		}
 
 		clearBumpToMark(&m->temp, mark);
@@ -266,7 +263,7 @@ static fullNode lowerStatement(hirRoot *hir, astRoot ast,
 		n.kind = HIR_BLOCK;
 		n.type = HIR_TYPE_VOID;
 		n.data.block.start = start;
-		n.data.block.end = end;
+		n.data.block.count = ast_block.count;
 		break;
 	}
 	}
@@ -311,11 +308,11 @@ hirRoot lower(astRoot ast, memory *m)
 		hir.current_function_locals_start = locals_start;
 		hirNode body = allocateNode(
 			&hir, lowerStatement(&hir, ast, ast_function.body, m));
-		hirLocal locals_end = { .index = hir.local_count };
+		u16 locals_count = hir.local_count - locals_start.index;
 
 		hirFunction function = {
 			.locals_start = locals_start,
-			.locals_end = locals_end,
+			.locals_count = locals_count,
 			.body = body,
 			.name = ast_function.name,
 		};
@@ -529,15 +526,14 @@ static void debugNode(ctx *c, hirNode node)
 
 	case HIR_BLOCK: {
 		hirBlock block = hirGetNode(c->hir, node).block;
-		bool is_empty = block.start.index == block.end.index;
-		if (is_empty) {
+		if (block.count == 0) {
 			printf("{}");
 			break;
 		}
 		printf("{");
 		c->indentation++;
-		for (hirNode n = block.start; n.index < block.end.index;
-		     n.index++) {
+		for (u16 i = 0; i < block.count; i++) {
+			hirNode n = { .index = block.start.index + i };
 			newline(c);
 			debugNode(c, n);
 		}
@@ -555,8 +551,8 @@ static void debugFunction(ctx *c, hirFunction function)
 	       lookup(c->interner, function.name));
 
 	c->indentation++;
-	for (hirLocal local = function.locals_start;
-	     local.index < function.locals_end.index; local.index++) {
+	for (u16 i = 0; i < function.locals_count; i++) {
+		hirLocal local = { .index = function.locals_start.index + i };
 		newline(c);
 		printf("\033[32mvar \033[35m%s \033[91m%s\033[0m",
 		       lookup(c->interner, hirGetLocalName(c->hir, local)),
