@@ -647,17 +647,31 @@ static void debugStatement(ctx *c, astStatement statement)
 		astIf if_ = astGetStatement(c->ast, statement).if_;
 		printf("if ");
 		debugExpression(c, if_.condition);
-		c->indentation++;
 
-		newline(c);
-		debugStatement(c, if_.true_branch);
-		c->indentation--;
-
-		if (if_.false_branch.index != (u16)-1) {
-			newline(c);
-			printf("else");
+		if (astGetStatementKind(c->ast, if_.true_branch) ==
+		    AST_STMT_BLOCK) {
+			printf(" ");
+			debugStatement(c, if_.true_branch);
+			printf(" ");
+		} else {
 			c->indentation++;
+			newline(c);
+			debugStatement(c, if_.true_branch);
+			c->indentation--;
+			newline(c);
+		}
 
+		if (if_.false_branch.index == (u16)-1)
+			break;
+
+		printf("else");
+
+		if (astGetStatementKind(c->ast, if_.false_branch) ==
+		    AST_STMT_BLOCK) {
+			printf(" ");
+			debugStatement(c, if_.false_branch);
+		} else {
+			c->indentation++;
 			newline(c);
 			debugStatement(c, if_.false_branch);
 			c->indentation--;
@@ -669,6 +683,14 @@ static void debugStatement(ctx *c, astStatement statement)
 		astWhile while_ = astGetStatement(c->ast, statement).while_;
 		printf("while ");
 		debugExpression(c, while_.condition);
+
+		if (astGetStatementKind(c->ast, while_.true_branch) ==
+		    AST_STMT_BLOCK) {
+			printf(" ");
+			debugStatement(c, while_.true_branch);
+			break;
+		}
+
 		c->indentation++;
 		newline(c);
 		debugStatement(c, while_.true_branch);
@@ -705,10 +727,15 @@ static void debugFunction(ctx *c, astFunction function)
 	else
 		printf("%s", lookup(c->interner, function.name));
 
-	c->indentation++;
-	newline(c);
-	debugStatement(c, function.body);
-	c->indentation--;
+	if (astGetStatementKind(c->ast, function.body) == AST_STMT_BLOCK) {
+		printf(" ");
+		debugStatement(c, function.body);
+	} else {
+		c->indentation++;
+		newline(c);
+		debugStatement(c, function.body);
+		c->indentation--;
+	}
 }
 
 void debugAst(astRoot ast, interner interner)

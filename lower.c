@@ -488,17 +488,29 @@ static void debugNode(ctx *c, hirNode node)
 		hirIf if_ = hirGetNode(c->hir, node).if_;
 		printf("if ");
 		debugNode(c, if_.condition);
-		c->indentation++;
 
-		newline(c);
-		debugNode(c, if_.true_branch);
-		c->indentation--;
-
-		if (if_.false_branch.index != (u16)-1) {
-			newline(c);
-			printf("else");
+		if (hirGetNodeKind(c->hir, if_.true_branch) == HIR_BLOCK) {
+			printf(" ");
+			debugNode(c, if_.true_branch);
+			printf(" ");
+		} else {
 			c->indentation++;
+			newline(c);
+			debugNode(c, if_.true_branch);
+			c->indentation--;
+			newline(c);
+		}
 
+		if (if_.false_branch.index == (u16)-1)
+			break;
+
+		printf("else");
+
+		if (hirGetNodeKind(c->hir, if_.false_branch) == HIR_BLOCK) {
+			printf(" ");
+			debugNode(c, if_.false_branch);
+		} else {
+			c->indentation++;
 			newline(c);
 			debugNode(c, if_.false_branch);
 			c->indentation--;
@@ -510,10 +522,16 @@ static void debugNode(ctx *c, hirNode node)
 		hirWhile while_ = hirGetNode(c->hir, node).while_;
 		printf("while ");
 		debugNode(c, while_.condition);
-		c->indentation++;
-		newline(c);
-		debugNode(c, while_.true_branch);
-		c->indentation--;
+
+		if (hirGetNodeKind(c->hir, while_.true_branch) == HIR_BLOCK) {
+			printf(" ");
+			debugNode(c, while_.true_branch);
+		} else {
+			c->indentation++;
+			newline(c);
+			debugNode(c, while_.true_branch);
+			c->indentation--;
+		}
 		break;
 	}
 
