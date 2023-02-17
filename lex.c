@@ -86,7 +86,7 @@ tokenBuffer lex(u8 *input, memory *m)
 
 	usize i = 0;
 
-	while (input[i] != '\0') {
+	while (input[i] != 0) {
 		if (isWhitespace(input[i])) {
 			i++;
 			goto next;
