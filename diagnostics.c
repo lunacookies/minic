@@ -48,14 +48,12 @@ static diagnosticLocation getDiagnosticLocation(span span)
 {
 	projectSpec current_project = currentProject();
 	u16 current_file = currentFile();
-
 	u8 *content = current_project.file_contents[current_file];
 
-	diagnosticLocation loc = {
+	return (diagnosticLocation){
 		.name = current_project.file_names[current_file],
 		.lc = offsetToLineColumn(span.start, content),
 	};
-	return loc;
 }
 
 void sendDiagnosticToSink(severity severity, span span, char *fmt, ...)

@@ -18,8 +18,7 @@ static hirLocal lookupLocal(hirRoot *hir, identifierId name)
 			return local;
 	}
 
-	hirLocal local = { .index = -1 };
-	return local;
+	return (hirLocal){ .index = -1 };
 }
 
 static hirNode allocateNode(hirRoot *hir, fullNode node)
@@ -37,8 +36,7 @@ static hirNode allocateNode(hirRoot *hir, fullNode node)
 	hir->node_kinds[i] = node.kind;
 	hir->node_types[i] = node.type;
 	hir->node_spans[i] = node.span;
-	hirNode n = { .index = i };
-	return n;
+	return (hirNode){ .index = i };
 }
 
 static hirLocal allocateLocal(hirRoot *hir, identifierId name, hirType type)
@@ -48,17 +46,18 @@ static hirLocal allocateLocal(hirRoot *hir, identifierId name, hirType type)
 	hir->local_count++;
 	hir->local_names[i] = name;
 	hir->local_types[i] = type;
-	hirLocal l = { .index = i };
-	return l;
+	return (hirLocal){ .index = i };
 }
 
 static fullNode lowerExpression(hirRoot *hir, astRoot ast,
 				astExpression ast_expression, memory *m)
 {
-	fullNode n = { .data = { 0 },
-		       .kind = -1,
-		       .type = -1,
-		       .span = astGetExpressionSpan(ast, ast_expression) };
+	fullNode n = {
+		.data = { 0 },
+		.kind = -1,
+		.type = -1,
+		.span = astGetExpressionSpan(ast, ast_expression),
+	};
 
 	switch (astGetExpressionKind(ast, ast_expression)) {
 	case AST_EXPR_MISSING:
@@ -130,10 +129,12 @@ static fullNode lowerExpression(hirRoot *hir, astRoot ast,
 static fullNode lowerStatement(hirRoot *hir, astRoot ast,
 			       astStatement ast_statement, memory *m)
 {
-	fullNode n = { .data = { 0 },
-		       .kind = -1,
-		       .type = -1,
-		       .span = astGetStatementSpan(ast, ast_statement) };
+	fullNode n = {
+		.data = { 0 },
+		.kind = -1,
+		.type = -1,
+		.span = astGetStatementSpan(ast, ast_statement),
+	};
 
 	switch (astGetStatementKind(ast, ast_statement)) {
 	case AST_STMT_MISSING:

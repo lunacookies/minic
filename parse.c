@@ -36,8 +36,7 @@ static astExpression allocateExpression(parser *p, fullExpression expression)
 	p->ast.expressions[i] = expression.data;
 	p->ast.expression_kinds[i] = expression.kind;
 	p->ast.expression_spans[i] = expression.span;
-	astExpression e = { .index = i };
-	return e;
+	return (astExpression){ .index = i };
 }
 
 static astStatement allocateStatement(parser *p, fullStatement statement)
@@ -54,8 +53,7 @@ static astStatement allocateStatement(parser *p, fullStatement statement)
 	p->ast.statements[i] = statement.data;
 	p->ast.statement_kinds[i] = statement.kind;
 	p->ast.statement_spans[i] = statement.span;
-	astStatement s = { .index = i };
-	return s;
+	return (astStatement){ .index = i };
 }
 
 static bool atEof(parser *p)
@@ -211,7 +209,7 @@ static fullExpression expressionBindingPower(parser *p, u8 min_binding_power,
 {
 	fullExpression lhs = expressionLhs(p, m);
 
-	while (true) {
+	for (;;) {
 		if (atEof(p))
 			return lhs;
 
@@ -276,14 +274,20 @@ static fullExpression expressionBindingPower(parser *p, u8 min_binding_power,
 		astExpression allocd_lhs = allocateExpression(p, lhs);
 		astExpression allocd_rhs = allocateExpression(p, rhs);
 
-		fullExpression new_lhs = { .data = {.binary_operation = {
-						      .lhs = allocd_lhs,
-						      .rhs = allocd_rhs,
-								      .op = op,
-					      }}, .kind = AST_EXPR_BINARY_OPERATION, .span = {
+		astBinaryOperation binary_operation = {
+			.lhs = allocd_lhs,
+			.rhs = allocd_rhs,
+			.op = op,
+		};
+		span span = {
 			.start = astGetExpressionSpan(p->ast, allocd_lhs).start,
 			.end = p->tokens.spans[p->cursor - 1].end,
-		}, };
+		};
+		fullExpression new_lhs = {
+			.data.binary_operation = binary_operation,
+			.kind = AST_EXPR_BINARY_OPERATION,
+			.span = span,
+		};
 		lhs = new_lhs;
 	}
 }
@@ -415,11 +419,10 @@ static astFunction function(parser *p, memory *m)
 	identifierId name = expectIdentifier(p);
 	astStatement body = allocateStatement(p, statement(p, m));
 
-	astFunction f = {
+	return (astFunction){
 		.name = name,
 		.body = body,
 	};
-	return f;
 }
 
 astRoot parse(tokenBuffer tokens, u8 *content, memory *m)

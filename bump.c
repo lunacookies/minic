@@ -4,21 +4,19 @@
 
 bump createBump(void *buffer, usize size)
 {
-	bump b = {
+	return (bump){
 		.top = buffer,
 		.bytes_used = 0,
 		.max_size = size,
 	};
-	return b;
 }
 
 bumpMark markBump(bump *b)
 {
-	bumpMark mark = {
+	return (bumpMark){
 		.bytes_used = b->bytes_used,
 		.top = b->top,
 	};
-	return mark;
 }
 
 void clearBumpToMark(bump *b, bumpMark mark)

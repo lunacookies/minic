@@ -66,12 +66,11 @@ projectSpec discoverProject(memory *m)
 	file_contents = copyInBump(&m->general, file_contents, bytes_used);
 	clearBumpToMark(&m->temp, mark);
 
-	projectSpec p = {
+	return (projectSpec){
 		.num_files = num_files,
 		.file_names = file_names,
 		.file_contents = file_contents,
 	};
-	return p;
 }
 
 _Thread_local projectSpec current_project;

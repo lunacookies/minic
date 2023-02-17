@@ -21,10 +21,9 @@ memory initMemory(void)
 	u8 *general_ptr =
 		allocFromOs(GENERAL_MEMORY_SIZE, (u8 *)0x0000400000000000);
 
-	memory mem = {
+	return (memory){
 		.temp = createBump(temp_ptr, TEMP_MEMORY_SIZE),
 		.assembly = createBump(assembly_ptr, ASSEMBLY_MEMORY_SIZE),
 		.general = createBump(general_ptr, GENERAL_MEMORY_SIZE),
 	};
-	return mem;
 }

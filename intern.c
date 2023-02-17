@@ -107,10 +107,9 @@ interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count,
 	// and identifier contents have been copied
 	clearBumpToMark(&m->temp, mark);
 
-	interner i = {
+	return (interner){
 		.contents = c.identifier_contents,
 	};
-	return i;
 }
 
 u8 *lookup(interner i, identifierId id)
