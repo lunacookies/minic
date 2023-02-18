@@ -4,7 +4,7 @@ typedef struct ctx {
 	hirRoot hir;
 	u32 id;
 	char *function_name;
-	char *s;
+	bump *assembly;
 	u32 *local_offsets;
 } ctx;
 
@@ -30,31 +30,31 @@ static u32 calculateStackLayout(ctx *c, hirFunction function)
 
 static void directive(ctx *c, char *directive_name, char *fmt, ...)
 {
-	c->s += snprintf(c->s, 1024, ".%s ", directive_name);
+	printfInBump(c->assembly, ".%s ", directive_name);
 	va_list ap;
 	va_start(ap, fmt);
-	c->s += vsnprintf(c->s, 1024, fmt, ap);
+	printfInBumpV(c->assembly, fmt, ap);
 	va_end(ap);
-	c->s += snprintf(c->s, 2, "\n");
+	printfInBump(c->assembly, "\n");
 }
 
 static void label(ctx *c, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	c->s += vsnprintf(c->s, 1024, fmt, ap);
+	printfInBumpV(c->assembly, fmt, ap);
 	va_end(ap);
-	c->s += snprintf(c->s, 3, ":\n");
+	printfInBump(c->assembly, ":\n");
 }
 
 static void instruction(ctx *c, char *instruction_mnemonic, char *fmt, ...)
 {
-	c->s += snprintf(c->s, 1024, "\t%s\t", instruction_mnemonic);
+	printfInBump(c->assembly, "\t%s\t", instruction_mnemonic);
 	va_list ap;
 	va_start(ap, fmt);
-	c->s += vsnprintf(c->s, 1024, fmt, ap);
+	printfInBumpV(c->assembly, fmt, ap);
 	va_end(ap);
-	c->s += snprintf(c->s, 2, "\n");
+	printfInBump(c->assembly, "\n");
 }
 
 static void push(ctx *c)
@@ -244,12 +244,11 @@ static void genEpilogue(ctx *c, u32 stack_size)
 
 void codegen(hirRoot hir, interner interner, memory *m)
 {
-	char *assembly_top = (char *)(m->assembly.top + m->assembly.bytes_used);
 	ctx c = {
 		.hir = hir,
 		.id = 0,
 		.function_name = NULL,
-		.s = assembly_top,
+		.assembly = &m->assembly,
 		.local_offsets = allocateInBump(&m->general,
 						sizeof(u32) * hir.local_count),
 	};
@@ -274,9 +273,6 @@ void codegen(hirRoot hir, interner interner, memory *m)
 		genEpilogue(&c, stack_size);
 		instruction(&c, "ret", "");
 
-		snprintf(c.s, 2, "\n");
-		c.s++;
+		printfInBump(c.assembly, "\n");
 	}
-
-	m->assembly.bytes_used = c.s - (char *)m->assembly.top;
 }

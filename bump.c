@@ -52,3 +52,20 @@ void *copyInBump(bump *b, void *buffer, usize size)
 	memcpy(ptr, buffer, size);
 	return ptr;
 }
+
+void printfInBump(bump *b, char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	printfInBumpV(b, fmt, ap);
+	va_end(ap);
+}
+
+void printfInBumpV(bump *b, char *fmt, va_list ap)
+{
+	usize remaining_bytes = b->max_size - b->bytes_used;
+	usize length = vsnprintf((char *)(b->top + b->bytes_used),
+				 remaining_bytes, fmt, ap);
+	assert(length < remaining_bytes);
+	b->bytes_used += length;
+}
