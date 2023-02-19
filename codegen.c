@@ -242,13 +242,13 @@ static void genEpilogue(ctx *c, u32 stack_size)
 	instruction(c, "add", "sp, sp, #16");
 }
 
-void codegen(hirRoot hir, interner interner, memory *m)
+void codegen(hirRoot hir, interner interner, bump *assembly, memory *m)
 {
 	ctx c = {
 		.hir = hir,
 		.id = 0,
 		.function_name = NULL,
-		.assembly = &m->assembly,
+		.assembly = assembly,
 		.local_offsets = allocateInBump(&m->general,
 						sizeof(u32) * hir.local_count),
 	};

@@ -5,6 +5,7 @@ int main(int argc, char **argv)
 	bool debug = argc == 2 && strcmp(argv[1], "-d") == 0;
 
 	memory m = initMemory();
+	bump assembly = allocateFromOs(16 * 1024 * 1024);
 	initializeDiagnosticSink();
 
 	projectSpec current_project = discoverProject(&m);
@@ -47,7 +48,7 @@ int main(int argc, char **argv)
 		if (debug)
 			debugPrintHir(hir, interner, &m.temp);
 
-		codegen(hir, interner, &m);
+		codegen(hir, interner, &assembly, &m);
 
 		assert(m.temp.bytes_used == 0);
 	}
@@ -56,15 +57,14 @@ int main(int argc, char **argv)
 		debugLog("compiled %u files using", current_project.num_files);
 		debugLog("    %zu bytes of general memory",
 			 m.general.bytes_used);
-		debugLog("    %zu bytes of assembly memory",
-			 m.assembly.bytes_used);
+		debugLog("    %zu bytes of assembly", assembly.bytes_used);
 	}
 
 	if (anyErrors())
 		return 1;
 
 	int fd = open("out.s", O_WRONLY | O_CREAT | O_TRUNC, 0666);
-	write(fd, m.assembly.top, m.assembly.bytes_used);
+	write(fd, assembly.top, assembly.bytes_used);
 	system("as -o out.o out.s");
 	system("ld -o out -syslibroot "
 	       "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -lSystem "

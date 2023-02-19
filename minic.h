@@ -69,10 +69,10 @@ void printfInBumpV(bump *b, char *fmt, va_list ap);
 
 typedef struct memory {
 	bump temp;
-	bump assembly;
 	bump general;
 } memory;
 
+bump allocateFromOs(usize size);
 memory initMemory(void);
 
 // ----------------------------------------------------------------------------
@@ -413,4 +413,4 @@ void debugPrintHir(hirRoot hir, interner interner, bump *b);
 // ----------------------------------------------------------------------------
 // codegen.c
 
-void codegen(hirRoot hir, interner interner, memory *m);
+void codegen(hirRoot hir, interner interner, bump *assembly, memory *m);
