@@ -295,7 +295,8 @@ span astGetStatementSpan(astRoot ast, astStatement statement);
 astExpressionData astGetExpression(astRoot ast, astExpression expression);
 astExpressionKind astGetExpressionKind(astRoot ast, astExpression expression);
 span astGetExpressionSpan(astRoot ast, astExpression expression);
-void debugAst(astRoot ast, interner interner);
+u8 *debugAst(astRoot ast, interner interner, bump *b);
+void debugPrintAst(astRoot ast, interner interner, bump *b);
 
 // ----------------------------------------------------------------------------
 // lower.c
@@ -406,7 +407,8 @@ identifierId hirGetLocalName(hirRoot hir, hirLocal local);
 hirType hirGetLocalType(hirRoot hir, hirLocal local);
 u32 typeSize(hirType type);
 u8 *debugHirType(hirType type);
-void debugHir(hirRoot hir, interner interner);
+u8 *debugHir(hirRoot hir, interner interner, bump *b);
+void debugPrintHir(hirRoot hir, interner interner, bump *b);
 
 // ----------------------------------------------------------------------------
 // codegen.c

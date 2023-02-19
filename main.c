@@ -41,11 +41,11 @@ int main(int argc, char **argv)
 		astRoot ast = parse(token_buffers[i],
 				    current_project.file_contents[i], &m);
 		if (debug)
-			debugAst(ast, interner);
+			debugPrintAst(ast, interner, &m.temp);
 
 		hirRoot hir = lower(ast, &m);
 		if (debug)
-			debugHir(hir, interner);
+			debugPrintHir(hir, interner, &m.temp);
 
 		codegen(hir, interner, &m);
 
