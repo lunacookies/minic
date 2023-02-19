@@ -61,8 +61,9 @@ bumpMark markBump(bump *b);
 void clearBumpToMark(bump *b, bumpMark mark);
 void *allocateInBump(bump *b, usize size);
 void *copyInBump(bump *b, void *buffer, usize size);
-void printfInBump(bump *b, char *fmt, ...);
-void printfInBumpV(bump *b, char *fmt, va_list ap);
+u8 *printfInBumpWithNull(bump *b, char *fmt, ...);
+u8 *printfInBumpNoNull(bump *b, char *fmt, ...);
+u8 *printfInBumpV(bump *b, bool null_terminated, char *fmt, va_list ap);
 
 // ----------------------------------------------------------------------------
 // memory.c

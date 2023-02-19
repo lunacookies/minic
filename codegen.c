@@ -30,31 +30,31 @@ static u32 calculateStackLayout(ctx *c, hirFunction function)
 
 static void directive(ctx *c, char *directive_name, char *fmt, ...)
 {
-	printfInBump(c->assembly, ".%s ", directive_name);
+	printfInBumpNoNull(c->assembly, ".%s ", directive_name);
 	va_list ap;
 	va_start(ap, fmt);
-	printfInBumpV(c->assembly, fmt, ap);
+	printfInBumpV(c->assembly, false, fmt, ap);
 	va_end(ap);
-	printfInBump(c->assembly, "\n");
+	printfInBumpNoNull(c->assembly, "\n");
 }
 
 static void label(ctx *c, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	printfInBumpV(c->assembly, fmt, ap);
+	printfInBumpV(c->assembly, false, fmt, ap);
 	va_end(ap);
-	printfInBump(c->assembly, ":\n");
+	printfInBumpNoNull(c->assembly, ":\n");
 }
 
 static void instruction(ctx *c, char *instruction_mnemonic, char *fmt, ...)
 {
-	printfInBump(c->assembly, "\t%s\t", instruction_mnemonic);
+	printfInBumpNoNull(c->assembly, "\t%s\t", instruction_mnemonic);
 	va_list ap;
 	va_start(ap, fmt);
-	printfInBumpV(c->assembly, fmt, ap);
+	printfInBumpV(c->assembly, false, fmt, ap);
 	va_end(ap);
-	printfInBump(c->assembly, "\n");
+	printfInBumpNoNull(c->assembly, "\n");
 }
 
 static void push(ctx *c)
@@ -273,6 +273,6 @@ void codegen(hirRoot hir, interner interner, bump *assembly, memory *m)
 		genEpilogue(&c, stack_size);
 		instruction(&c, "ret", "");
 
-		printfInBump(c.assembly, "\n");
+		printfInBumpNoNull(c.assembly, "\n");
 	}
 }

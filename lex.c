@@ -284,19 +284,21 @@ u8 *debugTokenBuffer(tokenBuffer buf, bump *b)
 {
 	u8 *p = b->top + b->bytes_used;
 
-	printfInBump(b, "{");
+	printfInBumpNoNull(b, "{");
 	for (usize i = 0; i < buf.count; i++) {
 		span s = buf.spans[i];
-		printfInBump(b, "\n\t%s %u..%u", debugTokenKind(buf.kinds[i]),
-			     s.start, s.end);
+		printfInBumpNoNull(b, "\n\t%s %u..%u",
+				   debugTokenKind(buf.kinds[i]), s.start,
+				   s.end);
 
 		u32 id = buf.identifier_ids[i].raw;
 		if (id == (u32)-1)
 			continue;
-		printfInBump(b, " (id: %u)", id);
+		printfInBumpNoNull(b, " (id: %u)", id);
 	}
-	printfInBump(b, "\n}\n");
+	printfInBumpNoNull(b, "\n}\n");
 
+	printfInBumpWithNull(b, "");
 	return p;
 }
 
