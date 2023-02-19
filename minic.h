@@ -153,7 +153,8 @@ tokenBuffer lex(u8 *input, memory *m);
 u8 *identifierText(tokenBuffer buf, u32 token_id);
 u8 *showTokenKind(tokenKind kind);
 u8 *debugTokenKind(tokenKind kind);
-void debugTokenBuffer(tokenBuffer buf);
+u8 *debugTokenBuffer(tokenBuffer buf, bump *b);
+void debugPrintTokenBuffer(tokenBuffer buf, bump *b);
 
 // ----------------------------------------------------------------------------
 // intern.c

@@ -280,26 +280,29 @@ u8 *debugTokenKind(tokenKind kind)
 	}
 }
 
-void debugTokenBuffer(tokenBuffer buf)
+u8 *debugTokenBuffer(tokenBuffer buf, bump *b)
 {
-	printf("\033[1mtokenBuffer\033[0m\n");
-	printf("         count: \033[36m%zu\033[0m\n", buf.count);
-	printf("         kinds: \033[36m%p\033[0m\n", (void *)buf.kinds);
-	printf("         spans: \033[36m%p\033[0m\n", (void *)buf.spans);
-	printf("identifier_ids: \033[36m%p\033[0m\n",
-	       (void *)buf.identifier_ids);
+	u8 *p = b->top + b->bytes_used;
 
-	printf("{");
+	printfInBump(b, "{");
 	for (usize i = 0; i < buf.count; i++) {
 		span s = buf.spans[i];
-		printf("\n\t\033[35m%s\033[0m ", debugTokenKind(buf.kinds[i]));
-		printf("\033[36m%u\033[0m..", s.start);
-		printf("\033[36m%u\033[0m", s.end);
+		printfInBump(b, "\n\t%s %u..%u", debugTokenKind(buf.kinds[i]),
+			     s.start, s.end);
 
 		u32 id = buf.identifier_ids[i].raw;
 		if (id == (u32)-1)
 			continue;
-		printf(" (id: \033[36m%u\033[0m)", id);
+		printfInBump(b, " (id: %u)", id);
 	}
-	printf("\n}\n");
+	printfInBump(b, "\n}\n");
+
+	return p;
+}
+
+void debugPrintTokenBuffer(tokenBuffer buf, bump *b)
+{
+	bumpMark mark = markBump(b);
+	printf("%s", debugTokenBuffer(buf, b));
+	clearBumpToMark(b, mark);
 }
