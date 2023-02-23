@@ -80,8 +80,8 @@ static void genAddress(ctx *c, hirNode node)
 	}
 
 	default:
-		sendDiagnosticToSink(DIAG_ERROR, hirGetNodeSpan(c->hir, node),
-				     "not an lvalue");
+		recordDiagnostic(DIAG_ERROR, hirGetNodeSpan(c->hir, node),
+				 "not an lvalue");
 		break;
 	}
 }

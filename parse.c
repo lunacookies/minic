@@ -25,9 +25,9 @@ typedef struct parser {
 static astExpression allocateExpression(parser *p, fullExpression expression)
 {
 	if (p->ast.expression_count >= MAX_EXPRESSION_COUNT) {
-		sendDiagnosticToSink(DIAG_ERROR, expression.span,
-				     "reached limit of %u expressions",
-				     MAX_EXPRESSION_COUNT);
+		recordDiagnostic(DIAG_ERROR, expression.span,
+				 "reached limit of %u expressions",
+				 MAX_EXPRESSION_COUNT);
 		internalError("ran out of expression slots");
 	}
 
@@ -42,9 +42,9 @@ static astExpression allocateExpression(parser *p, fullExpression expression)
 static astStatement allocateStatement(parser *p, fullStatement statement)
 {
 	if (p->ast.statement_count >= MAX_STATEMENT_COUNT) {
-		sendDiagnosticToSink(DIAG_ERROR, statement.span,
-				     "reached limit of %u statements",
-				     MAX_STATEMENT_COUNT);
+		recordDiagnostic(DIAG_ERROR, statement.span,
+				 "reached limit of %u statements",
+				 MAX_STATEMENT_COUNT);
 		internalError("ran out of statement slots");
 	}
 
@@ -111,7 +111,7 @@ static void errorV(parser *p, bool honor_recovery, char *fmt, va_list ap)
 		s = currentSpan(p);
 		addToken(p);
 	}
-	sendDiagnosticToSinkV(DIAG_ERROR, s, fmt, ap);
+	recordDiagnosticV(DIAG_ERROR, s, fmt, ap);
 }
 
 static void error(parser *p, char *fmt, ...)

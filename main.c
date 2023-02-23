@@ -6,7 +6,7 @@ int main(int argc, char **argv)
 
 	memory m = initMemory();
 	bump assembly = allocateFromOs(16 * 1024 * 1024);
-	initializeDiagnosticSink();
+	initializeDiagnostics(&m);
 
 	projectSpec current_project = discoverProject(&m);
 	assert(m.temp.bytes_used == 0);
@@ -52,6 +52,11 @@ int main(int argc, char **argv)
 
 		assert(m.temp.bytes_used == 0);
 	}
+
+	bumpMark mark = markBump(&m.temp);
+	u8 *s = showDiagnostics(&m.temp, true);
+	printf("%s", s);
+	clearBumpToMark(&m.temp, mark);
 
 	if (debug) {
 		debugLog("compiled %u files using", current_project.num_files);

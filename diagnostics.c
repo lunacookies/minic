@@ -1,15 +1,33 @@
 #include "minic.h"
 
-pthread_mutex_t stderrMutex;
+#define MAX_DIAGNOSTIC_COUNT 1024
+
+diagnosticsStorage diagnostics;
+pthread_mutex_t mutex;
 bool isInitialized = false;
 bool anyErrors_ = false;
 
-void initializeDiagnosticSink(void)
+void initializeDiagnostics(memory *m)
 {
 	assert(!isInitialized);
 	pthread_mutexattr_t attr;
 	pthread_mutexattr_init(&attr);
-	pthread_mutex_init(&stderrMutex, &attr);
+	pthread_mutex_init(&mutex, &attr);
+
+	diagnostics = (diagnosticsStorage){
+		.files = allocateInBump(&m->general,
+					sizeof(u16) * MAX_DIAGNOSTIC_COUNT),
+		.spans = allocateInBump(&m->general,
+					sizeof(span) * MAX_DIAGNOSTIC_COUNT),
+		.severities = allocateInBump(
+			&m->general, sizeof(severity) * MAX_DIAGNOSTIC_COUNT),
+		.message_starts = allocateInBump(
+			&m->general, sizeof(u32) * MAX_DIAGNOSTIC_COUNT),
+		.all_messages =
+			createSubBump(&m->general, 128 * MAX_DIAGNOSTIC_COUNT),
+		.count = 0,
+	};
+
 	isInitialized = true;
 }
 
@@ -18,11 +36,6 @@ typedef struct lineColumn {
 	u32 line;
 	u32 column;
 } lineColumn;
-
-typedef struct diagnosticLocation {
-	u8 *name;
-	lineColumn lc;
-} diagnosticLocation;
 
 static lineColumn offsetToLineColumn(u32 offset, u8 *content)
 {
@@ -44,59 +57,89 @@ static lineColumn offsetToLineColumn(u32 offset, u8 *content)
 	return lc;
 }
 
-static diagnosticLocation getDiagnosticLocation(span span)
-{
-	projectSpec current_project = currentProject();
-	u16 current_file = currentFile();
-	u8 *content = current_project.file_contents[current_file];
-
-	return (diagnosticLocation){
-		.name = current_project.file_names[current_file],
-		.lc = offsetToLineColumn(span.start, content),
-	};
-}
-
-void sendDiagnosticToSink(severity severity, span span, char *fmt, ...)
+void recordDiagnostic(severity severity, span span, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	sendDiagnosticToSinkV(severity, span, fmt, ap);
+	recordDiagnosticV(severity, span, fmt, ap);
 	va_end(ap);
 }
 
-void sendDiagnosticToSinkV(severity severity, span span, char *fmt, va_list ap)
+void recordDiagnosticV(severity severity, span span, char *fmt, va_list ap)
 {
 	assert(isInitialized);
-	pthread_mutex_lock(&stderrMutex);
+	pthread_mutex_lock(&mutex);
+	assert(diagnostics.count < MAX_DIAGNOSTIC_COUNT);
+
+	u8 *message = printfInBumpV(&diagnostics.all_messages, true, fmt, ap);
+	u32 message_start = message - diagnostics.all_messages.top;
 
 	if (severity == DIAG_ERROR)
 		anyErrors_ = true;
 
-	diagnosticLocation loc = getDiagnosticLocation(span);
-	fprintf(stderr, "%s:%u:%u: ", loc.name, loc.lc.line + 1,
-		loc.lc.column + 1);
+	diagnostics.files[diagnostics.count] = currentFile();
+	diagnostics.spans[diagnostics.count] = span;
+	diagnostics.severities[diagnostics.count] = severity;
+	diagnostics.message_starts[diagnostics.count] = message_start;
+	diagnostics.count++;
 
-	switch (severity) {
-	case DIAG_WARNING:
-		fprintf(stderr, "\033[33mwarning"); // yellow
-		break;
-	case DIAG_ERROR:
-		fprintf(stderr, "\033[31merror"); // red
-		break;
-	}
-	fprintf(stderr, ":\033[0;1m ");
-
-	vfprintf(stderr, fmt, ap);
-	fprintf(stderr, "\033[0m\n");
-
-	pthread_mutex_unlock(&stderrMutex);
+	pthread_mutex_unlock(&mutex);
 }
 
 bool anyErrors(void)
 {
 	assert(isInitialized);
-	pthread_mutex_lock(&stderrMutex);
+	pthread_mutex_lock(&mutex);
 	bool b = anyErrors_;
-	pthread_mutex_unlock(&stderrMutex);
+	pthread_mutex_unlock(&mutex);
 	return b;
+}
+
+u8 *showDiagnostics(bump *b, bool color)
+{
+	assert(isInitialized);
+	pthread_mutex_lock(&mutex);
+	u8 *p = b->top + b->bytes_used;
+
+	for (u16 i = 0; i < diagnostics.count; i++) {
+		u16 file = diagnostics.files[i];
+		u8 *file_name = currentProject().file_names[file];
+		u8 *file_content = currentProject().file_contents[file];
+
+		span span = diagnostics.spans[i];
+		lineColumn lc = offsetToLineColumn(span.start, file_content);
+
+		printfInBumpNoNull(b, "%s:%u:%u: ", file_name, lc.line + 1,
+				   lc.column + 1);
+
+		switch (diagnostics.severities[i]) {
+		case DIAG_WARNING:
+			if (color)
+				printfInBumpNoNull(b, "\033[33m"); // yellow
+			printfInBumpNoNull(b, "warning");
+			break;
+		case DIAG_ERROR:
+			if (color)
+				printfInBumpNoNull(b, "\033[31m"); // red
+			printfInBumpNoNull(b, "error");
+			break;
+		}
+		printfInBumpNoNull(b, ": ");
+
+		if (color)
+			printfInBumpNoNull(b, "\033[0;1m");
+
+		u32 message_start = diagnostics.message_starts[i];
+		u8 *message = diagnostics.all_messages.top + message_start;
+		printfInBumpNoNull(b, "%s", message);
+
+		if (color)
+			printfInBumpNoNull(b, "\033[0m");
+
+		printfInBumpNoNull(b, "\n");
+	}
+
+	printfInBumpWithNull(b, "");
+	pthread_mutex_unlock(&mutex);
+	return p;
 }

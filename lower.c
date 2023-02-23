@@ -24,9 +24,8 @@ static hirLocal lookupLocal(hirRoot *hir, identifierId name)
 static hirNode allocateNode(hirRoot *hir, fullNode node)
 {
 	if (hir->node_count >= MAX_NODE_COUNT) {
-		sendDiagnosticToSink(DIAG_ERROR, node.span,
-				     "reached limit of %u nodes",
-				     MAX_NODE_COUNT);
+		recordDiagnostic(DIAG_ERROR, node.span,
+				 "reached limit of %u nodes", MAX_NODE_COUNT);
 		internalError("ran out of node slots");
 	}
 
@@ -86,7 +85,7 @@ static fullNode lowerExpression(hirRoot *hir, astRoot ast,
 
 		hirLocal local = lookupLocal(hir, ast_variable.name);
 		if (local.index == (u16)-1) {
-			sendDiagnosticToSink(
+			recordDiagnostic(
 				DIAG_ERROR,
 				astGetExpressionSpan(ast, ast_expression),
 				"undefined variable");
@@ -158,7 +157,7 @@ static fullNode lowerStatement(hirRoot *hir, astRoot ast,
 		hirLocal existing_local =
 			lookupLocal(hir, ast_local_definition.name);
 		if (existing_local.index != (u16)-1)
-			sendDiagnosticToSink(
+			recordDiagnostic(
 				DIAG_ERROR,
 				astGetStatementSpan(ast, ast_statement),
 				"cannot shadow existing variable");

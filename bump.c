@@ -53,6 +53,12 @@ void *copyInBump(bump *b, void *buffer, usize size)
 	return ptr;
 }
 
+bump createSubBump(bump *b, usize size)
+{
+	void *buffer = allocateInBump(b, size);
+	return createBump(buffer, size);
+}
+
 u8 *printfInBumpWithNull(bump *b, char *fmt, ...)
 {
 	va_list ap;

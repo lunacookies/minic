@@ -142,8 +142,8 @@ tokenBuffer lex(u8 *input, memory *m)
 			.start = i,
 			.end = i + 1,
 		};
-		sendDiagnosticToSink(DIAG_ERROR, span, "invalid token “%c”",
-				     input[i]);
+		recordDiagnostic(DIAG_ERROR, span, "invalid token “%c”",
+				 input[i]);
 		i++;
 		pushToken(TOK_ERROR, span.start, span.end, &buf, m);
 

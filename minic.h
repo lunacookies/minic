@@ -61,6 +61,7 @@ bumpMark markBump(bump *b);
 void clearBumpToMark(bump *b, bumpMark mark);
 void *allocateInBump(bump *b, usize size);
 void *copyInBump(bump *b, void *buffer, usize size);
+bump createSubBump(bump *b, usize size);
 u8 *printfInBumpWithNull(bump *b, char *fmt, ...);
 u8 *printfInBumpNoNull(bump *b, char *fmt, ...);
 u8 *printfInBumpV(bump *b, bool null_terminated, char *fmt, va_list ap);
@@ -102,10 +103,20 @@ typedef struct span {
 	u32 end;
 } span;
 
-void initializeDiagnosticSink(void);
-void sendDiagnosticToSink(severity severity, span span, char *fmt, ...);
-void sendDiagnosticToSinkV(severity severity, span span, char *fmt, va_list ap);
+typedef struct diagnosticsStorage {
+	u16 *files;
+	span *spans;
+	severity *severities;
+	u32 *message_starts;
+	bump all_messages;
+	u16 count;
+} diagnosticsStorage;
+
+void initializeDiagnostics(memory *m);
+void recordDiagnostic(severity severity, span span, char *fmt, ...);
+void recordDiagnosticV(severity severity, span span, char *fmt, va_list ap);
 bool anyErrors(void);
+u8 *showDiagnostics(bump *b, bool color);
 
 // ----------------------------------------------------------------------------
 // lex.c
