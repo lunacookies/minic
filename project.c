@@ -74,24 +74,30 @@ projectSpec discoverProject(memory *m)
 }
 
 _Thread_local projectSpec current_project;
+_Thread_local bool current_project_initialized;
 _Thread_local u16 current_file;
+_Thread_local bool current_file_initialized;
 
 void setCurrentProject(projectSpec p)
 {
 	current_project = p;
+	current_project_initialized = true;
 }
 
 projectSpec currentProject(void)
 {
+	assert(current_project_initialized);
 	return current_project;
 }
 
 void setCurrentFile(u16 f)
 {
 	current_file = f;
+	current_file_initialized = true;
 }
 
 u16 currentFile(void)
 {
+	assert(current_file_initialized);
 	return current_file;
 }
