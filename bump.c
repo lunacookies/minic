@@ -59,37 +59,25 @@ bump createSubBump(bump *b, usize size)
 	return createBump(buffer, size);
 }
 
-u8 *printfInBumpWithNull(bump *b, char *fmt, ...)
+u8 *printfInBump(bump *b, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	u8 *p = printfInBumpV(b, true, fmt, ap);
+	u8 *p = printfInBumpV(b, fmt, ap);
 	va_end(ap);
 	return p;
 }
 
-u8 *printfInBumpNoNull(bump *b, char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	u8 *p = printfInBumpV(b, false, fmt, ap);
-	va_end(ap);
-	return p;
-}
-
-u8 *printfInBumpV(bump *b, bool null_terminated, char *fmt, va_list ap)
+u8 *printfInBumpV(bump *b, char *fmt, va_list ap)
 {
 	usize remaining_bytes = b->max_size - b->bytes_used;
 
 	u8 *p = b->top + b->bytes_used;
 	usize length = vsnprintf((char *)p, remaining_bytes, fmt, ap);
 
-	if (null_terminated)
-		// The length returned by vsnprintf does not include
-		// the null terminator
-		length++;
-	else
-		p[length] = UNINIT_SENTINEL;
+	// The length returned by vsnprintf does not include
+	// the null terminator.
+	length++;
 
 	assert(length < remaining_bytes);
 	b->bytes_used += length;

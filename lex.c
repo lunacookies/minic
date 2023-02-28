@@ -280,37 +280,38 @@ u8 *debugTokenKind(tokenKind kind)
 	}
 }
 
-u8 *debugTokenBuffer(tokenBuffer buf, bump *b)
+void debugTokenBuffer(tokenBuffer buf, stringBuilder *sb)
 {
-	u8 *p = b->top + b->bytes_used;
+	printfInStringBuilder(sb, "{");
 
-	printfInBumpNoNull(b, "{");
 	for (usize i = 0; i < buf.count; i++) {
 		span s = buf.spans[i];
-		printfInBumpNoNull(b, "\n\t%s %u..%u",
-				   debugTokenKind(buf.kinds[i]), s.start,
-				   s.end);
+		printfInStringBuilder(sb, "\n\t%s %u..%u",
+				      debugTokenKind(buf.kinds[i]), s.start,
+				      s.end);
 
 		u32 id = buf.identifier_ids[i].raw;
 		if (id == (u32)-1)
 			continue;
-		printfInBumpNoNull(b, " (id: %u)", id);
+		printfInStringBuilder(sb, " (id: %u)", id);
 	}
-	printfInBumpNoNull(b, "\n}\n");
 
-	printfInBumpWithNull(b, "");
-	return p;
+	printfInStringBuilder(sb, "\n}\n");
 }
 
 void debugPrintTokenBuffer(tokenBuffer buf, bump *b)
 {
 	bumpMark mark = markBump(b);
-	printf("%s", debugTokenBuffer(buf, b));
+	stringBuilder sb = createStringBuilder(b);
+	debugTokenBuffer(buf, &sb);
+	printf("%s", finishStringBuilder(sb));
 	clearBumpToMark(b, mark);
 }
 
 u8 *lexTests(u8 *input, memory *m)
 {
 	tokenBuffer buf = lex(input, m);
-	return debugTokenBuffer(buf, &m->temp);
+	stringBuilder sb = createStringBuilder(&m->temp);
+	debugTokenBuffer(buf, &sb);
+	return finishStringBuilder(sb);
 }

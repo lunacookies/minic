@@ -71,7 +71,7 @@ void recordDiagnosticV(severity severity, span span, char *fmt, va_list ap)
 	pthread_mutex_lock(&mutex);
 	assert(diagnostics.count < MAX_DIAGNOSTIC_COUNT);
 
-	u8 *message = printfInBumpV(&diagnostics.all_messages, true, fmt, ap);
+	u8 *message = printfInBumpV(&diagnostics.all_messages, fmt, ap);
 	u32 message_start = message - diagnostics.all_messages.top;
 
 	if (severity == DIAG_ERROR)
@@ -95,11 +95,10 @@ bool anyErrors(void)
 	return b;
 }
 
-u8 *showDiagnostics(bump *b, bool color)
+void showDiagnostics(bool color, stringBuilder *sb)
 {
 	assert(isInitialized);
 	pthread_mutex_lock(&mutex);
-	u8 *p = b->top + b->bytes_used;
 
 	for (u16 i = 0; i < diagnostics.count; i++) {
 		u16 file = diagnostics.files[i];
@@ -109,37 +108,35 @@ u8 *showDiagnostics(bump *b, bool color)
 		span span = diagnostics.spans[i];
 		lineColumn lc = offsetToLineColumn(span.start, file_content);
 
-		printfInBumpNoNull(b, "%s:%u:%u: ", file_name, lc.line + 1,
-				   lc.column + 1);
+		printfInStringBuilder(sb, "%s:%u:%u: ", file_name, lc.line + 1,
+				      lc.column + 1);
 
 		switch (diagnostics.severities[i]) {
 		case DIAG_WARNING:
 			if (color)
-				printfInBumpNoNull(b, "\033[33m"); // yellow
-			printfInBumpNoNull(b, "warning");
+				printfInStringBuilder(sb, "\033[33m"); // yellow
+			printfInStringBuilder(sb, "warning");
 			break;
 		case DIAG_ERROR:
 			if (color)
-				printfInBumpNoNull(b, "\033[31m"); // red
-			printfInBumpNoNull(b, "error");
+				printfInStringBuilder(sb, "\033[31m"); // red
+			printfInStringBuilder(sb, "error");
 			break;
 		}
-		printfInBumpNoNull(b, ": ");
+		printfInStringBuilder(sb, ": ");
 
 		if (color)
-			printfInBumpNoNull(b, "\033[0;1m");
+			printfInStringBuilder(sb, "\033[0;1m");
 
 		u32 message_start = diagnostics.message_starts[i];
 		u8 *message = diagnostics.all_messages.top + message_start;
-		printfInBumpNoNull(b, "%s", message);
+		printfInStringBuilder(sb, "%s", message);
 
 		if (color)
-			printfInBumpNoNull(b, "\033[0m");
+			printfInStringBuilder(sb, "\033[0m");
 
-		printfInBumpNoNull(b, "\n");
+		printfInStringBuilder(sb, "\n");
 	}
 
-	printfInBumpWithNull(b, "");
 	pthread_mutex_unlock(&mutex);
-	return p;
 }

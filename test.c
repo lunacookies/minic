@@ -54,11 +54,9 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 
 		bumpMark local_mark = markBump(b);
 
-		u8 *path = printfInBumpWithNull(b, "%s/%s", dir_name,
-						entry->d_name);
-		u8 *expected_path =
-			printfInBumpWithNull(b, "%s.expected", path);
-		u8 *actual_path = printfInBumpWithNull(b, "%s.actual", path);
+		u8 *path = printfInBump(b, "%s/%s", dir_name, entry->d_name);
+		u8 *expected_path = printfInBump(b, "%s.expected", path);
+		u8 *actual_path = printfInBump(b, "%s.actual", path);
 
 		u8 *source_code = readFile(path, b);
 
@@ -104,9 +102,9 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 			printf("\033[31mtest failed:\033[0;1m %s\033[0m\n",
 			       entry->d_name);
 
-			u8 *command = printfInBumpWithNull(
-				b, "diff -u --color=auto %s %s", expected_path,
-				actual_path);
+			u8 *command =
+				printfInBump(b, "diff -u --color=auto %s %s",
+					     expected_path, actual_path);
 			system((char *)command);
 		}
 

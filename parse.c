@@ -527,28 +527,28 @@ span astGetExpressionSpan(astRoot ast, astExpression expression)
 typedef struct ctx {
 	astRoot ast;
 	interner interner;
-	bump *b;
+	stringBuilder *sb;
 	u32 indentation;
 } ctx;
 
 static void newline(ctx *c)
 {
-	printfInBumpNoNull(c->b, "\n");
+	printfInStringBuilder(c->sb, "\n");
 	for (u32 i = 0; i < c->indentation; i++)
-		printfInBumpNoNull(c->b, "\t");
+		printfInStringBuilder(c->sb, "\t");
 }
 
 static void debugExpression(ctx *c, astExpression expression)
 {
 	switch (astGetExpressionKind(c->ast, expression)) {
 	case AST_EXPR_MISSING:
-		printfInBumpNoNull(c->b, "<missing>");
+		printfInStringBuilder(c->sb, "<missing>");
 		break;
 
 	case AST_EXPR_INT_LITERAL: {
 		astIntLiteral int_literal =
 			astGetExpression(c->ast, expression).int_literal;
-		printfInBumpNoNull(c->b, "%llu", int_literal.value);
+		printfInStringBuilder(c->sb, "%llu", int_literal.value);
 		break;
 	}
 
@@ -556,54 +556,55 @@ static void debugExpression(ctx *c, astExpression expression)
 		astVariable variable =
 			astGetExpression(c->ast, expression).variable;
 		if (variable.name.raw == (u32)-1)
-			printfInBumpNoNull(c->b, "<missing>");
+			printfInStringBuilder(c->sb, "<missing>");
 		else
-			printfInBumpNoNull(c->b, "%s",
-					   lookup(c->interner, variable.name));
+			printfInStringBuilder(
+				c->sb, "%s",
+				lookup(c->interner, variable.name));
 		break;
 	}
 
 	case AST_EXPR_BINARY_OPERATION: {
 		astBinaryOperation binary_operation =
 			astGetExpression(c->ast, expression).binary_operation;
-		printfInBumpNoNull(c->b, "(");
+		printfInStringBuilder(c->sb, "(");
 		debugExpression(c, binary_operation.lhs);
 
 		switch (binary_operation.op) {
 		case AST_BINOP_ADD:
-			printfInBumpNoNull(c->b, " + ");
+			printfInStringBuilder(c->sb, " + ");
 			break;
 		case AST_BINOP_SUBTRACT:
-			printfInBumpNoNull(c->b, " - ");
+			printfInStringBuilder(c->sb, " - ");
 			break;
 		case AST_BINOP_MULTIPLY:
-			printfInBumpNoNull(c->b, " * ");
+			printfInStringBuilder(c->sb, " * ");
 			break;
 		case AST_BINOP_DIVIDE:
-			printfInBumpNoNull(c->b, " / ");
+			printfInStringBuilder(c->sb, " / ");
 			break;
 		case AST_BINOP_EQUAL:
-			printfInBumpNoNull(c->b, " == ");
+			printfInStringBuilder(c->sb, " == ");
 			break;
 		case AST_BINOP_NOT_EQUAL:
-			printfInBumpNoNull(c->b, " != ");
+			printfInStringBuilder(c->sb, " != ");
 			break;
 		case AST_BINOP_LESS_THAN:
-			printfInBumpNoNull(c->b, " < ");
+			printfInStringBuilder(c->sb, " < ");
 			break;
 		case AST_BINOP_LESS_THAN_EQUAL:
-			printfInBumpNoNull(c->b, " <= ");
+			printfInStringBuilder(c->sb, " <= ");
 			break;
 		case AST_BINOP_GREATER_THAN:
-			printfInBumpNoNull(c->b, " > ");
+			printfInStringBuilder(c->sb, " > ");
 			break;
 		case AST_BINOP_GREATER_THAN_EQUAL:
-			printfInBumpNoNull(c->b, " >= ");
+			printfInStringBuilder(c->sb, " >= ");
 			break;
 		}
 
 		debugExpression(c, binary_operation.rhs);
-		printfInBumpNoNull(c->b, ")");
+		printfInStringBuilder(c->sb, ")");
 		break;
 	}
 	}
@@ -613,12 +614,12 @@ static void debugStatement(ctx *c, astStatement statement)
 {
 	switch (astGetStatementKind(c->ast, statement)) {
 	case AST_STMT_MISSING:
-		printfInBumpNoNull(c->b, "<missing>");
+		printfInStringBuilder(c->sb, "<missing>");
 		break;
 
 	case AST_STMT_RETURN: {
 		astReturn retrn = astGetStatement(c->ast, statement).retrn;
-		printfInBumpNoNull(c->b, "return ");
+		printfInStringBuilder(c->sb, "return ");
 		debugExpression(c, retrn.value);
 		break;
 	}
@@ -626,39 +627,39 @@ static void debugStatement(ctx *c, astStatement statement)
 	case AST_STMT_LOCAL_DEFINITION: {
 		astLocalDefinition local_definition =
 			astGetStatement(c->ast, statement).local_definition;
-		printfInBumpNoNull(c->b, "var ");
+		printfInStringBuilder(c->sb, "var ");
 
 		if (local_definition.name.raw == (u32)-1)
-			printfInBumpNoNull(c->b, "<missing>");
+			printfInStringBuilder(c->sb, "<missing>");
 		else
-			printfInBumpNoNull(
-				c->b, "%s",
+			printfInStringBuilder(
+				c->sb, "%s",
 				lookup(c->interner, local_definition.name));
 
-		printfInBumpNoNull(c->b, " = ");
+		printfInStringBuilder(c->sb, " = ");
 		debugExpression(c, local_definition.value);
 		break;
 	}
 
 	case AST_STMT_ASSIGN: {
 		astAssign assign = astGetStatement(c->ast, statement).assign;
-		printfInBumpNoNull(c->b, "set ");
+		printfInStringBuilder(c->sb, "set ");
 		debugExpression(c, assign.lhs);
-		printfInBumpNoNull(c->b, " = ");
+		printfInStringBuilder(c->sb, " = ");
 		debugExpression(c, assign.rhs);
 		break;
 	}
 
 	case AST_STMT_IF: {
 		astIf if_ = astGetStatement(c->ast, statement).if_;
-		printfInBumpNoNull(c->b, "if ");
+		printfInStringBuilder(c->sb, "if ");
 		debugExpression(c, if_.condition);
 
 		if (astGetStatementKind(c->ast, if_.true_branch) ==
 		    AST_STMT_BLOCK) {
-			printfInBumpNoNull(c->b, " ");
+			printfInStringBuilder(c->sb, " ");
 			debugStatement(c, if_.true_branch);
-			printfInBumpNoNull(c->b, " ");
+			printfInStringBuilder(c->sb, " ");
 		} else {
 			c->indentation++;
 			newline(c);
@@ -670,11 +671,11 @@ static void debugStatement(ctx *c, astStatement statement)
 		if (if_.false_branch.index == (u16)-1)
 			break;
 
-		printfInBumpNoNull(c->b, "else");
+		printfInStringBuilder(c->sb, "else");
 
 		if (astGetStatementKind(c->ast, if_.false_branch) ==
 		    AST_STMT_BLOCK) {
-			printfInBumpNoNull(c->b, " ");
+			printfInStringBuilder(c->sb, " ");
 			debugStatement(c, if_.false_branch);
 		} else {
 			c->indentation++;
@@ -687,12 +688,12 @@ static void debugStatement(ctx *c, astStatement statement)
 
 	case AST_STMT_WHILE: {
 		astWhile while_ = astGetStatement(c->ast, statement).while_;
-		printfInBumpNoNull(c->b, "while ");
+		printfInStringBuilder(c->sb, "while ");
 		debugExpression(c, while_.condition);
 
 		if (astGetStatementKind(c->ast, while_.true_branch) ==
 		    AST_STMT_BLOCK) {
-			printfInBumpNoNull(c->b, " ");
+			printfInStringBuilder(c->sb, " ");
 			debugStatement(c, while_.true_branch);
 			break;
 		}
@@ -707,10 +708,10 @@ static void debugStatement(ctx *c, astStatement statement)
 	case AST_STMT_BLOCK: {
 		astBlock block = astGetStatement(c->ast, statement).block;
 		if (block.count == 0) {
-			printfInBumpNoNull(c->b, "{}");
+			printfInStringBuilder(c->sb, "{}");
 			break;
 		}
-		printfInBumpNoNull(c->b, "{");
+		printfInStringBuilder(c->sb, "{");
 		c->indentation++;
 		for (u16 i = 0; i < block.count; i++) {
 			astStatement s = { .index = block.start.index + i };
@@ -719,7 +720,7 @@ static void debugStatement(ctx *c, astStatement statement)
 		}
 		c->indentation--;
 		newline(c);
-		printfInBumpNoNull(c->b, "}");
+		printfInStringBuilder(c->sb, "}");
 		break;
 	}
 	}
@@ -727,15 +728,15 @@ static void debugStatement(ctx *c, astStatement statement)
 
 static void debugFunction(ctx *c, astFunction function)
 {
-	printfInBumpNoNull(c->b, "func ");
+	printfInStringBuilder(c->sb, "func ");
 	if (function.name.raw == (u32)-1)
-		printfInBumpNoNull(c->b, "<missing>");
+		printfInStringBuilder(c->sb, "<missing>");
 	else
-		printfInBumpNoNull(c->b, "%s",
-				   lookup(c->interner, function.name));
+		printfInStringBuilder(c->sb, "%s",
+				      lookup(c->interner, function.name));
 
 	if (astGetStatementKind(c->ast, function.body) == AST_STMT_BLOCK) {
-		printfInBumpNoNull(c->b, " ");
+		printfInStringBuilder(c->sb, " ");
 		debugStatement(c, function.body);
 	} else {
 		c->indentation++;
@@ -745,14 +746,12 @@ static void debugFunction(ctx *c, astFunction function)
 	}
 }
 
-u8 *debugAst(astRoot ast, interner interner, bump *b)
+void debugAst(astRoot ast, interner interner, stringBuilder *sb)
 {
-	u8 *p = b->top + b->bytes_used;
-
 	ctx c = {
 		.ast = ast,
 		.interner = interner,
-		.b = b,
+		.sb = sb,
 		.indentation = 0,
 	};
 
@@ -766,14 +765,13 @@ u8 *debugAst(astRoot ast, interner interner, bump *b)
 		debugFunction(&c, ast.functions[i]);
 		newline(&c);
 	}
-
-	printfInBumpWithNull(b, "");
-	return p;
 }
 
 void debugPrintAst(astRoot ast, interner interner, bump *b)
 {
 	bumpMark mark = markBump(b);
-	printf("%s", debugAst(ast, interner, b));
+	stringBuilder sb = createStringBuilder(b);
+	debugAst(ast, interner, &sb);
+	printf("%s", finishStringBuilder(sb));
 	clearBumpToMark(b, mark);
 }

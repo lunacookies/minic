@@ -62,9 +62,22 @@ void clearBumpToMark(bump *b, bumpMark mark);
 void *allocateInBump(bump *b, usize size);
 void *copyInBump(bump *b, void *buffer, usize size);
 bump createSubBump(bump *b, usize size);
-u8 *printfInBumpWithNull(bump *b, char *fmt, ...);
-u8 *printfInBumpNoNull(bump *b, char *fmt, ...);
-u8 *printfInBumpV(bump *b, bool null_terminated, char *fmt, va_list ap);
+u8 *printfInBump(bump *b, char *fmt, ...);
+u8 *printfInBumpV(bump *b, char *fmt, va_list ap);
+
+// ----------------------------------------------------------------------------
+// string_builder.c
+
+typedef struct stringBuilder {
+	bump *bump;
+	u8 *s;
+	usize previous_bytes_used;
+} stringBuilder;
+
+stringBuilder createStringBuilder(bump *b);
+void printfInStringBuilder(stringBuilder *sb, char *fmt, ...);
+void printfInStringBuilderV(stringBuilder *sb, char *fmt, va_list ap);
+u8 *finishStringBuilder(stringBuilder sb);
 
 // ----------------------------------------------------------------------------
 // memory.c
@@ -122,7 +135,7 @@ void initializeDiagnostics(memory *m);
 void recordDiagnostic(severity severity, span span, char *fmt, ...);
 void recordDiagnosticV(severity severity, span span, char *fmt, va_list ap);
 bool anyErrors(void);
-u8 *showDiagnostics(bump *b, bool color);
+void showDiagnostics(bool color, stringBuilder *sb);
 
 // ----------------------------------------------------------------------------
 // lex.c
@@ -171,7 +184,7 @@ tokenBuffer lex(u8 *input, memory *m);
 u8 *identifierText(tokenBuffer buf, u32 token_id);
 u8 *showTokenKind(tokenKind kind);
 u8 *debugTokenKind(tokenKind kind);
-u8 *debugTokenBuffer(tokenBuffer buf, bump *b);
+void debugTokenBuffer(tokenBuffer buf, stringBuilder *sb);
 void debugPrintTokenBuffer(tokenBuffer buf, bump *b);
 
 u8 *lexTests(u8 *input, memory *m);
@@ -315,7 +328,7 @@ span astGetStatementSpan(astRoot ast, astStatement statement);
 astExpressionData astGetExpression(astRoot ast, astExpression expression);
 astExpressionKind astGetExpressionKind(astRoot ast, astExpression expression);
 span astGetExpressionSpan(astRoot ast, astExpression expression);
-u8 *debugAst(astRoot ast, interner interner, bump *b);
+void debugAst(astRoot ast, interner interner, stringBuilder *sb);
 void debugPrintAst(astRoot ast, interner interner, bump *b);
 
 // ----------------------------------------------------------------------------
@@ -427,10 +440,11 @@ identifierId hirGetLocalName(hirRoot hir, hirLocal local);
 hirType hirGetLocalType(hirRoot hir, hirLocal local);
 u32 typeSize(hirType type);
 u8 *debugHirType(hirType type);
-u8 *debugHir(hirRoot hir, interner interner, bump *b);
+void debugHir(hirRoot hir, interner interner, stringBuilder *sb);
 void debugPrintHir(hirRoot hir, interner interner, bump *b);
 
 // ----------------------------------------------------------------------------
 // codegen.c
 
-void codegen(hirRoot hir, interner interner, bump *assembly, memory *m);
+void codegen(hirRoot hir, interner interner, stringBuilder *assembly,
+	     memory *m);

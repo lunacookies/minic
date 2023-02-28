@@ -3,7 +3,8 @@
 int main(int argc, char **argv)
 {
 	memory m = initMemory();
-	bump assembly = allocateFromOs(16 * 1024 * 1024);
+	bump assembly_bump = allocateFromOs(16 * 1024 * 1024);
+	stringBuilder assembly = createStringBuilder(&assembly_bump);
 	initializeDiagnostics(&m);
 
 	if (argc == 2 && strcmp(argv[1], "--test") == 0) {
@@ -60,22 +61,29 @@ int main(int argc, char **argv)
 	}
 
 	bumpMark mark = markBump(&m.temp);
-	u8 *s = showDiagnostics(&m.temp, true);
-	printf("%s", s);
+	stringBuilder sb = createStringBuilder(&m.temp);
+	showDiagnostics(true, &sb);
+	printf("%s", finishStringBuilder(sb));
 	clearBumpToMark(&m.temp, mark);
+
+	finishStringBuilder(assembly);
 
 	if (debug) {
 		debugLog("compiled %u files using", current_project.num_files);
 		debugLog("    %zu bytes of general memory",
 			 m.general.bytes_used);
-		debugLog("    %zu bytes of assembly", assembly.bytes_used);
+		debugLog("    %zu bytes of assembly", assembly_bump.bytes_used);
 	}
 
 	if (anyErrors())
 		return 1;
 
 	int fd = open("out.s", O_WRONLY | O_CREAT | O_TRUNC, 0666);
-	write(fd, assembly.top, assembly.bytes_used);
+
+	// We subtract 1 to cut off the null terminator
+	// added by finishStringBuilder.
+	write(fd, assembly_bump.top, assembly_bump.bytes_used - 1);
+
 	system("as -o out.o out.s");
 	system("ld -o out -syslibroot "
 	       "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -lSystem "

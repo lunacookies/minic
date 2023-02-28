@@ -4,7 +4,7 @@ typedef struct ctx {
 	hirRoot hir;
 	u32 id;
 	char *function_name;
-	bump *assembly;
+	stringBuilder *assembly;
 	u32 *local_offsets;
 } ctx;
 
@@ -30,31 +30,31 @@ static u32 calculateStackLayout(ctx *c, hirFunction function)
 
 static void directive(ctx *c, char *directive_name, char *fmt, ...)
 {
-	printfInBumpNoNull(c->assembly, ".%s ", directive_name);
+	printfInStringBuilder(c->assembly, ".%s ", directive_name);
 	va_list ap;
 	va_start(ap, fmt);
-	printfInBumpV(c->assembly, false, fmt, ap);
+	printfInStringBuilderV(c->assembly, fmt, ap);
 	va_end(ap);
-	printfInBumpNoNull(c->assembly, "\n");
+	printfInStringBuilder(c->assembly, "\n");
 }
 
 static void label(ctx *c, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	printfInBumpV(c->assembly, false, fmt, ap);
+	printfInStringBuilderV(c->assembly, fmt, ap);
 	va_end(ap);
-	printfInBumpNoNull(c->assembly, ":\n");
+	printfInStringBuilder(c->assembly, ":\n");
 }
 
 static void instruction(ctx *c, char *instruction_mnemonic, char *fmt, ...)
 {
-	printfInBumpNoNull(c->assembly, "\t%s\t", instruction_mnemonic);
+	printfInStringBuilder(c->assembly, "\t%s\t", instruction_mnemonic);
 	va_list ap;
 	va_start(ap, fmt);
-	printfInBumpV(c->assembly, false, fmt, ap);
+	printfInStringBuilderV(c->assembly, fmt, ap);
 	va_end(ap);
-	printfInBumpNoNull(c->assembly, "\n");
+	printfInStringBuilder(c->assembly, "\n");
 }
 
 static void push(ctx *c)
@@ -242,7 +242,7 @@ static void genEpilogue(ctx *c, u32 stack_size)
 	instruction(c, "add", "sp, sp, #16");
 }
 
-void codegen(hirRoot hir, interner interner, bump *assembly, memory *m)
+void codegen(hirRoot hir, interner interner, stringBuilder *assembly, memory *m)
 {
 	ctx c = {
 		.hir = hir,
@@ -273,6 +273,6 @@ void codegen(hirRoot hir, interner interner, bump *assembly, memory *m)
 		genEpilogue(&c, stack_size);
 		instruction(&c, "ret", "");
 
-		printfInBumpNoNull(c.assembly, "\n");
+		printfInStringBuilder(c.assembly, "\n");
 	}
 }
