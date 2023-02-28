@@ -9,7 +9,7 @@
 	ERROR 15..16
 	IDENTIFIER 16..19
 }
-tests_lex:1:4: error: invalid token “$”
-tests_lex:1:8: error: invalid token “@”
-tests_lex:1:12: error: invalid token “`”
-tests_lex:1:16: error: invalid token “?”
+tests_lex:3..4: error: invalid token “$”
+tests_lex:7..8: error: invalid token “@”
+tests_lex:11..12: error: invalid token “`”
+tests_lex:15..16: error: invalid token “?”

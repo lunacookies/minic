@@ -313,6 +313,6 @@ u8 *lexTests(u8 *input, memory *m)
 	tokenBuffer buf = lex(input, &diagnostics, m);
 	stringBuilder sb = stringBuilderCreate(&m->temp);
 	tokenBufferDebug(buf, &sb);
-	diagnosticsStorageShow(diagnostics, false, &sb);
+	diagnosticsStorageDebug(diagnostics, &sb);
 	return stringBuilderFinish(sb);
 }

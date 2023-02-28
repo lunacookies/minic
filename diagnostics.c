@@ -68,8 +68,7 @@ void diagnosticsStorageRecordV(diagnosticsStorage *diagnostics,
 	diagnostics->count++;
 }
 
-void diagnosticsStorageShow(diagnosticsStorage diagnostics, bool color,
-			    stringBuilder *sb)
+void diagnosticsStorageShow(diagnosticsStorage diagnostics, stringBuilder *sb)
 {
 	for (u16 i = 0; i < diagnostics.count; i++) {
 		u16 file = diagnostics.files[i];
@@ -84,28 +83,44 @@ void diagnosticsStorageShow(diagnosticsStorage diagnostics, bool color,
 
 		switch (diagnostics.severities[i]) {
 		case DIAG_WARNING:
-			if (color)
-				stringBuilderPrintf(sb, "\033[33m"); // yellow
+			stringBuilderPrintf(sb, "\033[33m"); // yellow
 			stringBuilderPrintf(sb, "warning");
 			break;
 		case DIAG_ERROR:
-			if (color)
-				stringBuilderPrintf(sb, "\033[31m"); // red
+			stringBuilderPrintf(sb, "\033[31m"); // red
+			stringBuilderPrintf(sb, "error");
+			break;
+		}
+		stringBuilderPrintf(sb, ": \033[0;1m");
+
+		u32 message_start = diagnostics.message_starts[i];
+		u8 *message = diagnostics.all_messages.top + message_start;
+		stringBuilderPrintf(sb, "%s\033[0m\n", message);
+	}
+}
+
+void diagnosticsStorageDebug(diagnosticsStorage diagnostics, stringBuilder *sb)
+{
+	for (u16 i = 0; i < diagnostics.count; i++) {
+		u16 file = diagnostics.files[i];
+		u8 *file_name = currentProject().file_names[file];
+
+		span span = diagnostics.spans[i];
+		stringBuilderPrintf(sb, "%s:%u..%u: ", file_name, span.start,
+				    span.end);
+
+		switch (diagnostics.severities[i]) {
+		case DIAG_WARNING:
+			stringBuilderPrintf(sb, "warning");
+			break;
+		case DIAG_ERROR:
 			stringBuilderPrintf(sb, "error");
 			break;
 		}
 		stringBuilderPrintf(sb, ": ");
 
-		if (color)
-			stringBuilderPrintf(sb, "\033[0;1m");
-
 		u32 message_start = diagnostics.message_starts[i];
 		u8 *message = diagnostics.all_messages.top + message_start;
-		stringBuilderPrintf(sb, "%s", message);
-
-		if (color)
-			stringBuilderPrintf(sb, "\033[0m");
-
-		stringBuilderPrintf(sb, "\n");
+		stringBuilderPrintf(sb, "%s\n", message);
 	}
 }

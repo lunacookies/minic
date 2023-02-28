@@ -136,8 +136,8 @@ void diagnosticsStorageRecord(diagnosticsStorage *diagnostics,
 void diagnosticsStorageRecordV(diagnosticsStorage *diagnostics,
 			       severity severity, span span, char *fmt,
 			       va_list ap);
-void diagnosticsStorageShow(diagnosticsStorage diagnostics, bool color,
-			    stringBuilder *sb);
+void diagnosticsStorageShow(diagnosticsStorage diagnostics, stringBuilder *sb);
+void diagnosticsStorageDebug(diagnosticsStorage diagnostics, stringBuilder *sb);
 
 // ----------------------------------------------------------------------------
 // lex.c

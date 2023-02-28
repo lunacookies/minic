@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 
 	bumpMark mark = bumpCreateMark(&m.temp);
 	stringBuilder sb = stringBuilderCreate(&m.temp);
-	diagnosticsStorageShow(diagnostics, true, &sb);
+	diagnosticsStorageShow(diagnostics, &sb);
 	printf("%s", stringBuilderFinish(sb));
 	bumpClearToMark(&m.temp, mark);
 
