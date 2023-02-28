@@ -8,10 +8,10 @@ bump allocateFromOs(usize size)
 {
 	void *p = mmap(NULL, size, PROT_READ | PROT_WRITE,
 		       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	return createBump(p, size);
+	return bumpCreate(p, size);
 }
 
-memory initMemory(void)
+memory memoryCreate(void)
 {
 	return (memory){
 		.temp = allocateFromOs(TEMP_MEMORY_SIZE),

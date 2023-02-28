@@ -7,7 +7,7 @@ static u8 *readFile(u8 *name, bump *b)
 	fstat(fd, &s);
 	usize size = s.st_size;
 
-	u8 *content = allocateInBump(b, size + 1);
+	u8 *content = bumpAllocate(b, size + 1);
 	usize bytes_read = read(fd, content, size);
 	assert(bytes_read == size);
 	content[size] = 0;
@@ -24,12 +24,12 @@ static bool exists(u8 *name)
 
 void runTests(u8 *dir_name, transformer t, bump *b)
 {
-	bumpMark mark = markBump(b);
+	bumpMark mark = bumpCreateMark(b);
 
-	bump transformer_general = createSubBump(b, 128 * 1024);
-	bump transformer_temp = createSubBump(b, 128 * 1024);
-	bumpMark transformer_general_top = markBump(&transformer_general);
-	bumpMark transformer_temp_top = markBump(&transformer_temp);
+	bump transformer_general = bumpCreateSubBump(b, 128 * 1024);
+	bump transformer_temp = bumpCreateSubBump(b, 128 * 1024);
+	bumpMark transformer_general_top = bumpCreateMark(&transformer_general);
+	bumpMark transformer_temp_top = bumpCreateMark(&transformer_temp);
 	memory transformer_memory = {
 		.general = transformer_general,
 		.temp = transformer_temp,
@@ -52,11 +52,11 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 		if (!correct_extension)
 			continue;
 
-		bumpMark local_mark = markBump(b);
+		bumpMark local_mark = bumpCreateMark(b);
 
-		u8 *path = printfInBump(b, "%s/%s", dir_name, entry->d_name);
-		u8 *expected_path = printfInBump(b, "%s.expected", path);
-		u8 *actual_path = printfInBump(b, "%s.actual", path);
+		u8 *path = bumpPrintf(b, "%s/%s", dir_name, entry->d_name);
+		u8 *expected_path = bumpPrintf(b, "%s.expected", path);
+		u8 *actual_path = bumpPrintf(b, "%s.actual", path);
 
 		u8 *source_code = readFile(path, b);
 
@@ -67,9 +67,9 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 		});
 		setCurrentFile(0);
 
-		clearBumpToMark(&transformer_memory.general,
+		bumpClearToMark(&transformer_memory.general,
 				transformer_general_top);
-		clearBumpToMark(&transformer_memory.temp, transformer_temp_top);
+		bumpClearToMark(&transformer_memory.temp, transformer_temp_top);
 		u8 *actual = t(source_code, &transformer_memory);
 
 		if (!exists(expected_path)) {
@@ -103,13 +103,13 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 			       entry->d_name);
 
 			u8 *command =
-				printfInBump(b, "diff -u --color=auto %s %s",
-					     expected_path, actual_path);
+				bumpPrintf(b, "diff -u --color=auto %s %s",
+					   expected_path, actual_path);
 			system((char *)command);
 		}
 
-		clearBumpToMark(b, local_mark);
+		bumpClearToMark(b, local_mark);
 	}
 
-	clearBumpToMark(b, mark);
+	bumpClearToMark(b, mark);
 }

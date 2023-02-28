@@ -70,28 +70,28 @@ static void processToken(tokenBuffer *buf, u8 *contents, usize token, ctx *c,
 
 	buf->identifier_ids[token] = c->ident_id;
 
-	u8 *s = copyInBump(&m->general, ptr, length + 1);
+	u8 *s = bumpCopy(&m->general, ptr, length + 1);
 	s[length] = 0;
 	c->identifier_contents[c->ident_id.raw] = s;
 
 	c->ident_id.raw++;
 }
 
-interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count,
-		usize identifier_count, memory *m)
+interner internerIntern(tokenBuffer *bufs, u8 **contents, usize buf_count,
+			usize identifier_count, memory *m)
 {
 	// allocate space for load factor of 0.75
 	usize slot_count = identifier_count * 4 / 3;
 	usize map_size = slot_count * sizeof(slot);
 
-	bumpMark mark = markBump(&m->temp);
-	slot *map = allocateInBump(&m->temp, map_size);
+	bumpMark mark = bumpCreateMark(&m->temp);
+	slot *map = bumpAllocate(&m->temp, map_size);
 	memset(map, 0, map_size); // each ptr in map starts out as null
 
 	ctx c = {
 		.map = map,
 		.slot_count = slot_count,
-		.identifier_contents = allocateInBump(
+		.identifier_contents = bumpAllocate(
 			&m->general, identifier_count * sizeof(u8 *)),
 		.ident_id = { .raw = 0 },
 	};
@@ -105,14 +105,14 @@ interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count,
 	// we have no use for the map any longer
 	// now that identifier IDs have been allocated
 	// and identifier contents have been copied
-	clearBumpToMark(&m->temp, mark);
+	bumpClearToMark(&m->temp, mark);
 
 	return (interner){
 		.contents = c.identifier_contents,
 	};
 }
 
-u8 *lookup(interner i, identifierId id)
+u8 *internerLookup(interner i, identifierId id)
 {
 	return i.contents[id.raw];
 }

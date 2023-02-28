@@ -1,6 +1,6 @@
 #include "minic.h"
 
-stringBuilder createStringBuilder(bump *b)
+stringBuilder stringBuilderCreate(bump *b)
 {
 	return (stringBuilder){
 		.bump = b,
@@ -9,15 +9,15 @@ stringBuilder createStringBuilder(bump *b)
 	};
 }
 
-void printfInStringBuilder(stringBuilder *sb, char *fmt, ...)
+void stringBuilderPrintf(stringBuilder *sb, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	printfInStringBuilderV(sb, fmt, ap);
+	stringBuilderPrintfV(sb, fmt, ap);
 	va_end(ap);
 }
 
-void printfInStringBuilderV(stringBuilder *sb, char *fmt, va_list ap)
+void stringBuilderPrintfV(stringBuilder *sb, char *fmt, va_list ap)
 {
 	assert(sb->bump->bytes_used == sb->previous_bytes_used);
 
@@ -33,7 +33,7 @@ void printfInStringBuilderV(stringBuilder *sb, char *fmt, va_list ap)
 	sb->previous_bytes_used = sb->bump->bytes_used;
 }
 
-u8 *finishStringBuilder(stringBuilder sb)
+u8 *stringBuilderFinish(stringBuilder sb)
 {
 	assert(sb.bump->bytes_used == sb.previous_bytes_used);
 	sb.bump->top[sb.bump->bytes_used] = 0;

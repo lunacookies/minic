@@ -2,9 +2,9 @@
 
 int main(int argc, char **argv)
 {
-	memory m = initMemory();
+	memory m = memoryCreate();
 	bump assembly_bump = allocateFromOs(16 * 1024 * 1024);
-	stringBuilder assembly = createStringBuilder(&assembly_bump);
+	stringBuilder assembly = stringBuilderCreate(&assembly_bump);
 	initializeDiagnostics(&m);
 
 	if (argc == 2 && strcmp(argv[1], "--test") == 0) {
@@ -15,12 +15,12 @@ int main(int argc, char **argv)
 
 	bool debug = argc == 2 && strcmp(argv[1], "-d") == 0;
 
-	projectSpec current_project = discoverProject(&m);
+	projectSpec current_project = projectDiscover(&m);
 	assert(m.temp.bytes_used == 0);
 
 	setCurrentProject(current_project);
 
-	tokenBuffer *token_buffers = allocateInBump(
+	tokenBuffer *token_buffers = bumpAllocate(
 		&m.general, sizeof(tokenBuffer) * current_project.num_files);
 
 	for (u16 i = 0; i < current_project.num_files; i++) {
@@ -40,8 +40,8 @@ int main(int argc, char **argv)
 	}
 
 	interner interner =
-		intern(token_buffers, current_project.file_contents,
-		       current_project.num_files, identifier_count, &m);
+		internerIntern(token_buffers, current_project.file_contents,
+			       current_project.num_files, identifier_count, &m);
 
 	for (u16 i = 0; i < current_project.num_files; i++) {
 		setCurrentFile(i);
@@ -49,24 +49,24 @@ int main(int argc, char **argv)
 		astRoot ast = parse(token_buffers[i],
 				    current_project.file_contents[i], &m);
 		if (debug)
-			debugPrintAst(ast, interner, &m.temp);
+			astDebugPrint(ast, interner, &m.temp);
 
 		hirRoot hir = lower(ast, &m);
 		if (debug)
-			debugPrintHir(hir, interner, &m.temp);
+			hirDebugPrint(hir, interner, &m.temp);
 
 		codegen(hir, interner, &assembly, &m);
 
 		assert(m.temp.bytes_used == 0);
 	}
 
-	bumpMark mark = markBump(&m.temp);
-	stringBuilder sb = createStringBuilder(&m.temp);
+	bumpMark mark = bumpCreateMark(&m.temp);
+	stringBuilder sb = stringBuilderCreate(&m.temp);
 	showDiagnostics(true, &sb);
-	printf("%s", finishStringBuilder(sb));
-	clearBumpToMark(&m.temp, mark);
+	printf("%s", stringBuilderFinish(sb));
+	bumpClearToMark(&m.temp, mark);
 
-	finishStringBuilder(assembly);
+	stringBuilderFinish(assembly);
 
 	if (debug) {
 		debugLog("compiled %u files using", current_project.num_files);
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
 	int fd = open("out.s", O_WRONLY | O_CREAT | O_TRUNC, 0666);
 
 	// We subtract 1 to cut off the null terminator
-	// added by finishStringBuilder.
+	// added by stringBuilderFinish.
 	write(fd, assembly_bump.top, assembly_bump.bytes_used - 1);
 
 	system("as -o out.o out.s");

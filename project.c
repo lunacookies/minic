@@ -3,7 +3,7 @@
 #define MAX_FILES (1 << 16)
 #define PTR_PER_FILE_SIZE (sizeof(void *) * MAX_FILES)
 
-projectSpec discoverProject(memory *m)
+projectSpec projectDiscover(memory *m)
 {
 	u16 num_files = 0;
 
@@ -12,9 +12,9 @@ projectSpec discoverProject(memory *m)
 	// contents of the file. We allocate these aux arrays in temporary
 	// memory for now since allocations are occurring in general memory
 	// while the aux arrays are being populated.
-	bumpMark mark = markBump(&m->temp);
-	u8 **file_names = allocateInBump(&m->temp, PTR_PER_FILE_SIZE);
-	u8 **file_contents = allocateInBump(&m->temp, PTR_PER_FILE_SIZE);
+	bumpMark mark = bumpCreateMark(&m->temp);
+	u8 **file_names = bumpAllocate(&m->temp, PTR_PER_FILE_SIZE);
+	u8 **file_contents = bumpAllocate(&m->temp, PTR_PER_FILE_SIZE);
 
 	DIR *d = opendir(".");
 
@@ -41,13 +41,12 @@ projectSpec discoverProject(memory *m)
 		usize size = stat.st_size;
 
 		// Copy file name into general memory.
-		u8 *name =
-			copyInBump(&m->general, entry->d_name,
-				   entry->d_namlen + 1); // for null terminator
+		u8 *name = bumpCopy(&m->general, entry->d_name,
+				    entry->d_namlen + 1); // for null terminator
 
 		// Read file content into general memory.
-		u8 *content = allocateInBump(&m->general,
-					     size + 1); // for null terminator
+		u8 *content = bumpAllocate(&m->general,
+					   size + 1); // for null terminator
 		usize bytes_read = read(fd, content, size);
 		assert(bytes_read == size);
 		content[size] = 0;
@@ -62,9 +61,9 @@ projectSpec discoverProject(memory *m)
 	// Now that general memory isn’t being touched anymore, we can copy the
 	// aux arrays there.
 	usize bytes_used = num_files * sizeof(u8 *);
-	file_names = copyInBump(&m->general, file_names, bytes_used);
-	file_contents = copyInBump(&m->general, file_contents, bytes_used);
-	clearBumpToMark(&m->temp, mark);
+	file_names = bumpCopy(&m->general, file_names, bytes_used);
+	file_contents = bumpCopy(&m->general, file_contents, bytes_used);
+	bumpClearToMark(&m->temp, mark);
 
 	return (projectSpec){
 		.num_files = num_files,

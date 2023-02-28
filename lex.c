@@ -23,10 +23,10 @@ static const tokenKind oneCharTokenKinds[] = {
 static void pushToken(tokenKind kind, u32 start, u32 end, tokenBuffer *buf,
 		      memory *m)
 {
-	tokenKind *k = allocateInBump(&m->general, sizeof(tokenKind));
+	tokenKind *k = bumpAllocate(&m->general, sizeof(tokenKind));
 	*k = kind;
 
-	span *span = allocateInBump(&m->temp, sizeof(span));
+	span *span = bumpAllocate(&m->temp, sizeof(span));
 	span->start = start;
 	span->end = end;
 
@@ -75,7 +75,7 @@ static void convertKeywords(u8 *input, tokenBuffer *buf)
 
 tokenBuffer lex(u8 *input, memory *m)
 {
-	bumpMark mark = markBump(&m->temp);
+	bumpMark mark = bumpCreateMark(&m->temp);
 
 	tokenBuffer buf = {
 		.kinds = (tokenKind *)(m->general.top + m->general.bytes_used),
@@ -153,18 +153,17 @@ tokenBuffer lex(u8 *input, memory *m)
 	convertKeywords(input, &buf);
 
 	// copy spans from temp memory into general memory
-	buf.spans =
-		copyInBump(&m->general, buf.spans, sizeof(span) * buf.count);
-	clearBumpToMark(&m->temp, mark);
+	buf.spans = bumpCopy(&m->general, buf.spans, sizeof(span) * buf.count);
+	bumpClearToMark(&m->temp, mark);
 
 	usize identifier_ids_size = buf.count * sizeof(u32);
-	buf.identifier_ids = allocateInBump(&m->general, identifier_ids_size);
+	buf.identifier_ids = bumpAllocate(&m->general, identifier_ids_size);
 	memset(buf.identifier_ids, -1, identifier_ids_size);
 
 	return buf;
 }
 
-u8 *showTokenKind(tokenKind kind)
+u8 *tokenKindShow(tokenKind kind)
 {
 	switch (kind) {
 	case TOK_EOF:
@@ -222,7 +221,7 @@ u8 *showTokenKind(tokenKind kind)
 	}
 }
 
-u8 *debugTokenKind(tokenKind kind)
+u8 *tokenKindDebug(tokenKind kind)
 {
 	switch (kind) {
 	case TOK_EOF:
@@ -280,38 +279,38 @@ u8 *debugTokenKind(tokenKind kind)
 	}
 }
 
-void debugTokenBuffer(tokenBuffer buf, stringBuilder *sb)
+void tokenBufferDebug(tokenBuffer buf, stringBuilder *sb)
 {
-	printfInStringBuilder(sb, "{");
+	stringBuilderPrintf(sb, "{");
 
 	for (usize i = 0; i < buf.count; i++) {
 		span s = buf.spans[i];
-		printfInStringBuilder(sb, "\n\t%s %u..%u",
-				      debugTokenKind(buf.kinds[i]), s.start,
-				      s.end);
+		stringBuilderPrintf(sb, "\n\t%s %u..%u",
+				    tokenKindDebug(buf.kinds[i]), s.start,
+				    s.end);
 
 		u32 id = buf.identifier_ids[i].raw;
 		if (id == (u32)-1)
 			continue;
-		printfInStringBuilder(sb, " (id: %u)", id);
+		stringBuilderPrintf(sb, " (id: %u)", id);
 	}
 
-	printfInStringBuilder(sb, "\n}\n");
+	stringBuilderPrintf(sb, "\n}\n");
 }
 
-void debugPrintTokenBuffer(tokenBuffer buf, bump *b)
+void tokenBufferDebugPrint(tokenBuffer buf, bump *b)
 {
-	bumpMark mark = markBump(b);
-	stringBuilder sb = createStringBuilder(b);
-	debugTokenBuffer(buf, &sb);
-	printf("%s", finishStringBuilder(sb));
-	clearBumpToMark(b, mark);
+	bumpMark mark = bumpCreateMark(b);
+	stringBuilder sb = stringBuilderCreate(b);
+	tokenBufferDebug(buf, &sb);
+	printf("%s", stringBuilderFinish(sb));
+	bumpClearToMark(b, mark);
 }
 
 u8 *lexTests(u8 *input, memory *m)
 {
 	tokenBuffer buf = lex(input, m);
-	stringBuilder sb = createStringBuilder(&m->temp);
-	debugTokenBuffer(buf, &sb);
-	return finishStringBuilder(sb);
+	stringBuilder sb = stringBuilderCreate(&m->temp);
+	tokenBufferDebug(buf, &sb);
+	return stringBuilderFinish(sb);
 }

@@ -18,7 +18,7 @@ static u32 calculateStackLayout(ctx *c, hirFunction function)
 	u32 offset = 0;
 	for (u16 i = 0; i < function.locals_count; i++) {
 		hirLocal local = { .index = function.locals_start.index + i };
-		u32 size = typeSize(hirGetLocalType(c->hir, local));
+		u32 size = hirTypeSize(hirGetLocalType(c->hir, local));
 		offset = roundUpTo(offset, size); // align
 		c->local_offsets[local.index] = offset;
 		offset += size;
@@ -30,31 +30,31 @@ static u32 calculateStackLayout(ctx *c, hirFunction function)
 
 static void directive(ctx *c, char *directive_name, char *fmt, ...)
 {
-	printfInStringBuilder(c->assembly, ".%s ", directive_name);
+	stringBuilderPrintf(c->assembly, ".%s ", directive_name);
 	va_list ap;
 	va_start(ap, fmt);
-	printfInStringBuilderV(c->assembly, fmt, ap);
+	stringBuilderPrintfV(c->assembly, fmt, ap);
 	va_end(ap);
-	printfInStringBuilder(c->assembly, "\n");
+	stringBuilderPrintf(c->assembly, "\n");
 }
 
 static void label(ctx *c, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	printfInStringBuilderV(c->assembly, fmt, ap);
+	stringBuilderPrintfV(c->assembly, fmt, ap);
 	va_end(ap);
-	printfInStringBuilder(c->assembly, ":\n");
+	stringBuilderPrintf(c->assembly, ":\n");
 }
 
 static void instruction(ctx *c, char *instruction_mnemonic, char *fmt, ...)
 {
-	printfInStringBuilder(c->assembly, "\t%s\t", instruction_mnemonic);
+	stringBuilderPrintf(c->assembly, "\t%s\t", instruction_mnemonic);
 	va_list ap;
 	va_start(ap, fmt);
-	printfInStringBuilderV(c->assembly, fmt, ap);
+	stringBuilderPrintfV(c->assembly, fmt, ap);
 	va_end(ap);
-	printfInStringBuilder(c->assembly, "\n");
+	stringBuilderPrintf(c->assembly, "\n");
 }
 
 static void push(ctx *c)
@@ -249,14 +249,15 @@ void codegen(hirRoot hir, interner interner, stringBuilder *assembly, memory *m)
 		.id = 0,
 		.function_name = NULL,
 		.assembly = assembly,
-		.local_offsets = allocateInBump(&m->general,
-						sizeof(u32) * hir.local_count),
+		.local_offsets = bumpAllocate(&m->general,
+					      sizeof(u32) * hir.local_count),
 	};
 
 	for (u16 i = 0; i < hir.function_count; i++) {
 		hirFunction function = hir.functions[i];
 
-		c.function_name = (char *)lookup(interner, function.name);
+		c.function_name =
+			(char *)internerLookup(interner, function.name);
 		c.id = 0;
 
 		u32 stack_size = calculateStackLayout(&c, function);
@@ -273,6 +274,6 @@ void codegen(hirRoot hir, interner interner, stringBuilder *assembly, memory *m)
 		genEpilogue(&c, stack_size);
 		instruction(&c, "ret", "");
 
-		printfInStringBuilder(c.assembly, "\n");
+		stringBuilderPrintf(c.assembly, "\n");
 	}
 }

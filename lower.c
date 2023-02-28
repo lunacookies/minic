@@ -242,13 +242,13 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 		fullNode *nodes_start =
 			(fullNode *)(m->temp.top + m->temp.bytes_used);
 
-		bumpMark mark = markBump(&m->temp);
+		bumpMark mark = bumpCreateMark(&m->temp);
 
 		for (u16 i = 0; i < ast_block.count; i++) {
 			astStatement ast_s = { .index = ast_block.start.index +
 							i };
 			fullNode *ptr =
-				allocateInBump(&m->temp, sizeof(fullNode));
+				bumpAllocate(&m->temp, sizeof(fullNode));
 			*ptr = lowerStatement(c, ast_s, m);
 		}
 
@@ -260,7 +260,7 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 				start = this;
 		}
 
-		clearBumpToMark(&m->temp, mark);
+		bumpClearToMark(&m->temp, mark);
 
 		n.kind = HIR_BLOCK;
 		n.type = HIR_TYPE_VOID;
@@ -277,17 +277,17 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 
 hirRoot lower(astRoot ast, memory *m)
 {
-	bumpMark mark = markBump(&m->temp);
+	bumpMark mark = bumpCreateMark(&m->temp);
 
 	ctx c = {
 		.hir = {
 			.functions = (hirFunction *)(m->general.top + m->general.bytes_used),
-			.nodes = allocateInBump(&m->temp, sizeof(hirNodeData) * MAX_NODE_COUNT),
-			.node_kinds = allocateInBump(&m->temp, sizeof(hirNodeKind) * MAX_NODE_COUNT),
-			.node_types = allocateInBump(&m->temp, sizeof(hirType) * MAX_NODE_COUNT),
-			.node_spans = allocateInBump(&m->temp, sizeof(span) * MAX_NODE_COUNT),
-			.local_names = allocateInBump(&m->temp, sizeof(identifierId) * MAX_LOCAL_COUNT),
-			.local_types = allocateInBump(&m->temp, sizeof(hirType) * MAX_LOCAL_COUNT),
+			.nodes = bumpAllocate(&m->temp, sizeof(hirNodeData) * MAX_NODE_COUNT),
+			.node_kinds = bumpAllocate(&m->temp, sizeof(hirNodeKind) * MAX_NODE_COUNT),
+			.node_types = bumpAllocate(&m->temp, sizeof(hirType) * MAX_NODE_COUNT),
+			.node_spans = bumpAllocate(&m->temp, sizeof(span) * MAX_NODE_COUNT),
+			.local_names = bumpAllocate(&m->temp, sizeof(identifierId) * MAX_LOCAL_COUNT),
+			.local_types = bumpAllocate(&m->temp, sizeof(hirType) * MAX_LOCAL_COUNT),
 			.function_count = 0,
 			.node_count = 0,
 			.local_count = 0,
@@ -315,27 +315,26 @@ hirRoot lower(astRoot ast, memory *m)
 			.name = ast_function.name,
 		};
 		hirFunction *ptr =
-			allocateInBump(&m->general, sizeof(hirFunction));
+			bumpAllocate(&m->general, sizeof(hirFunction));
 		*ptr = function;
 		c.hir.function_count++;
 	}
 
-	c.hir.nodes = copyInBump(&m->general, c.hir.nodes,
-				 sizeof(hirNodeData) * c.hir.node_count);
-	c.hir.node_kinds = copyInBump(&m->general, c.hir.node_kinds,
-				      sizeof(hirNodeKind) * c.hir.node_count);
-	c.hir.node_types = copyInBump(&m->general, c.hir.node_kinds,
-				      sizeof(hirType) * c.hir.node_count);
-	c.hir.node_spans = copyInBump(&m->general, c.hir.node_spans,
-				      sizeof(span) * c.hir.node_count);
+	c.hir.nodes = bumpCopy(&m->general, c.hir.nodes,
+			       sizeof(hirNodeData) * c.hir.node_count);
+	c.hir.node_kinds = bumpCopy(&m->general, c.hir.node_kinds,
+				    sizeof(hirNodeKind) * c.hir.node_count);
+	c.hir.node_types = bumpCopy(&m->general, c.hir.node_kinds,
+				    sizeof(hirType) * c.hir.node_count);
+	c.hir.node_spans = bumpCopy(&m->general, c.hir.node_spans,
+				    sizeof(span) * c.hir.node_count);
 
-	c.hir.local_names =
-		copyInBump(&m->general, c.hir.local_names,
-			   sizeof(identifierId) * c.hir.local_count);
-	c.hir.local_types = copyInBump(&m->general, c.hir.local_types,
-				       sizeof(hirType) * c.hir.local_count);
+	c.hir.local_names = bumpCopy(&m->general, c.hir.local_names,
+				     sizeof(identifierId) * c.hir.local_count);
+	c.hir.local_types = bumpCopy(&m->general, c.hir.local_types,
+				     sizeof(hirType) * c.hir.local_count);
 
-	clearBumpToMark(&m->temp, mark);
+	bumpClearToMark(&m->temp, mark);
 
 	return c.hir;
 }
@@ -376,7 +375,7 @@ hirType hirGetLocalType(hirRoot hir, hirLocal local)
 	return hir.local_types[local.index];
 }
 
-u32 typeSize(hirType type)
+u32 hirTypeSize(hirType type)
 {
 	switch (type) {
 	case HIR_TYPE_VOID:
@@ -395,12 +394,12 @@ typedef struct debugCtx {
 
 static void newline(debugCtx *c)
 {
-	printfInStringBuilder(c->sb, "\n");
+	stringBuilderPrintf(c->sb, "\n");
 	for (u32 i = 0; i < c->indentation; i++)
-		printfInStringBuilder(c->sb, "\t");
+		stringBuilderPrintf(c->sb, "\t");
 }
 
-u8 *debugHirType(hirType type)
+u8 *hirTypeDebug(hirType type)
 {
 	switch (type) {
 	case HIR_TYPE_VOID:
@@ -414,85 +413,86 @@ static void debugNode(debugCtx *c, hirNode node)
 {
 	switch (hirGetNodeKind(c->hir, node)) {
 	case HIR_MISSING:
-		printfInStringBuilder(c->sb, "<missing>");
+		stringBuilderPrintf(c->sb, "<missing>");
 		break;
 
 	case HIR_INT_LITERAL: {
 		hirIntLiteral int_literal =
 			hirGetNode(c->hir, node).int_literal;
-		printfInStringBuilder(c->sb, "%llu", int_literal.value);
+		stringBuilderPrintf(c->sb, "%llu", int_literal.value);
 		break;
 	}
 
 	case HIR_VARIABLE: {
 		hirVariable variable = hirGetNode(c->hir, node).variable;
 		identifierId name = hirGetLocalName(c->hir, variable.local);
-		printfInStringBuilder(c->sb, "%s", lookup(c->interner, name));
+		stringBuilderPrintf(c->sb, "%s",
+				    internerLookup(c->interner, name));
 		break;
 	}
 
 	case HIR_BINARY_OPERATION: {
 		hirBinaryOperation binary_operation =
 			hirGetNode(c->hir, node).binary_operation;
-		printfInStringBuilder(c->sb, "(");
+		stringBuilderPrintf(c->sb, "(");
 		debugNode(c, binary_operation.lhs);
 
 		switch (binary_operation.op) {
 		case AST_BINOP_ADD:
-			printfInStringBuilder(c->sb, " + ");
+			stringBuilderPrintf(c->sb, " + ");
 			break;
 		case AST_BINOP_SUBTRACT:
-			printfInStringBuilder(c->sb, " - ");
+			stringBuilderPrintf(c->sb, " - ");
 			break;
 		case AST_BINOP_MULTIPLY:
-			printfInStringBuilder(c->sb, " * ");
+			stringBuilderPrintf(c->sb, " * ");
 			break;
 		case AST_BINOP_DIVIDE:
-			printfInStringBuilder(c->sb, " / ");
+			stringBuilderPrintf(c->sb, " / ");
 			break;
 		case AST_BINOP_EQUAL:
-			printfInStringBuilder(c->sb, " == ");
+			stringBuilderPrintf(c->sb, " == ");
 			break;
 		case AST_BINOP_NOT_EQUAL:
-			printfInStringBuilder(c->sb, " != ");
+			stringBuilderPrintf(c->sb, " != ");
 			break;
 		case AST_BINOP_LESS_THAN:
-			printfInStringBuilder(c->sb, " < ");
+			stringBuilderPrintf(c->sb, " < ");
 			break;
 		case AST_BINOP_LESS_THAN_EQUAL:
-			printfInStringBuilder(c->sb, " <= ");
+			stringBuilderPrintf(c->sb, " <= ");
 			break;
 		case AST_BINOP_GREATER_THAN:
-			printfInStringBuilder(c->sb, " > ");
+			stringBuilderPrintf(c->sb, " > ");
 			break;
 		case AST_BINOP_GREATER_THAN_EQUAL:
-			printfInStringBuilder(c->sb, " >= ");
+			stringBuilderPrintf(c->sb, " >= ");
 			break;
 		}
 
 		debugNode(c, binary_operation.rhs);
-		printfInStringBuilder(c->sb, ")");
+		stringBuilderPrintf(c->sb, ")");
 		break;
 	}
 
 	case HIR_ASSIGN: {
 		hirAssign assign = hirGetNode(c->hir, node).assign;
-		printfInStringBuilder(c->sb, "set ");
+		stringBuilderPrintf(c->sb, "set ");
 		debugNode(c, assign.lhs);
-		printfInStringBuilder(c->sb, " = ");
+		stringBuilderPrintf(c->sb, " = ");
 		debugNode(c, assign.rhs);
 		break;
 	}
 
 	case HIR_IF: {
 		hirIf if_ = hirGetNode(c->hir, node).if_;
-		printfInStringBuilder(c->sb, "if ");
+		stringBuilderPrintf(c->sb, "if ");
 		debugNode(c, if_.condition);
 
 		if (hirGetNodeKind(c->hir, if_.true_branch) == HIR_BLOCK) {
-			printfInStringBuilder(c->sb, " ");
+			stringBuilderPrintf(c->sb, " ");
 			debugNode(c, if_.true_branch);
-			printfInStringBuilder(c->sb, " ");
+			stringBuilderPrintf(c->sb, " ");
 		} else {
 			c->indentation++;
 			newline(c);
@@ -504,10 +504,10 @@ static void debugNode(debugCtx *c, hirNode node)
 		if (if_.false_branch.index == (u16)-1)
 			break;
 
-		printfInStringBuilder(c->sb, "else");
+		stringBuilderPrintf(c->sb, "else");
 
 		if (hirGetNodeKind(c->hir, if_.false_branch) == HIR_BLOCK) {
-			printfInStringBuilder(c->sb, " ");
+			stringBuilderPrintf(c->sb, " ");
 			debugNode(c, if_.false_branch);
 		} else {
 			c->indentation++;
@@ -520,11 +520,11 @@ static void debugNode(debugCtx *c, hirNode node)
 
 	case HIR_WHILE: {
 		hirWhile while_ = hirGetNode(c->hir, node).while_;
-		printfInStringBuilder(c->sb, "while ");
+		stringBuilderPrintf(c->sb, "while ");
 		debugNode(c, while_.condition);
 
 		if (hirGetNodeKind(c->hir, while_.true_branch) == HIR_BLOCK) {
-			printfInStringBuilder(c->sb, " ");
+			stringBuilderPrintf(c->sb, " ");
 			debugNode(c, while_.true_branch);
 		} else {
 			c->indentation++;
@@ -537,7 +537,7 @@ static void debugNode(debugCtx *c, hirNode node)
 
 	case HIR_RETURN: {
 		hirReturn retrn = hirGetNode(c->hir, node).retrn;
-		printfInStringBuilder(c->sb, "return ");
+		stringBuilderPrintf(c->sb, "return ");
 		debugNode(c, retrn.value);
 		break;
 	}
@@ -545,10 +545,10 @@ static void debugNode(debugCtx *c, hirNode node)
 	case HIR_BLOCK: {
 		hirBlock block = hirGetNode(c->hir, node).block;
 		if (block.count == 0) {
-			printfInStringBuilder(c->sb, "{}");
+			stringBuilderPrintf(c->sb, "{}");
 			break;
 		}
-		printfInStringBuilder(c->sb, "{");
+		stringBuilderPrintf(c->sb, "{");
 		c->indentation++;
 		for (u16 i = 0; i < block.count; i++) {
 			hirNode n = { .index = block.start.index + i };
@@ -557,7 +557,7 @@ static void debugNode(debugCtx *c, hirNode node)
 		}
 		c->indentation--;
 		newline(c);
-		printfInStringBuilder(c->sb, "}");
+		stringBuilderPrintf(c->sb, "}");
 		break;
 	}
 	}
@@ -565,17 +565,18 @@ static void debugNode(debugCtx *c, hirNode node)
 
 static void debugFunction(debugCtx *c, hirFunction function)
 {
-	printfInStringBuilder(c->sb, "func %s",
-			      lookup(c->interner, function.name));
+	stringBuilderPrintf(c->sb, "func %s",
+			    internerLookup(c->interner, function.name));
 
 	c->indentation++;
 	for (u16 i = 0; i < function.locals_count; i++) {
 		hirLocal local = { .index = function.locals_start.index + i };
 		newline(c);
-		printfInStringBuilder(
+		stringBuilderPrintf(
 			c->sb, "var %s %s",
-			lookup(c->interner, hirGetLocalName(c->hir, local)),
-			debugHirType(hirGetLocalType(c->hir, local)));
+			internerLookup(c->interner,
+				       hirGetLocalName(c->hir, local)),
+			hirTypeDebug(hirGetLocalType(c->hir, local)));
 	}
 
 	newline(c);
@@ -583,7 +584,7 @@ static void debugFunction(debugCtx *c, hirFunction function)
 	c->indentation--;
 }
 
-void debugHir(hirRoot hir, interner interner, stringBuilder *sb)
+void hirDebug(hirRoot hir, interner interner, stringBuilder *sb)
 {
 	debugCtx c = {
 		.hir = hir,
@@ -604,11 +605,11 @@ void debugHir(hirRoot hir, interner interner, stringBuilder *sb)
 	}
 }
 
-void debugPrintHir(hirRoot hir, interner interner, bump *b)
+void hirDebugPrint(hirRoot hir, interner interner, bump *b)
 {
-	bumpMark mark = markBump(b);
-	stringBuilder sb = createStringBuilder(b);
-	debugHir(hir, interner, &sb);
-	printf("%s", finishStringBuilder(sb));
-	clearBumpToMark(b, mark);
+	bumpMark mark = bumpCreateMark(b);
+	stringBuilder sb = stringBuilderCreate(b);
+	hirDebug(hir, interner, &sb);
+	printf("%s", stringBuilderFinish(sb));
+	bumpClearToMark(b, mark);
 }

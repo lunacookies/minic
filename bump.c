@@ -2,7 +2,7 @@
 
 #define UNINIT_SENTINEL '`'
 
-bump createBump(void *buffer, usize size)
+bump bumpCreate(void *buffer, usize size)
 {
 	return (bump){
 		.top = buffer,
@@ -11,7 +11,7 @@ bump createBump(void *buffer, usize size)
 	};
 }
 
-bumpMark markBump(bump *b)
+bumpMark bumpCreateMark(bump *b)
 {
 	return (bumpMark){
 		.bytes_used = b->bytes_used,
@@ -19,7 +19,7 @@ bumpMark markBump(bump *b)
 	};
 }
 
-void clearBumpToMark(bump *b, bumpMark mark)
+void bumpClearToMark(bump *b, bumpMark mark)
 {
 	assert(b->top == mark.top);
 	assert(b->bytes_used >= mark.bytes_used);
@@ -30,7 +30,7 @@ void clearBumpToMark(bump *b, bumpMark mark)
 	b->bytes_used = mark.bytes_used;
 }
 
-void *allocateInBump(bump *b, usize size)
+void *bumpAllocate(bump *b, usize size)
 {
 	if (b->bytes_used + size > b->max_size)
 		internalError("out of memory\n%zu KiB attempted\n"
@@ -46,29 +46,29 @@ void *allocateInBump(bump *b, usize size)
 	return ptr;
 }
 
-void *copyInBump(bump *b, void *buffer, usize size)
+void *bumpCopy(bump *b, void *buffer, usize size)
 {
-	void *ptr = allocateInBump(b, size);
+	void *ptr = bumpAllocate(b, size);
 	memcpy(ptr, buffer, size);
 	return ptr;
 }
 
-bump createSubBump(bump *b, usize size)
+bump bumpCreateSubBump(bump *b, usize size)
 {
-	void *buffer = allocateInBump(b, size);
-	return createBump(buffer, size);
+	void *buffer = bumpAllocate(b, size);
+	return bumpCreate(buffer, size);
 }
 
-u8 *printfInBump(bump *b, char *fmt, ...)
+u8 *bumpPrintf(bump *b, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	u8 *p = printfInBumpV(b, fmt, ap);
+	u8 *p = bumpPrintfV(b, fmt, ap);
 	va_end(ap);
 	return p;
 }
 
-u8 *printfInBumpV(bump *b, char *fmt, va_list ap)
+u8 *bumpPrintfV(bump *b, char *fmt, va_list ap)
 {
 	usize remaining_bytes = b->max_size - b->bytes_used;
 

@@ -137,8 +137,8 @@ static void expect(parser *p, tokenKind expected)
 		addToken(p);
 		return;
 	}
-	error(p, "expected %s but found %s", showTokenKind(expected),
-	      showTokenKind(actual));
+	error(p, "expected %s but found %s", tokenKindShow(expected),
+	      tokenKindShow(actual));
 }
 
 static identifierId expectIdentifier(parser *p)
@@ -372,12 +372,12 @@ static fullStatement statement(parser *p, memory *m)
 			(fullStatement *)(m->temp.top + m->temp.bytes_used);
 		u16 count = 0;
 
-		bumpMark mark = markBump(&m->temp);
+		bumpMark mark = bumpCreateMark(&m->temp);
 
 		while (!at(p, TOK_RBRACE) && !atEof(p) && !atItemFirst(p)) {
 			fullStatement stmt = statement(p, m);
 			fullStatement *stmt_ptr =
-				allocateInBump(&m->temp, sizeof(fullStatement));
+				bumpAllocate(&m->temp, sizeof(fullStatement));
 			*stmt_ptr = stmt;
 			count++;
 		}
@@ -392,7 +392,7 @@ static fullStatement statement(parser *p, memory *m)
 				start = this;
 		}
 
-		clearBumpToMark(&m->temp, mark);
+		bumpClearToMark(&m->temp, mark);
 
 		s.kind = AST_STMT_BLOCK;
 		s.data.block.start = start;
@@ -427,7 +427,7 @@ static astFunction function(parser *p, memory *m)
 
 astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 {
-	bumpMark mark = markBump(&m->temp);
+	bumpMark mark = bumpCreateMark(&m->temp);
 
 	parser p = {
 		.tokens = tokens,
@@ -435,12 +435,12 @@ astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 		.content = content,
 		.ast = {
 			.functions = (astFunction *)(m->general.top + m->general.bytes_used),
-			.statements = allocateInBump(&m->temp, sizeof(astStatementData) * MAX_STATEMENT_COUNT),
-			.statement_kinds = allocateInBump(&m->temp, sizeof(astStatementKind) * MAX_STATEMENT_COUNT),
-			.statement_spans = allocateInBump(&m->temp, sizeof(span) * MAX_STATEMENT_COUNT),
-			.expressions = allocateInBump(&m->temp, sizeof(astStatementData) * MAX_EXPRESSION_COUNT),
-			.expression_kinds = allocateInBump(&m->temp, sizeof(astStatementKind) * MAX_EXPRESSION_COUNT),
-			.expression_spans = allocateInBump(&m->temp, sizeof(span) * MAX_EXPRESSION_COUNT),
+			.statements = bumpAllocate(&m->temp, sizeof(astStatementData) * MAX_STATEMENT_COUNT),
+			.statement_kinds = bumpAllocate(&m->temp, sizeof(astStatementKind) * MAX_STATEMENT_COUNT),
+			.statement_spans = bumpAllocate(&m->temp, sizeof(span) * MAX_STATEMENT_COUNT),
+			.expressions = bumpAllocate(&m->temp, sizeof(astStatementData) * MAX_EXPRESSION_COUNT),
+			.expression_kinds = bumpAllocate(&m->temp, sizeof(astStatementKind) * MAX_EXPRESSION_COUNT),
+			.expression_spans = bumpAllocate(&m->temp, sizeof(span) * MAX_EXPRESSION_COUNT),
 			.function_count = 0,
 			.statement_count = 0,
 			.expression_count = 0,
@@ -451,8 +451,8 @@ astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 		switch (current(&p)) {
 		case TOK_FUNC: {
 			astFunction f = function(&p, m);
-			astFunction *ptr = allocateInBump(&m->general,
-							  sizeof(astFunction));
+			astFunction *ptr =
+				bumpAllocate(&m->general, sizeof(astFunction));
 			*ptr = f;
 			p.ast.function_count++;
 			break;
@@ -464,26 +464,25 @@ astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 	}
 
 	p.ast.statements =
-		copyInBump(&m->general, p.ast.statements,
-			   sizeof(astStatementData) * p.ast.statement_count);
+		bumpCopy(&m->general, p.ast.statements,
+			 sizeof(astStatementData) * p.ast.statement_count);
 	p.ast.statement_kinds =
-		copyInBump(&m->general, p.ast.statement_kinds,
-			   sizeof(astStatementKind) * p.ast.statement_count);
-	p.ast.statement_spans =
-		copyInBump(&m->general, p.ast.statement_spans,
-			   sizeof(span) * p.ast.statement_count);
+		bumpCopy(&m->general, p.ast.statement_kinds,
+			 sizeof(astStatementKind) * p.ast.statement_count);
+	p.ast.statement_spans = bumpCopy(&m->general, p.ast.statement_spans,
+					 sizeof(span) * p.ast.statement_count);
 
 	p.ast.expressions =
-		copyInBump(&m->general, p.ast.expressions,
-			   sizeof(astExpressionData) * p.ast.expression_count);
+		bumpCopy(&m->general, p.ast.expressions,
+			 sizeof(astExpressionData) * p.ast.expression_count);
 	p.ast.expression_kinds =
-		copyInBump(&m->general, p.ast.expression_kinds,
-			   sizeof(astExpressionKind) * p.ast.expression_count);
+		bumpCopy(&m->general, p.ast.expression_kinds,
+			 sizeof(astExpressionKind) * p.ast.expression_count);
 	p.ast.expression_spans =
-		copyInBump(&m->general, p.ast.expression_spans,
-			   sizeof(span) * p.ast.expression_count);
+		bumpCopy(&m->general, p.ast.expression_spans,
+			 sizeof(span) * p.ast.expression_count);
 
-	clearBumpToMark(&m->temp, mark);
+	bumpClearToMark(&m->temp, mark);
 
 	return p.ast;
 }
@@ -533,22 +532,22 @@ typedef struct ctx {
 
 static void newline(ctx *c)
 {
-	printfInStringBuilder(c->sb, "\n");
+	stringBuilderPrintf(c->sb, "\n");
 	for (u32 i = 0; i < c->indentation; i++)
-		printfInStringBuilder(c->sb, "\t");
+		stringBuilderPrintf(c->sb, "\t");
 }
 
 static void debugExpression(ctx *c, astExpression expression)
 {
 	switch (astGetExpressionKind(c->ast, expression)) {
 	case AST_EXPR_MISSING:
-		printfInStringBuilder(c->sb, "<missing>");
+		stringBuilderPrintf(c->sb, "<missing>");
 		break;
 
 	case AST_EXPR_INT_LITERAL: {
 		astIntLiteral int_literal =
 			astGetExpression(c->ast, expression).int_literal;
-		printfInStringBuilder(c->sb, "%llu", int_literal.value);
+		stringBuilderPrintf(c->sb, "%llu", int_literal.value);
 		break;
 	}
 
@@ -556,55 +555,55 @@ static void debugExpression(ctx *c, astExpression expression)
 		astVariable variable =
 			astGetExpression(c->ast, expression).variable;
 		if (variable.name.raw == (u32)-1)
-			printfInStringBuilder(c->sb, "<missing>");
+			stringBuilderPrintf(c->sb, "<missing>");
 		else
-			printfInStringBuilder(
+			stringBuilderPrintf(
 				c->sb, "%s",
-				lookup(c->interner, variable.name));
+				internerLookup(c->interner, variable.name));
 		break;
 	}
 
 	case AST_EXPR_BINARY_OPERATION: {
 		astBinaryOperation binary_operation =
 			astGetExpression(c->ast, expression).binary_operation;
-		printfInStringBuilder(c->sb, "(");
+		stringBuilderPrintf(c->sb, "(");
 		debugExpression(c, binary_operation.lhs);
 
 		switch (binary_operation.op) {
 		case AST_BINOP_ADD:
-			printfInStringBuilder(c->sb, " + ");
+			stringBuilderPrintf(c->sb, " + ");
 			break;
 		case AST_BINOP_SUBTRACT:
-			printfInStringBuilder(c->sb, " - ");
+			stringBuilderPrintf(c->sb, " - ");
 			break;
 		case AST_BINOP_MULTIPLY:
-			printfInStringBuilder(c->sb, " * ");
+			stringBuilderPrintf(c->sb, " * ");
 			break;
 		case AST_BINOP_DIVIDE:
-			printfInStringBuilder(c->sb, " / ");
+			stringBuilderPrintf(c->sb, " / ");
 			break;
 		case AST_BINOP_EQUAL:
-			printfInStringBuilder(c->sb, " == ");
+			stringBuilderPrintf(c->sb, " == ");
 			break;
 		case AST_BINOP_NOT_EQUAL:
-			printfInStringBuilder(c->sb, " != ");
+			stringBuilderPrintf(c->sb, " != ");
 			break;
 		case AST_BINOP_LESS_THAN:
-			printfInStringBuilder(c->sb, " < ");
+			stringBuilderPrintf(c->sb, " < ");
 			break;
 		case AST_BINOP_LESS_THAN_EQUAL:
-			printfInStringBuilder(c->sb, " <= ");
+			stringBuilderPrintf(c->sb, " <= ");
 			break;
 		case AST_BINOP_GREATER_THAN:
-			printfInStringBuilder(c->sb, " > ");
+			stringBuilderPrintf(c->sb, " > ");
 			break;
 		case AST_BINOP_GREATER_THAN_EQUAL:
-			printfInStringBuilder(c->sb, " >= ");
+			stringBuilderPrintf(c->sb, " >= ");
 			break;
 		}
 
 		debugExpression(c, binary_operation.rhs);
-		printfInStringBuilder(c->sb, ")");
+		stringBuilderPrintf(c->sb, ")");
 		break;
 	}
 	}
@@ -614,12 +613,12 @@ static void debugStatement(ctx *c, astStatement statement)
 {
 	switch (astGetStatementKind(c->ast, statement)) {
 	case AST_STMT_MISSING:
-		printfInStringBuilder(c->sb, "<missing>");
+		stringBuilderPrintf(c->sb, "<missing>");
 		break;
 
 	case AST_STMT_RETURN: {
 		astReturn retrn = astGetStatement(c->ast, statement).retrn;
-		printfInStringBuilder(c->sb, "return ");
+		stringBuilderPrintf(c->sb, "return ");
 		debugExpression(c, retrn.value);
 		break;
 	}
@@ -627,39 +626,40 @@ static void debugStatement(ctx *c, astStatement statement)
 	case AST_STMT_LOCAL_DEFINITION: {
 		astLocalDefinition local_definition =
 			astGetStatement(c->ast, statement).local_definition;
-		printfInStringBuilder(c->sb, "var ");
+		stringBuilderPrintf(c->sb, "var ");
 
 		if (local_definition.name.raw == (u32)-1)
-			printfInStringBuilder(c->sb, "<missing>");
+			stringBuilderPrintf(c->sb, "<missing>");
 		else
-			printfInStringBuilder(
+			stringBuilderPrintf(
 				c->sb, "%s",
-				lookup(c->interner, local_definition.name));
+				internerLookup(c->interner,
+					       local_definition.name));
 
-		printfInStringBuilder(c->sb, " = ");
+		stringBuilderPrintf(c->sb, " = ");
 		debugExpression(c, local_definition.value);
 		break;
 	}
 
 	case AST_STMT_ASSIGN: {
 		astAssign assign = astGetStatement(c->ast, statement).assign;
-		printfInStringBuilder(c->sb, "set ");
+		stringBuilderPrintf(c->sb, "set ");
 		debugExpression(c, assign.lhs);
-		printfInStringBuilder(c->sb, " = ");
+		stringBuilderPrintf(c->sb, " = ");
 		debugExpression(c, assign.rhs);
 		break;
 	}
 
 	case AST_STMT_IF: {
 		astIf if_ = astGetStatement(c->ast, statement).if_;
-		printfInStringBuilder(c->sb, "if ");
+		stringBuilderPrintf(c->sb, "if ");
 		debugExpression(c, if_.condition);
 
 		if (astGetStatementKind(c->ast, if_.true_branch) ==
 		    AST_STMT_BLOCK) {
-			printfInStringBuilder(c->sb, " ");
+			stringBuilderPrintf(c->sb, " ");
 			debugStatement(c, if_.true_branch);
-			printfInStringBuilder(c->sb, " ");
+			stringBuilderPrintf(c->sb, " ");
 		} else {
 			c->indentation++;
 			newline(c);
@@ -671,11 +671,11 @@ static void debugStatement(ctx *c, astStatement statement)
 		if (if_.false_branch.index == (u16)-1)
 			break;
 
-		printfInStringBuilder(c->sb, "else");
+		stringBuilderPrintf(c->sb, "else");
 
 		if (astGetStatementKind(c->ast, if_.false_branch) ==
 		    AST_STMT_BLOCK) {
-			printfInStringBuilder(c->sb, " ");
+			stringBuilderPrintf(c->sb, " ");
 			debugStatement(c, if_.false_branch);
 		} else {
 			c->indentation++;
@@ -688,12 +688,12 @@ static void debugStatement(ctx *c, astStatement statement)
 
 	case AST_STMT_WHILE: {
 		astWhile while_ = astGetStatement(c->ast, statement).while_;
-		printfInStringBuilder(c->sb, "while ");
+		stringBuilderPrintf(c->sb, "while ");
 		debugExpression(c, while_.condition);
 
 		if (astGetStatementKind(c->ast, while_.true_branch) ==
 		    AST_STMT_BLOCK) {
-			printfInStringBuilder(c->sb, " ");
+			stringBuilderPrintf(c->sb, " ");
 			debugStatement(c, while_.true_branch);
 			break;
 		}
@@ -708,10 +708,10 @@ static void debugStatement(ctx *c, astStatement statement)
 	case AST_STMT_BLOCK: {
 		astBlock block = astGetStatement(c->ast, statement).block;
 		if (block.count == 0) {
-			printfInStringBuilder(c->sb, "{}");
+			stringBuilderPrintf(c->sb, "{}");
 			break;
 		}
-		printfInStringBuilder(c->sb, "{");
+		stringBuilderPrintf(c->sb, "{");
 		c->indentation++;
 		for (u16 i = 0; i < block.count; i++) {
 			astStatement s = { .index = block.start.index + i };
@@ -720,7 +720,7 @@ static void debugStatement(ctx *c, astStatement statement)
 		}
 		c->indentation--;
 		newline(c);
-		printfInStringBuilder(c->sb, "}");
+		stringBuilderPrintf(c->sb, "}");
 		break;
 	}
 	}
@@ -728,15 +728,15 @@ static void debugStatement(ctx *c, astStatement statement)
 
 static void debugFunction(ctx *c, astFunction function)
 {
-	printfInStringBuilder(c->sb, "func ");
+	stringBuilderPrintf(c->sb, "func ");
 	if (function.name.raw == (u32)-1)
-		printfInStringBuilder(c->sb, "<missing>");
+		stringBuilderPrintf(c->sb, "<missing>");
 	else
-		printfInStringBuilder(c->sb, "%s",
-				      lookup(c->interner, function.name));
+		stringBuilderPrintf(c->sb, "%s",
+				    internerLookup(c->interner, function.name));
 
 	if (astGetStatementKind(c->ast, function.body) == AST_STMT_BLOCK) {
-		printfInStringBuilder(c->sb, " ");
+		stringBuilderPrintf(c->sb, " ");
 		debugStatement(c, function.body);
 	} else {
 		c->indentation++;
@@ -746,7 +746,7 @@ static void debugFunction(ctx *c, astFunction function)
 	}
 }
 
-void debugAst(astRoot ast, interner interner, stringBuilder *sb)
+void astDebug(astRoot ast, interner interner, stringBuilder *sb)
 {
 	ctx c = {
 		.ast = ast,
@@ -767,11 +767,11 @@ void debugAst(astRoot ast, interner interner, stringBuilder *sb)
 	}
 }
 
-void debugPrintAst(astRoot ast, interner interner, bump *b)
+void astDebugPrint(astRoot ast, interner interner, bump *b)
 {
-	bumpMark mark = markBump(b);
-	stringBuilder sb = createStringBuilder(b);
-	debugAst(ast, interner, &sb);
-	printf("%s", finishStringBuilder(sb));
-	clearBumpToMark(b, mark);
+	bumpMark mark = bumpCreateMark(b);
+	stringBuilder sb = stringBuilderCreate(b);
+	astDebug(ast, interner, &sb);
+	printf("%s", stringBuilderFinish(sb));
+	bumpClearToMark(b, mark);
 }

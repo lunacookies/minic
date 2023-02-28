@@ -15,16 +15,16 @@ void initializeDiagnostics(memory *m)
 	pthread_mutex_init(&mutex, &attr);
 
 	diagnostics = (diagnosticsStorage){
-		.files = allocateInBump(&m->general,
-					sizeof(u16) * MAX_DIAGNOSTIC_COUNT),
-		.spans = allocateInBump(&m->general,
-					sizeof(span) * MAX_DIAGNOSTIC_COUNT),
-		.severities = allocateInBump(
+		.files = bumpAllocate(&m->general,
+				      sizeof(u16) * MAX_DIAGNOSTIC_COUNT),
+		.spans = bumpAllocate(&m->general,
+				      sizeof(span) * MAX_DIAGNOSTIC_COUNT),
+		.severities = bumpAllocate(
 			&m->general, sizeof(severity) * MAX_DIAGNOSTIC_COUNT),
-		.message_starts = allocateInBump(
+		.message_starts = bumpAllocate(
 			&m->general, sizeof(u32) * MAX_DIAGNOSTIC_COUNT),
-		.all_messages =
-			createSubBump(&m->general, 128 * MAX_DIAGNOSTIC_COUNT),
+		.all_messages = bumpCreateSubBump(&m->general,
+						  128 * MAX_DIAGNOSTIC_COUNT),
 		.count = 0,
 	};
 
@@ -71,7 +71,7 @@ void recordDiagnosticV(severity severity, span span, char *fmt, va_list ap)
 	pthread_mutex_lock(&mutex);
 	assert(diagnostics.count < MAX_DIAGNOSTIC_COUNT);
 
-	u8 *message = printfInBumpV(&diagnostics.all_messages, fmt, ap);
+	u8 *message = bumpPrintfV(&diagnostics.all_messages, fmt, ap);
 	u32 message_start = message - diagnostics.all_messages.top;
 
 	if (severity == DIAG_ERROR)
@@ -108,34 +108,34 @@ void showDiagnostics(bool color, stringBuilder *sb)
 		span span = diagnostics.spans[i];
 		lineColumn lc = offsetToLineColumn(span.start, file_content);
 
-		printfInStringBuilder(sb, "%s:%u:%u: ", file_name, lc.line + 1,
-				      lc.column + 1);
+		stringBuilderPrintf(sb, "%s:%u:%u: ", file_name, lc.line + 1,
+				    lc.column + 1);
 
 		switch (diagnostics.severities[i]) {
 		case DIAG_WARNING:
 			if (color)
-				printfInStringBuilder(sb, "\033[33m"); // yellow
-			printfInStringBuilder(sb, "warning");
+				stringBuilderPrintf(sb, "\033[33m"); // yellow
+			stringBuilderPrintf(sb, "warning");
 			break;
 		case DIAG_ERROR:
 			if (color)
-				printfInStringBuilder(sb, "\033[31m"); // red
-			printfInStringBuilder(sb, "error");
+				stringBuilderPrintf(sb, "\033[31m"); // red
+			stringBuilderPrintf(sb, "error");
 			break;
 		}
-		printfInStringBuilder(sb, ": ");
+		stringBuilderPrintf(sb, ": ");
 
 		if (color)
-			printfInStringBuilder(sb, "\033[0;1m");
+			stringBuilderPrintf(sb, "\033[0;1m");
 
 		u32 message_start = diagnostics.message_starts[i];
 		u8 *message = diagnostics.all_messages.top + message_start;
-		printfInStringBuilder(sb, "%s", message);
+		stringBuilderPrintf(sb, "%s", message);
 
 		if (color)
-			printfInStringBuilder(sb, "\033[0m");
+			stringBuilderPrintf(sb, "\033[0m");
 
-		printfInStringBuilder(sb, "\n");
+		stringBuilderPrintf(sb, "\n");
 	}
 
 	pthread_mutex_unlock(&mutex);

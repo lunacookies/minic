@@ -56,14 +56,14 @@ typedef struct bumpMark {
 	u8 *top;
 } bumpMark;
 
-bump createBump(void *buffer, usize size);
-bumpMark markBump(bump *b);
-void clearBumpToMark(bump *b, bumpMark mark);
-void *allocateInBump(bump *b, usize size);
-void *copyInBump(bump *b, void *buffer, usize size);
-bump createSubBump(bump *b, usize size);
-u8 *printfInBump(bump *b, char *fmt, ...);
-u8 *printfInBumpV(bump *b, char *fmt, va_list ap);
+bump bumpCreate(void *buffer, usize size);
+bumpMark bumpCreateMark(bump *b);
+void bumpClearToMark(bump *b, bumpMark mark);
+void *bumpAllocate(bump *b, usize size);
+void *bumpCopy(bump *b, void *buffer, usize size);
+bump bumpCreateSubBump(bump *b, usize size);
+u8 *bumpPrintf(bump *b, char *fmt, ...);
+u8 *bumpPrintfV(bump *b, char *fmt, va_list ap);
 
 // ----------------------------------------------------------------------------
 // string_builder.c
@@ -74,10 +74,10 @@ typedef struct stringBuilder {
 	usize previous_bytes_used;
 } stringBuilder;
 
-stringBuilder createStringBuilder(bump *b);
-void printfInStringBuilder(stringBuilder *sb, char *fmt, ...);
-void printfInStringBuilderV(stringBuilder *sb, char *fmt, va_list ap);
-u8 *finishStringBuilder(stringBuilder sb);
+stringBuilder stringBuilderCreate(bump *b);
+void stringBuilderPrintf(stringBuilder *sb, char *fmt, ...);
+void stringBuilderPrintfV(stringBuilder *sb, char *fmt, va_list ap);
+u8 *stringBuilderFinish(stringBuilder sb);
 
 // ----------------------------------------------------------------------------
 // memory.c
@@ -88,7 +88,7 @@ typedef struct memory {
 } memory;
 
 bump allocateFromOs(usize size);
-memory initMemory(void);
+memory memoryCreate(void);
 
 // ----------------------------------------------------------------------------
 // test.c
@@ -105,7 +105,7 @@ typedef struct projectSpec {
 	u8 **file_contents;
 } projectSpec;
 
-projectSpec discoverProject(memory *m);
+projectSpec projectDiscover(memory *m);
 
 void setCurrentProject(projectSpec p);
 projectSpec currentProject(void);
@@ -181,11 +181,11 @@ typedef struct tokenBuffer {
 } tokenBuffer;
 
 tokenBuffer lex(u8 *input, memory *m);
-u8 *identifierText(tokenBuffer buf, u32 token_id);
-u8 *showTokenKind(tokenKind kind);
-u8 *debugTokenKind(tokenKind kind);
-void debugTokenBuffer(tokenBuffer buf, stringBuilder *sb);
-void debugPrintTokenBuffer(tokenBuffer buf, bump *b);
+u8 *tokenBufferIdentifierText(tokenBuffer buf, u32 token_id);
+u8 *tokenKindShow(tokenKind kind);
+u8 *tokenKindDebug(tokenKind kind);
+void tokenBufferDebug(tokenBuffer buf, stringBuilder *sb);
+void tokenBufferDebugPrint(tokenBuffer buf, bump *b);
 
 u8 *lexTests(u8 *input, memory *m);
 
@@ -196,9 +196,9 @@ typedef struct interner {
 	u8 **contents;
 } interner;
 
-interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count,
-		usize identifier_count, memory *m);
-u8 *lookup(interner i, identifierId id);
+interner internerIntern(tokenBuffer *bufs, u8 **contents, usize buf_count,
+			usize identifier_count, memory *m);
+u8 *internerLookup(interner i, identifierId id);
 
 // ----------------------------------------------------------------------------
 // parse.c
@@ -328,8 +328,8 @@ span astGetStatementSpan(astRoot ast, astStatement statement);
 astExpressionData astGetExpression(astRoot ast, astExpression expression);
 astExpressionKind astGetExpressionKind(astRoot ast, astExpression expression);
 span astGetExpressionSpan(astRoot ast, astExpression expression);
-void debugAst(astRoot ast, interner interner, stringBuilder *sb);
-void debugPrintAst(astRoot ast, interner interner, bump *b);
+void astDebug(astRoot ast, interner interner, stringBuilder *sb);
+void astDebugPrint(astRoot ast, interner interner, bump *b);
 
 // ----------------------------------------------------------------------------
 // lower.c
@@ -438,10 +438,10 @@ hirType hirGetNodeType(hirRoot hir, hirNode node);
 span hirGetNodeSpan(hirRoot hir, hirNode node);
 identifierId hirGetLocalName(hirRoot hir, hirLocal local);
 hirType hirGetLocalType(hirRoot hir, hirLocal local);
-u32 typeSize(hirType type);
-u8 *debugHirType(hirType type);
-void debugHir(hirRoot hir, interner interner, stringBuilder *sb);
-void debugPrintHir(hirRoot hir, interner interner, bump *b);
+u32 hirTypeSize(hirType type);
+u8 *hirTypeDebug(hirType type);
+void hirDebug(hirRoot hir, interner interner, stringBuilder *sb);
+void hirDebugPrint(hirRoot hir, interner interner, bump *b);
 
 // ----------------------------------------------------------------------------
 // codegen.c
