@@ -1,5 +1,7 @@
 #!/bin/sh
 
+./minic --test
+
 mkdir test
 cd test
 

@@ -78,6 +78,12 @@ bump allocateFromOs(usize size);
 memory initMemory(void);
 
 // ----------------------------------------------------------------------------
+// test.c
+
+typedef u8 *(*transformer)(u8 *, memory *);
+void runTests(u8 *dir_name, transformer t, bump *b);
+
+// ----------------------------------------------------------------------------
 // project.c
 
 typedef struct projectSpec {
@@ -167,6 +173,8 @@ u8 *showTokenKind(tokenKind kind);
 u8 *debugTokenKind(tokenKind kind);
 u8 *debugTokenBuffer(tokenBuffer buf, bump *b);
 void debugPrintTokenBuffer(tokenBuffer buf, bump *b);
+
+u8 *lexTests(u8 *input, memory *m);
 
 // ----------------------------------------------------------------------------
 // intern.c

@@ -2,11 +2,17 @@
 
 int main(int argc, char **argv)
 {
-	bool debug = argc == 2 && strcmp(argv[1], "-d") == 0;
-
 	memory m = initMemory();
 	bump assembly = allocateFromOs(16 * 1024 * 1024);
 	initializeDiagnostics(&m);
+
+	if (argc == 2 && strcmp(argv[1], "--test") == 0) {
+		runTests((u8 *)"tests_lex", lexTests, &m.temp);
+		assert(m.temp.bytes_used == 0);
+		return 0;
+	}
+
+	bool debug = argc == 2 && strcmp(argv[1], "-d") == 0;
 
 	projectSpec current_project = discoverProject(&m);
 	assert(m.temp.bytes_used == 0);

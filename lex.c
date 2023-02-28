@@ -308,3 +308,9 @@ void debugPrintTokenBuffer(tokenBuffer buf, bump *b)
 	printf("%s", debugTokenBuffer(buf, b));
 	clearBumpToMark(b, mark);
 }
+
+u8 *lexTests(u8 *input, memory *m)
+{
+	tokenBuffer buf = lex(input, m);
+	return debugTokenBuffer(buf, &m->temp);
+}
