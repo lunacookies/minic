@@ -73,7 +73,7 @@ static void convertKeywords(u8 *input, tokenBuffer *buf)
 	}
 }
 
-tokenBuffer lex(u8 *input, memory *m)
+tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m)
 {
 	bumpMark mark = bumpCreateMark(&m->temp);
 
@@ -142,8 +142,8 @@ tokenBuffer lex(u8 *input, memory *m)
 			.start = i,
 			.end = i + 1,
 		};
-		recordDiagnostic(DIAG_ERROR, span, "invalid token “%c”",
-				 input[i]);
+		diagnosticsStorageRecord(diagnostics, DIAG_ERROR, span,
+					 "invalid token “%c”", input[i]);
 		i++;
 		pushToken(TOK_ERROR, span.start, span.end, &buf, m);
 
@@ -309,7 +309,8 @@ void tokenBufferDebugPrint(tokenBuffer buf, bump *b)
 
 u8 *lexTests(u8 *input, memory *m)
 {
-	tokenBuffer buf = lex(input, m);
+	diagnosticsStorage diagnostics = diagnosticsStorageCreate(&m->general);
+	tokenBuffer buf = lex(input, &diagnostics, m);
 	stringBuilder sb = stringBuilderCreate(&m->temp);
 	tokenBufferDebug(buf, &sb);
 	return stringBuilderFinish(sb);

@@ -20,14 +20,16 @@ typedef struct parser {
 	usize cursor;
 	u8 *content;
 	astRoot ast;
+	diagnosticsStorage *diagnostics;
 } parser;
 
 static astExpression allocateExpression(parser *p, fullExpression expression)
 {
 	if (p->ast.expression_count >= MAX_EXPRESSION_COUNT) {
-		recordDiagnostic(DIAG_ERROR, expression.span,
-				 "reached limit of %u expressions",
-				 MAX_EXPRESSION_COUNT);
+		diagnosticsStorageRecord(p->diagnostics, DIAG_ERROR,
+					 expression.span,
+					 "reached limit of %u expressions",
+					 MAX_EXPRESSION_COUNT);
 		internalError("ran out of expression slots");
 	}
 
@@ -42,9 +44,9 @@ static astExpression allocateExpression(parser *p, fullExpression expression)
 static astStatement allocateStatement(parser *p, fullStatement statement)
 {
 	if (p->ast.statement_count >= MAX_STATEMENT_COUNT) {
-		recordDiagnostic(DIAG_ERROR, statement.span,
-				 "reached limit of %u statements",
-				 MAX_STATEMENT_COUNT);
+		diagnosticsStorageRecord(
+			p->diagnostics, DIAG_ERROR, statement.span,
+			"reached limit of %u statements", MAX_STATEMENT_COUNT);
 		internalError("ran out of statement slots");
 	}
 
@@ -111,7 +113,7 @@ static void errorV(parser *p, bool honor_recovery, char *fmt, va_list ap)
 		s = currentSpan(p);
 		addToken(p);
 	}
-	recordDiagnosticV(DIAG_ERROR, s, fmt, ap);
+	diagnosticsStorageRecordV(p->diagnostics, DIAG_ERROR, s, fmt, ap);
 }
 
 static void error(parser *p, char *fmt, ...)
@@ -425,7 +427,8 @@ static astFunction function(parser *p, memory *m)
 	};
 }
 
-astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
+astRoot parse(tokenBuffer tokens, u8 *content, diagnosticsStorage *diagnostics,
+	      memory *m)
 {
 	bumpMark mark = bumpCreateMark(&m->temp);
 
@@ -445,6 +448,7 @@ astRoot parse(tokenBuffer tokens, u8 *content, memory *m)
 			.statement_count = 0,
 			.expression_count = 0,
 		},
+		.diagnostics = diagnostics,
 	};
 
 	while (!atEof(&p)) {

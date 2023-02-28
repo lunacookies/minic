@@ -5,7 +5,7 @@ int main(int argc, char **argv)
 	memory m = memoryCreate();
 	bump assembly_bump = allocateFromOs(16 * 1024 * 1024);
 	stringBuilder assembly = stringBuilderCreate(&assembly_bump);
-	initializeDiagnostics(&m);
+	diagnosticsStorage diagnostics = diagnosticsStorageCreate(&m.general);
 
 	if (argc == 2 && strcmp(argv[1], "--test") == 0) {
 		runTests((u8 *)"tests_lex", lexTests, &m.temp);
@@ -26,7 +26,7 @@ int main(int argc, char **argv)
 	for (u16 i = 0; i < current_project.num_files; i++) {
 		setCurrentFile(i);
 		u8 *content = current_project.file_contents[i];
-		tokenBuffer tokens = lex(content, &m);
+		tokenBuffer tokens = lex(content, &diagnostics, &m);
 		token_buffers[i] = tokens;
 		assert(m.temp.bytes_used == 0);
 	}
@@ -47,22 +47,23 @@ int main(int argc, char **argv)
 		setCurrentFile(i);
 
 		astRoot ast = parse(token_buffers[i],
-				    current_project.file_contents[i], &m);
+				    current_project.file_contents[i],
+				    &diagnostics, &m);
 		if (debug)
 			astDebugPrint(ast, interner, &m.temp);
 
-		hirRoot hir = lower(ast, &m);
+		hirRoot hir = lower(ast, &diagnostics, &m);
 		if (debug)
 			hirDebugPrint(hir, interner, &m.temp);
 
-		codegen(hir, interner, &assembly, &m);
+		codegen(hir, interner, &assembly, &diagnostics, &m);
 
 		assert(m.temp.bytes_used == 0);
 	}
 
 	bumpMark mark = bumpCreateMark(&m.temp);
 	stringBuilder sb = stringBuilderCreate(&m.temp);
-	showDiagnostics(true, &sb);
+	diagnosticsStorageShow(diagnostics, true, &sb);
 	printf("%s", stringBuilderFinish(sb));
 	bumpClearToMark(&m.temp, mark);
 
@@ -75,8 +76,9 @@ int main(int argc, char **argv)
 		debugLog("    %zu bytes of assembly", assembly_bump.bytes_used);
 	}
 
-	if (anyErrors())
-		return 1;
+	for (u16 i = 0; i < diagnostics.count; i++)
+		if (diagnostics.severities[i] == DIAG_ERROR)
+			return 1;
 
 	int fd = open("out.s", O_WRONLY | O_CREAT | O_TRUNC, 0666);
 

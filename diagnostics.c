@@ -2,33 +2,19 @@
 
 #define MAX_DIAGNOSTIC_COUNT 1024
 
-diagnosticsStorage diagnostics;
-pthread_mutex_t mutex;
-bool isInitialized = false;
-bool anyErrors_ = false;
-
-void initializeDiagnostics(memory *m)
+diagnosticsStorage diagnosticsStorageCreate(bump *b)
 {
-	assert(!isInitialized);
-	pthread_mutexattr_t attr;
-	pthread_mutexattr_init(&attr);
-	pthread_mutex_init(&mutex, &attr);
-
-	diagnostics = (diagnosticsStorage){
-		.files = bumpAllocate(&m->general,
-				      sizeof(u16) * MAX_DIAGNOSTIC_COUNT),
-		.spans = bumpAllocate(&m->general,
-				      sizeof(span) * MAX_DIAGNOSTIC_COUNT),
-		.severities = bumpAllocate(
-			&m->general, sizeof(severity) * MAX_DIAGNOSTIC_COUNT),
-		.message_starts = bumpAllocate(
-			&m->general, sizeof(u32) * MAX_DIAGNOSTIC_COUNT),
-		.all_messages = bumpCreateSubBump(&m->general,
-						  128 * MAX_DIAGNOSTIC_COUNT),
+	return (diagnosticsStorage){
+		.files = bumpAllocate(b, sizeof(u16) * MAX_DIAGNOSTIC_COUNT),
+		.spans = bumpAllocate(b, sizeof(span) * MAX_DIAGNOSTIC_COUNT),
+		.severities = bumpAllocate(b, sizeof(severity) *
+						      MAX_DIAGNOSTIC_COUNT),
+		.message_starts =
+			bumpAllocate(b, sizeof(u32) * MAX_DIAGNOSTIC_COUNT),
+		.all_messages =
+			bumpCreateSubBump(b, 128 * MAX_DIAGNOSTIC_COUNT),
 		.count = 0,
 	};
-
-	isInitialized = true;
 }
 
 // 0-indexed
@@ -57,49 +43,34 @@ static lineColumn offsetToLineColumn(u32 offset, u8 *content)
 	return lc;
 }
 
-void recordDiagnostic(severity severity, span span, char *fmt, ...)
+void diagnosticsStorageRecord(diagnosticsStorage *diagnostics,
+			      severity severity, span span, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	recordDiagnosticV(severity, span, fmt, ap);
+	diagnosticsStorageRecordV(diagnostics, severity, span, fmt, ap);
 	va_end(ap);
 }
 
-void recordDiagnosticV(severity severity, span span, char *fmt, va_list ap)
+void diagnosticsStorageRecordV(diagnosticsStorage *diagnostics,
+			       severity severity, span span, char *fmt,
+			       va_list ap)
 {
-	assert(isInitialized);
-	pthread_mutex_lock(&mutex);
-	assert(diagnostics.count < MAX_DIAGNOSTIC_COUNT);
+	assert(diagnostics->count < MAX_DIAGNOSTIC_COUNT);
 
-	u8 *message = bumpPrintfV(&diagnostics.all_messages, fmt, ap);
-	u32 message_start = message - diagnostics.all_messages.top;
+	u8 *message = bumpPrintfV(&diagnostics->all_messages, fmt, ap);
+	u32 message_start = message - diagnostics->all_messages.top;
 
-	if (severity == DIAG_ERROR)
-		anyErrors_ = true;
-
-	diagnostics.files[diagnostics.count] = currentFile();
-	diagnostics.spans[diagnostics.count] = span;
-	diagnostics.severities[diagnostics.count] = severity;
-	diagnostics.message_starts[diagnostics.count] = message_start;
-	diagnostics.count++;
-
-	pthread_mutex_unlock(&mutex);
+	diagnostics->files[diagnostics->count] = currentFile();
+	diagnostics->spans[diagnostics->count] = span;
+	diagnostics->severities[diagnostics->count] = severity;
+	diagnostics->message_starts[diagnostics->count] = message_start;
+	diagnostics->count++;
 }
 
-bool anyErrors(void)
+void diagnosticsStorageShow(diagnosticsStorage diagnostics, bool color,
+			    stringBuilder *sb)
 {
-	assert(isInitialized);
-	pthread_mutex_lock(&mutex);
-	bool b = anyErrors_;
-	pthread_mutex_unlock(&mutex);
-	return b;
-}
-
-void showDiagnostics(bool color, stringBuilder *sb)
-{
-	assert(isInitialized);
-	pthread_mutex_lock(&mutex);
-
 	for (u16 i = 0; i < diagnostics.count; i++) {
 		u16 file = diagnostics.files[i];
 		u8 *file_name = currentProject().file_names[file];
@@ -137,6 +108,4 @@ void showDiagnostics(bool color, stringBuilder *sb)
 
 		stringBuilderPrintf(sb, "\n");
 	}
-
-	pthread_mutex_unlock(&mutex);
 }

@@ -5,6 +5,7 @@ typedef struct ctx {
 	u32 id;
 	char *function_name;
 	stringBuilder *assembly;
+	diagnosticsStorage *diagnostics;
 	u32 *local_offsets;
 } ctx;
 
@@ -80,8 +81,9 @@ static void genAddress(ctx *c, hirNode node)
 	}
 
 	default:
-		recordDiagnostic(DIAG_ERROR, hirGetNodeSpan(c->hir, node),
-				 "not an lvalue");
+		diagnosticsStorageRecord(c->diagnostics, DIAG_ERROR,
+					 hirGetNodeSpan(c->hir, node),
+					 "not an lvalue");
 		break;
 	}
 }
@@ -242,13 +244,15 @@ static void genEpilogue(ctx *c, u32 stack_size)
 	instruction(c, "add", "sp, sp, #16");
 }
 
-void codegen(hirRoot hir, interner interner, stringBuilder *assembly, memory *m)
+void codegen(hirRoot hir, interner interner, stringBuilder *assembly,
+	     diagnosticsStorage *diagnostics, memory *m)
 {
 	ctx c = {
 		.hir = hir,
 		.id = 0,
 		.function_name = NULL,
 		.assembly = assembly,
+		.diagnostics = diagnostics,
 		.local_offsets = bumpAllocate(&m->general,
 					      sizeof(u32) * hir.local_count),
 	};

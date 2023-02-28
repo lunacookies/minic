@@ -13,6 +13,7 @@ typedef struct fullNode {
 typedef struct ctx {
 	hirRoot hir;
 	astRoot ast;
+	diagnosticsStorage *diagnostics;
 } ctx;
 
 static hirLocal lookupLocal(ctx *c, identifierId name)
@@ -29,8 +30,9 @@ static hirLocal lookupLocal(ctx *c, identifierId name)
 static hirNode allocateNode(ctx *c, fullNode node)
 {
 	if (c->hir.node_count >= MAX_NODE_COUNT) {
-		recordDiagnostic(DIAG_ERROR, node.span,
-				 "reached limit of %u nodes", MAX_NODE_COUNT);
+		diagnosticsStorageRecord(c->diagnostics, DIAG_ERROR, node.span,
+					 "reached limit of %u nodes",
+					 MAX_NODE_COUNT);
 		internalError("ran out of node slots");
 	}
 
@@ -89,8 +91,8 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 
 		hirLocal local = lookupLocal(c, ast_variable.name);
 		if (local.index == (u16)-1) {
-			recordDiagnostic(
-				DIAG_ERROR,
+			diagnosticsStorageRecord(
+				c->diagnostics, DIAG_ERROR,
 				astGetExpressionSpan(c->ast, ast_expression),
 				"undefined variable");
 			n.kind = HIR_MISSING;
@@ -160,8 +162,8 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 		hirLocal existing_local =
 			lookupLocal(c, ast_local_definition.name);
 		if (existing_local.index != (u16)-1)
-			recordDiagnostic(
-				DIAG_ERROR,
+			diagnosticsStorageRecord(
+				c->diagnostics, DIAG_ERROR,
 				astGetStatementSpan(c->ast, ast_statement),
 				"cannot shadow existing variable");
 
@@ -275,7 +277,7 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 	return n;
 }
 
-hirRoot lower(astRoot ast, memory *m)
+hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 {
 	bumpMark mark = bumpCreateMark(&m->temp);
 
@@ -294,6 +296,7 @@ hirRoot lower(astRoot ast, memory *m)
 			.current_function_locals_start = { .index = -1 },
 		},
 		.ast = ast,
+		.diagnostics = diagnostics,
 	};
 
 	for (u16 i = 0; i < c.ast.function_count; i++) {

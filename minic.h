@@ -1,6 +1,5 @@
 #include <dirent.h>
 #include <fcntl.h>
-#include <pthread.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -131,11 +130,14 @@ typedef struct diagnosticsStorage {
 	u16 count;
 } diagnosticsStorage;
 
-void initializeDiagnostics(memory *m);
-void recordDiagnostic(severity severity, span span, char *fmt, ...);
-void recordDiagnosticV(severity severity, span span, char *fmt, va_list ap);
-bool anyErrors(void);
-void showDiagnostics(bool color, stringBuilder *sb);
+diagnosticsStorage diagnosticsStorageCreate(bump *b);
+void diagnosticsStorageRecord(diagnosticsStorage *diagnostics,
+			      severity severity, span span, char *fmt, ...);
+void diagnosticsStorageRecordV(diagnosticsStorage *diagnostics,
+			       severity severity, span span, char *fmt,
+			       va_list ap);
+void diagnosticsStorageShow(diagnosticsStorage diagnostics, bool color,
+			    stringBuilder *sb);
 
 // ----------------------------------------------------------------------------
 // lex.c
@@ -180,7 +182,7 @@ typedef struct tokenBuffer {
 	usize count;
 } tokenBuffer;
 
-tokenBuffer lex(u8 *input, memory *m);
+tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m);
 u8 *tokenBufferIdentifierText(tokenBuffer buf, u32 token_id);
 u8 *tokenKindShow(tokenKind kind);
 u8 *tokenKindDebug(tokenKind kind);
@@ -321,7 +323,8 @@ typedef struct astRoot {
 	u16 expression_count;
 } astRoot;
 
-astRoot parse(tokenBuffer tokens, u8 *content, memory *m);
+astRoot parse(tokenBuffer tokens, u8 *content, diagnosticsStorage *diagnostics,
+	      memory *m);
 astStatementData astGetStatement(astRoot ast, astStatement statement);
 astStatementKind astGetStatementKind(astRoot ast, astStatement statement);
 span astGetStatementSpan(astRoot ast, astStatement statement);
@@ -431,7 +434,7 @@ typedef struct hirRoot {
 	hirLocal current_function_locals_start;
 } hirRoot;
 
-hirRoot lower(astRoot ast, memory *m);
+hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m);
 hirNodeData hirGetNode(hirRoot hir, hirNode node);
 hirNodeKind hirGetNodeKind(hirRoot hir, hirNode node);
 hirType hirGetNodeType(hirRoot hir, hirNode node);
@@ -447,4 +450,4 @@ void hirDebugPrint(hirRoot hir, interner interner, bump *b);
 // codegen.c
 
 void codegen(hirRoot hir, interner interner, stringBuilder *assembly,
-	     memory *m);
+	     diagnosticsStorage *diagnostics, memory *m);
