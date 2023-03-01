@@ -1,0 +1,9 @@
+func <missing> {}
+
+func <missing>
+	<missing>
+
+func a {}
+tests_parse:4..5: error: expected identifier but found “{”
+tests_parse:12..13: error: expected identifier but found “func”
+tests_parse:12..13: error: expected statement
