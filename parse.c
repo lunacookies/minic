@@ -781,3 +781,15 @@ void astDebugPrint(astRoot ast, interner interner, bump *b)
 	printf("%s", stringBuilderFinish(sb));
 	bumpClearToMark(b, mark);
 }
+
+u8 *parseTests(u8 *input, memory *m)
+{
+	diagnosticsStorage diagnostics = diagnosticsStorageCreate(&m->general);
+	tokenBuffer buf = lex(input, &diagnostics, m);
+	interner interner = intern(&buf, &input, 1, m);
+	astRoot ast = parse(buf, input, &diagnostics, m);
+	stringBuilder sb = stringBuilderCreate(&m->temp);
+	astDebug(ast, interner, &sb);
+	diagnosticsStorageDebug(diagnostics, &sb);
+	return stringBuilderFinish(sb);
+}

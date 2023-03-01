@@ -10,6 +10,7 @@ int main(int argc, char **argv)
 	if (argc == 2 && strcmp(argv[1], "--test") == 0) {
 		runTests((u8 *)"tests_lex", lexTests, &m.temp);
 		assert(m.temp.bytes_used == 0);
+		runTests((u8 *)"tests_parse", parseTests, &m.temp);
 		return 0;
 	}
 

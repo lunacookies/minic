@@ -333,6 +333,8 @@ span astGetExpressionSpan(astRoot ast, astExpression expression);
 void astDebug(astRoot ast, interner interner, stringBuilder *sb);
 void astDebugPrint(astRoot ast, interner interner, bump *b);
 
+u8 *parseTests(u8 *input, memory *m);
+
 // ----------------------------------------------------------------------------
 // lower.c
 
