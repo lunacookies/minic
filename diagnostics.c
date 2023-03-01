@@ -1,6 +1,6 @@
 #include "minic.h"
 
-#define MAX_DIAGNOSTIC_COUNT 1024
+enum { MAX_DIAGNOSTIC_COUNT = 1024 };
 
 diagnosticsStorage diagnosticsStorageCreate(bump *b)
 {

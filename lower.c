@@ -1,7 +1,9 @@
 #include "minic.h"
 
-#define MAX_NODE_COUNT (63 * 1024)
-#define MAX_LOCAL_COUNT (63 * 1024)
+enum {
+	MAX_NODE_COUNT = 63 * 1024,
+	MAX_LOCAL_COUNT = 63 * 1024,
+};
 
 typedef struct fullNode {
 	hirNodeData data;

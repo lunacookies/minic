@@ -1,7 +1,9 @@
 #include "minic.h"
 
-#define MAX_FILES (1 << 16)
-#define PTR_PER_FILE_SIZE (sizeof(void *) * MAX_FILES)
+enum {
+	MAX_FILES = 1 << 16,
+	PTR_PER_FILE_SIZE = sizeof(void *) * MAX_FILES,
+};
 
 projectSpec projectDiscover(memory *m)
 {

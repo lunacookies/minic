@@ -1,7 +1,9 @@
 #include "minic.h"
 
-#define MAX_EXPRESSION_COUNT (63 * 1024)
-#define MAX_STATEMENT_COUNT (63 * 1024)
+enum {
+	MAX_EXPRESSION_COUNT = 63 * 1024,
+	MAX_STATEMENT_COUNT = 63 * 1024,
+};
 
 typedef struct fullExpression {
 	astExpressionData data;

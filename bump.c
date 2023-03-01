@@ -1,6 +1,6 @@
 #include "minic.h"
 
-#define UNINIT_SENTINEL '`'
+enum { UNINIT_SENTINEL = '`' };
 
 bump bumpCreate(void *buffer, usize size)
 {

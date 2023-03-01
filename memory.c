@@ -1,8 +1,9 @@
 #include "minic.h"
 
-#define MiB (1024 * 1024)
-#define TEMP_MEMORY_SIZE (16 * MiB)
-#define GENERAL_MEMORY_SIZE (96 * MiB)
+enum {
+	TEMP_MEMORY_SIZE = 16 * 1024 * 1024,
+	GENERAL_MEMORY_SIZE = 96 * 1024 * 1024,
+};
 
 bump allocateFromOs(usize size)
 {
