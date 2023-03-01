@@ -198,8 +198,7 @@ typedef struct interner {
 	u8 **contents;
 } interner;
 
-interner internerIntern(tokenBuffer *bufs, u8 **contents, usize buf_count,
-			usize identifier_count, memory *m);
+interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count, memory *m);
 u8 *internerLookup(interner i, identifierId id);
 
 // ----------------------------------------------------------------------------

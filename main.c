@@ -31,17 +31,8 @@ int main(int argc, char **argv)
 		assert(m.temp.bytes_used == 0);
 	}
 
-	usize identifier_count = 0;
-	for (u16 i = 0; i < current_project.num_files; i++) {
-		tokenBuffer buf = token_buffers[i];
-		for (usize j = 0; j < buf.count; j++)
-			if (buf.kinds[j] == TOK_IDENTIFIER)
-				identifier_count++;
-	}
-
-	interner interner =
-		internerIntern(token_buffers, current_project.file_contents,
-			       current_project.num_files, identifier_count, &m);
+	interner interner = intern(token_buffers, current_project.file_contents,
+				   current_project.num_files, &m);
 
 	for (u16 i = 0; i < current_project.num_files; i++) {
 		setCurrentFile(i);

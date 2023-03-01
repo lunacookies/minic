@@ -77,9 +77,14 @@ static void processToken(tokenBuffer *buf, u8 *contents, usize token, ctx *c,
 	c->ident_id.raw++;
 }
 
-interner internerIntern(tokenBuffer *bufs, u8 **contents, usize buf_count,
-			usize identifier_count, memory *m)
+interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count, memory *m)
 {
+	usize identifier_count = 0;
+	for (u16 i = 0; i < buf_count; i++)
+		for (usize j = 0; j < bufs[i].count; j++)
+			if (bufs[i].kinds[j] == TOK_IDENTIFIER)
+				identifier_count++;
+
 	// allocate space for load factor of 0.75
 	usize slot_count = identifier_count * 4 / 3;
 	usize map_size = slot_count * sizeof(slot);
