@@ -86,7 +86,7 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 
 		if (strcmp((char *)expected, (char *)actual) == 0) {
 			printf("\033[32mtest passed:\033[0;1m %s\033[0m\n",
-			       entry->d_name);
+			       path);
 			if (exists(actual_path)) {
 				printf("\033[35mwarning:\033[0;1m stale "
 				       "“actual” file %s; deleting\033[0m\n",
@@ -100,7 +100,7 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 			close(fd);
 
 			printf("\033[31mtest failed:\033[0;1m %s\033[0m\n",
-			       entry->d_name);
+			       path);
 
 			u8 *command =
 				bumpPrintf(b, "diff -u --color=auto %s %s",
