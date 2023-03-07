@@ -96,53 +96,77 @@ static bool atItemFirst(parser *p)
 	return at(p, TOK_FUNC);
 }
 
-static bool atRecovery(parser *p)
+static bool atStatementFirst(parser *p)
 {
-	return atItemFirst(p) || at(p, TOK_LBRACE) || at(p, TOK_RBRACE) ||
-	       at(p, TOK_SEMI);
+	return at(p, TOK_RETURN) || at(p, TOK_VAR) || at(p, TOK_SET) ||
+	       at(p, TOK_IF) || at(p, TOK_ELSE) || at(p, TOK_WHILE);
 }
 
-static void errorV(parser *p, bool honor_recovery, char *fmt, va_list ap)
+static bool atRecovery(parser *p)
 {
+	return atItemFirst(p) || atStatementFirst(p) || at(p, TOK_LBRACE) ||
+	       at(p, TOK_RBRACE) || at(p, TOK_SEMI);
+}
+
+typedef enum errorMode {
+	ERROR_RECOVER,
+	ERROR_EAT_ALL,
+	ERROR_EAT_NONE
+} errorMode;
+
+static void errorV(parser *p, errorMode mode, char *fmt, va_list ap)
+{
+
+	bool skip_token = false;
+	switch (mode) {
+	case ERROR_RECOVER:
+		skip_token = !atRecovery(p);
+		break;
+
+	case ERROR_EAT_ALL:
+		skip_token = true;
+		break;
+
+	case ERROR_EAT_NONE:
+		skip_token = false;
+		break;
+	}
+
+	// We can’t eat a token if we’re already at EOF!
+	if (atEof(p))
+		skip_token = false;
+
 	span s = { 0 };
-	if (atEof(p) || (honor_recovery && atRecovery(p))) {
+	if (skip_token) {
+		s = currentSpan(p);
+		addToken(p);
+	} else {
 		p->cursor--;
 		span previousTokenSpan = currentSpan(p);
 		p->cursor++;
 
 		s.start = previousTokenSpan.end;
 		s.end = previousTokenSpan.end + 1;
-	} else {
-		s = currentSpan(p);
-		addToken(p);
 	}
 	diagnosticsStorageRecordV(p->diagnostics, DIAG_ERROR, s, fmt, ap);
 }
 
-static void error(parser *p, char *fmt, ...)
+static void error(parser *p, errorMode mode, char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	errorV(p, true, fmt, ap);
+	errorV(p, mode, fmt, ap);
 	va_end(ap);
 }
 
-static void errorWithoutRecovery(parser *p, char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	errorV(p, false, fmt, ap);
-	va_end(ap);
-}
-
-static void expect(parser *p, tokenKind expected)
+static void expect(parser *p, tokenKind expected, errorMode mode)
 {
 	tokenKind actual = current(p);
 	if (actual == expected) {
 		addToken(p);
 		return;
 	}
-	error(p, "expected %s but found %s", tokenKindShow(expected),
+	error(p, mode, "expected %s but found %s", tokenKindShow(expected),
 	      tokenKindShow(actual));
 }
 
@@ -151,7 +175,7 @@ static identifierId expectIdentifier(parser *p)
 	identifierId id = { .raw = -1 };
 	if (current(p) == TOK_IDENTIFIER)
 		id = p->tokens.identifier_ids[p->cursor];
-	expect(p, TOK_IDENTIFIER);
+	expect(p, TOK_IDENTIFIER, ERROR_RECOVER);
 	return id;
 }
 
@@ -169,7 +193,7 @@ static fullExpression expressionLhs(parser *p, memory *m)
 	switch (current(p)) {
 	case TOK_NUMBER: {
 		span span = currentSpan(p);
-		expect(p, TOK_NUMBER);
+		expect(p, TOK_NUMBER, ERROR_RECOVER);
 
 		char *start = (char *)p->content + span.start;
 		char *end = NULL;
@@ -192,14 +216,14 @@ static fullExpression expressionLhs(parser *p, memory *m)
 	}
 
 	case TOK_LPAREN: {
-		expect(p, TOK_LPAREN);
+		expect(p, TOK_LPAREN, ERROR_RECOVER);
 		fullExpression inner = expression(p, m);
-		expect(p, TOK_RPAREN);
+		expect(p, TOK_RPAREN, ERROR_RECOVER);
 		return inner;
 	}
 
 	default:
-		error(p, "expected expression");
+		error(p, ERROR_RECOVER, "expected expression");
 		e.kind = AST_EXPR_MISSING;
 		break;
 	}
@@ -313,20 +337,20 @@ static fullStatement statement(parser *p, memory *m)
 
 	switch (current(p)) {
 	case TOK_RETURN: {
-		expect(p, TOK_RETURN);
+		expect(p, TOK_RETURN, ERROR_RECOVER);
 		astExpression value = allocateExpression(p, expression(p, m));
-		expect(p, TOK_SEMI);
+		expect(p, TOK_SEMI, ERROR_EAT_NONE);
 		s.kind = AST_STMT_RETURN;
 		s.data.retrn.value = value;
 		break;
 	}
 
 	case TOK_VAR: {
-		expect(p, TOK_VAR);
+		expect(p, TOK_VAR, ERROR_RECOVER);
 		identifierId name = expectIdentifier(p);
-		expect(p, TOK_EQUAL);
+		expect(p, TOK_EQUAL, ERROR_RECOVER);
 		astExpression value = allocateExpression(p, expression(p, m));
-		expect(p, TOK_SEMI);
+		expect(p, TOK_SEMI, ERROR_EAT_NONE);
 		s.kind = AST_STMT_LOCAL_DEFINITION;
 		s.data.local_definition.name = name;
 		s.data.local_definition.value = value;
@@ -334,11 +358,11 @@ static fullStatement statement(parser *p, memory *m)
 	}
 
 	case TOK_SET: {
-		expect(p, TOK_SET);
+		expect(p, TOK_SET, ERROR_RECOVER);
 		astExpression lhs = allocateExpression(p, expression(p, m));
-		expect(p, TOK_EQUAL);
+		expect(p, TOK_EQUAL, ERROR_RECOVER);
 		astExpression rhs = allocateExpression(p, expression(p, m));
-		expect(p, TOK_SEMI);
+		expect(p, TOK_SEMI, ERROR_EAT_NONE);
 		s.kind = AST_STMT_ASSIGN;
 		s.data.assign.lhs = lhs;
 		s.data.assign.rhs = rhs;
@@ -346,14 +370,14 @@ static fullStatement statement(parser *p, memory *m)
 	}
 
 	case TOK_IF: {
-		expect(p, TOK_IF);
+		expect(p, TOK_IF, ERROR_RECOVER);
 		astExpression condition =
 			allocateExpression(p, expression(p, m));
 		astStatement true_branch =
 			allocateStatement(p, statement(p, m));
 		astStatement false_branch = { .index = -1 };
 		if (at(p, TOK_ELSE)) {
-			expect(p, TOK_ELSE);
+			expect(p, TOK_ELSE, ERROR_RECOVER);
 			false_branch = allocateStatement(p, statement(p, m));
 		}
 		s.kind = AST_STMT_IF;
@@ -364,7 +388,7 @@ static fullStatement statement(parser *p, memory *m)
 	}
 
 	case TOK_WHILE: {
-		expect(p, TOK_WHILE);
+		expect(p, TOK_WHILE, ERROR_RECOVER);
 		astExpression condition =
 			allocateExpression(p, expression(p, m));
 		astStatement body = allocateStatement(p, statement(p, m));
@@ -375,7 +399,7 @@ static fullStatement statement(parser *p, memory *m)
 	}
 
 	case TOK_LBRACE: {
-		expect(p, TOK_LBRACE);
+		expect(p, TOK_LBRACE, ERROR_RECOVER);
 		fullStatement *statements_start =
 			(fullStatement *)(m->temp.top + m->temp.bytes_used);
 		u16 count = 0;
@@ -389,7 +413,7 @@ static fullStatement statement(parser *p, memory *m)
 			*stmt_ptr = stmt;
 			count++;
 		}
-		expect(p, TOK_RBRACE);
+		expect(p, TOK_RBRACE, ERROR_RECOVER);
 
 		astStatement start = { .index = -1 };
 
@@ -409,7 +433,7 @@ static fullStatement statement(parser *p, memory *m)
 	}
 
 	default:
-		error(p, "expected statement");
+		error(p, ERROR_RECOVER, "expected statement");
 		s.kind = AST_STMT_MISSING;
 		break;
 	}
@@ -422,7 +446,7 @@ static fullStatement statement(parser *p, memory *m)
 static astFunction function(parser *p, memory *m)
 {
 	assert(at(p, TOK_FUNC));
-	expect(p, TOK_FUNC);
+	expect(p, TOK_FUNC, ERROR_RECOVER);
 
 	identifierId name = expectIdentifier(p);
 	astStatement body = allocateStatement(p, statement(p, m));
@@ -468,7 +492,7 @@ astRoot parse(tokenBuffer tokens, u8 *content, diagnosticsStorage *diagnostics,
 			break;
 		}
 		default:
-			errorWithoutRecovery(&p, "expected function");
+			error(&p, ERROR_EAT_ALL, "expected function");
 			break;
 		}
 	}

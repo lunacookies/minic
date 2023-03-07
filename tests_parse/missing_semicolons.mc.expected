@@ -1,0 +1,16 @@
+func main {
+	var x = 50
+	var y = x
+	var z = <missing>
+	var a = 1
+	var b = <missing>
+	set x = 92
+}
+tests_parse:23..24: error: expected “;” but found “var”
+tests_parse:34..35: error: expected “;” but found “var”
+tests_parse:43..44: error: expected expression
+tests_parse:43..44: error: expected “;” but found “var”
+tests_parse:54..55: error: expected “;” but found “var”
+tests_parse:63..64: error: expected expression
+tests_parse:63..64: error: expected “;” but found “set”
+tests_parse:75..76: error: expected “;” but found “}”
