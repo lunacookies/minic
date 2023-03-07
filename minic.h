@@ -168,7 +168,9 @@ typedef enum tokenKind {
 	TOK_LANGLE,
 	TOK_LANGLE_EQUAL,
 	TOK_RANGLE,
-	TOK_RANGLE_EQUAL
+	TOK_RANGLE_EQUAL,
+	TOK_COLON,
+	TOK_SEMI
 } tokenKind;
 
 typedef struct identifierId {

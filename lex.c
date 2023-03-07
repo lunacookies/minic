@@ -13,11 +13,12 @@ static const tokenKind twoCharTokenKinds[] = { TOK_EQUAL_EQUAL, TOK_BANG_EQUAL,
 					       TOK_LANGLE_EQUAL,
 					       TOK_RANGLE_EQUAL };
 
-static const char oneCharTokens[] = { '=', '+', '-', '*', '/', '{',
-				      '}', '(', ')', '<', '>' };
+static const char oneCharTokens[] = { '=', '+', '-', '*', '/', '{', '}',
+				      '(', ')', '<', '>', ':', ';' };
 static const tokenKind oneCharTokenKinds[] = {
-	TOK_EQUAL,  TOK_PLUS,	TOK_DASH,   TOK_STAR,	TOK_SLASH, TOK_LBRACE,
-	TOK_RBRACE, TOK_LPAREN, TOK_RPAREN, TOK_LANGLE, TOK_RANGLE
+	TOK_EQUAL,  TOK_PLUS,	TOK_DASH,   TOK_STAR,	TOK_SLASH,
+	TOK_LBRACE, TOK_RBRACE, TOK_LPAREN, TOK_RPAREN, TOK_LANGLE,
+	TOK_RANGLE, TOK_COLON,	TOK_SEMI
 };
 
 static void pushToken(tokenKind kind, u32 start, u32 end, tokenBuffer *buf,
@@ -218,6 +219,10 @@ u8 *tokenKindShow(tokenKind kind)
 		return (u8 *)"“>”";
 	case TOK_RANGLE_EQUAL:
 		return (u8 *)"“>=”";
+	case TOK_COLON:
+		return (u8 *)"“:”";
+	case TOK_SEMI:
+		return (u8 *)"“;”";
 	}
 }
 
@@ -276,6 +281,10 @@ u8 *tokenKindDebug(tokenKind kind)
 		return (u8 *)"RANGLE";
 	case TOK_RANGLE_EQUAL:
 		return (u8 *)"RANGLE_EQUAL";
+	case TOK_COLON:
+		return (u8 *)"COLON";
+	case TOK_SEMI:
+		return (u8 *)"SEMI";
 	}
 }
 
