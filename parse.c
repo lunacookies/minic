@@ -372,7 +372,7 @@ static fullStatement statement(parser *p, memory *m)
 
 	case TOK_IF: {
 		expect(p, TOK_IF, ERROR_RECOVER);
-		expect(p, TOK_LPAREN, ERROR_RECOVER);
+		expect(p, TOK_LPAREN, ERROR_EAT_NONE);
 		astExpression condition =
 			allocateExpression(p, expression(p, m));
 		expect(p, TOK_RPAREN, ERROR_RECOVER);
@@ -392,7 +392,7 @@ static fullStatement statement(parser *p, memory *m)
 
 	case TOK_WHILE: {
 		expect(p, TOK_WHILE, ERROR_RECOVER);
-		expect(p, TOK_LPAREN, ERROR_RECOVER);
+		expect(p, TOK_LPAREN, ERROR_EAT_NONE);
 		astExpression condition =
 			allocateExpression(p, expression(p, m));
 		expect(p, TOK_RPAREN, ERROR_RECOVER);
