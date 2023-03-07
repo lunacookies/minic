@@ -11,7 +11,7 @@ void internalError(char *fmt, ...)
 
 void internalErrorV(char *fmt, va_list ap)
 {
-	fprintf(stderr, "\033[31minternal error:\033[0;1m ");
+	fprintf(stderr, "\033[31minternal error:\033[0;1;97m ");
 	vfprintf(stderr, fmt, ap);
 	fprintf(stderr, "\033[0m\n");
 
@@ -28,7 +28,7 @@ void debugLog(char *fmt, ...)
 
 void debugLogV(char *fmt, va_list ap)
 {
-	fprintf(stderr, "\033[35mlog:\033[0;1m ");
+	fprintf(stderr, "\033[35mlog:\033[0;1;97m ");
 	vfprintf(stderr, fmt, ap);
 	fprintf(stderr, "\033[0m\n");
 }

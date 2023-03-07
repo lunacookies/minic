@@ -73,7 +73,8 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 		u8 *actual = t(source_code, &transformer_memory);
 
 		if (!exists(expected_path)) {
-			printf("\033[35mwarning:\033[0;1m “expected” file %s "
+			printf("\033[35mwarning:\033[0;1;97m “expected” file "
+			       "%s "
 			       "missing; creating\033[0m\n",
 			       expected_path);
 			int fd = open((char *)expected_path,
@@ -85,10 +86,10 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 		u8 *expected = readFile(expected_path, b);
 
 		if (strcmp((char *)expected, (char *)actual) == 0) {
-			printf("\033[32mtest passed:\033[0;1m %s\033[0m\n",
+			printf("\033[32mtest passed:\033[0;1;97m %s\033[0m\n",
 			       path);
 			if (exists(actual_path)) {
-				printf("\033[35mwarning:\033[0;1m stale "
+				printf("\033[35mwarning:\033[0;1;97m stale "
 				       "“actual” file %s; deleting\033[0m\n",
 				       actual_path);
 				remove((char *)actual_path);
@@ -99,7 +100,7 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 			write(fd, actual, strlen((char *)actual));
 			close(fd);
 
-			printf("\033[31mtest failed:\033[0;1m %s\033[0m\n",
+			printf("\033[31mtest failed:\033[0;1;97m %s\033[0m\n",
 			       path);
 
 			u8 *command =
