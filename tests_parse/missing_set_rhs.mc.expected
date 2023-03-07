@@ -1,4 +1,4 @@
 func main {
-	set x = <missing>
+	set x = <missing>;
 }
 tests_parse:20..21: error: missing right-hand side of assignment

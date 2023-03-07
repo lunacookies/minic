@@ -490,13 +490,15 @@ static void debugNode(debugCtx *c, hirNode node)
 		debugNode(c, assign.lhs);
 		stringBuilderPrintf(c->sb, " = ");
 		debugNode(c, assign.rhs);
+		stringBuilderPrintf(c->sb, ";");
 		break;
 	}
 
 	case HIR_IF: {
 		hirIf if_ = hirGetNode(c->hir, node).if_;
-		stringBuilderPrintf(c->sb, "if ");
+		stringBuilderPrintf(c->sb, "if (");
 		debugNode(c, if_.condition);
+		stringBuilderPrintf(c->sb, ")");
 
 		if (hirGetNodeKind(c->hir, if_.true_branch) == HIR_BLOCK) {
 			stringBuilderPrintf(c->sb, " ");
@@ -529,8 +531,9 @@ static void debugNode(debugCtx *c, hirNode node)
 
 	case HIR_WHILE: {
 		hirWhile while_ = hirGetNode(c->hir, node).while_;
-		stringBuilderPrintf(c->sb, "while ");
+		stringBuilderPrintf(c->sb, "while (");
 		debugNode(c, while_.condition);
+		stringBuilderPrintf(c->sb, ")");
 
 		if (hirGetNodeKind(c->hir, while_.true_branch) == HIR_BLOCK) {
 			stringBuilderPrintf(c->sb, " ");
@@ -548,6 +551,7 @@ static void debugNode(debugCtx *c, hirNode node)
 		hirReturn retrn = hirGetNode(c->hir, node).retrn;
 		stringBuilderPrintf(c->sb, "return ");
 		debugNode(c, retrn.value);
+		stringBuilderPrintf(c->sb, ";");
 		break;
 	}
 
@@ -582,7 +586,7 @@ static void debugFunction(debugCtx *c, hirFunction function)
 		hirLocal local = { .index = function.locals_start.index + i };
 		newline(c);
 		stringBuilderPrintf(
-			c->sb, "var %s %s",
+			c->sb, "var %s %s;",
 			internerLookup(c->interner,
 				       hirGetLocalName(c->hir, local)),
 			hirTypeDebug(hirGetLocalType(c->hir, local)));

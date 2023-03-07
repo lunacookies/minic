@@ -1,6 +1,6 @@
 func main {
-	if <missing> {} 
-	if <missing>
+	if (<missing>) {} 
+	if (<missing>)
 		<missing>
 	
 }

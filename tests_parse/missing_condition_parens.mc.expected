@@ -1,19 +1,19 @@
 func main {
-	if 0
-		set x = 10
+	if (0)
+		set x = 10;
 	
-	if 0
-		set x = 10
+	if (0)
+		set x = 10;
 	
-	if 0
-		set x = 10
+	if (0)
+		set x = 10;
 	
-	while 0
-		set x = 10
-	while 0
-		set x = 10
-	while 0
-		set x = 10
+	while (0)
+		set x = 10;
+	while (0)
+		set x = 10;
+	while (0)
+		set x = 10;
 }
 tests_parse:18..19: error: missing “)”
 tests_parse:36..37: error: missing “(”

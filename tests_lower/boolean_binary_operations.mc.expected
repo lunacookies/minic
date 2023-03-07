@@ -1,19 +1,19 @@
 func main
-	var t i64
-	var f i64
-	var eq i64
-	var ne i64
-	var lt i64
-	var gt i64
-	var le i64
-	var ge i64
+	var t i64;
+	var f i64;
+	var eq i64;
+	var ne i64;
+	var lt i64;
+	var gt i64;
+	var le i64;
+	var ge i64;
 	{
-		set t = 1
-		set f = 0
-		set eq = (t == t)
-		set ne = (t != f)
-		set lt = (f < 39)
-		set gt = (4 > t)
-		set le = ((t * 5) <= t)
-		set ge = (t <= (f - 1))
+		set t = 1;
+		set f = 0;
+		set eq = (t == t);
+		set ne = (t != f);
+		set lt = (f < 39);
+		set gt = (4 > t);
+		set le = ((t * 5) <= t);
+		set ge = (t <= (f - 1));
 	}

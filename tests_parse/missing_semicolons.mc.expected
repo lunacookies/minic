@@ -1,10 +1,10 @@
 func main {
-	var x = 50
-	var y = x
-	var z = <missing>
-	var a = 1
-	var b = <missing>
-	set x = 92
+	var x = 50;
+	var y = x;
+	var z = <missing>;
+	var a = 1;
+	var b = <missing>;
+	set x = 92;
 }
 tests_parse:23..24: error: missing “;”
 tests_parse:34..35: error: missing “;”

@@ -1,12 +1,12 @@
 func a {
-	if 0
+	if (0)
 		<missing>
 	
 }
 
 func b {
-	if 0 {
-		var x = 1
+	if (0) {
+		var x = 1;
 	} else
 		<missing>
 }

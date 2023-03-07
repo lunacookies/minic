@@ -1,6 +1,6 @@
 func main {
-	while <missing> {}
-	while <missing>
+	while (<missing>) {}
+	while (<missing>)
 		<missing>
 }
 tests_parse:20..21: error: missing while loop condition

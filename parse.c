@@ -679,6 +679,7 @@ static void debugStatement(ctx *c, astStatement statement)
 		astReturn retrn = astGetStatement(c->ast, statement).retrn;
 		stringBuilderPrintf(c->sb, "return ");
 		debugExpression(c, retrn.value);
+		stringBuilderPrintf(c->sb, ";");
 		break;
 	}
 
@@ -697,6 +698,7 @@ static void debugStatement(ctx *c, astStatement statement)
 
 		stringBuilderPrintf(c->sb, " = ");
 		debugExpression(c, local_definition.value);
+		stringBuilderPrintf(c->sb, ";");
 		break;
 	}
 
@@ -706,13 +708,15 @@ static void debugStatement(ctx *c, astStatement statement)
 		debugExpression(c, assign.lhs);
 		stringBuilderPrintf(c->sb, " = ");
 		debugExpression(c, assign.rhs);
+		stringBuilderPrintf(c->sb, ";");
 		break;
 	}
 
 	case AST_STMT_IF: {
 		astIf if_ = astGetStatement(c->ast, statement).if_;
-		stringBuilderPrintf(c->sb, "if ");
+		stringBuilderPrintf(c->sb, "if (");
 		debugExpression(c, if_.condition);
+		stringBuilderPrintf(c->sb, ")");
 
 		if (astGetStatementKind(c->ast, if_.true_branch) ==
 		    AST_STMT_BLOCK) {
@@ -747,8 +751,9 @@ static void debugStatement(ctx *c, astStatement statement)
 
 	case AST_STMT_WHILE: {
 		astWhile while_ = astGetStatement(c->ast, statement).while_;
-		stringBuilderPrintf(c->sb, "while ");
+		stringBuilderPrintf(c->sb, "while (");
 		debugExpression(c, while_.condition);
+		stringBuilderPrintf(c->sb, ")");
 
 		if (astGetStatementKind(c->ast, while_.true_branch) ==
 		    AST_STMT_BLOCK) {
