@@ -76,10 +76,12 @@ void diagnosticsStorageShow(diagnosticsStorage diagnostics, stringBuilder *sb)
 		u8 *file_content = currentProject().file_contents[file];
 
 		span span = diagnostics.spans[i];
-		lineColumn lc = offsetToLineColumn(span.start, file_content);
+		lineColumn start_lc =
+			offsetToLineColumn(span.start, file_content);
+		lineColumn end_lc = offsetToLineColumn(span.end, file_content);
 
-		stringBuilderPrintf(sb, "%s:%u:%u: ", file_name, lc.line + 1,
-				    lc.column + 1);
+		stringBuilderPrintf(sb, "\033[95m%s:%u:%u:\033[m ", file_name,
+				    start_lc.line + 1, end_lc.column + 1);
 
 		switch (diagnostics.severities[i]) {
 		case DIAG_WARNING:
@@ -95,7 +97,42 @@ void diagnosticsStorageShow(diagnosticsStorage diagnostics, stringBuilder *sb)
 
 		u32 message_start = diagnostics.message_starts[i];
 		u8 *message = diagnostics.all_messages.top + message_start;
-		stringBuilderPrintf(sb, "%s\033[0m\n", message);
+		stringBuilderPrintf(sb, "%s\033[m\n", message);
+
+		usize line_start = 0;
+		usize line_end = 0;
+
+		for (usize j = 0; file_content[j] != 0; j++) {
+			if (file_content[j] != '\n')
+				continue;
+
+			if (j < span.start) {
+				line_start = j;
+				line_start++; // get rid of leading newline
+			}
+
+			if (j >= span.end - 1) {
+				line_end = j;
+				break;
+			}
+		}
+
+		usize line_length = line_end - line_start;
+		stringBuilderPrintf(sb, "%.*s\n", line_length,
+				    &file_content[line_start]);
+
+		stringBuilderPrintf(sb, "\033[32m");
+		for (usize j = line_start; j < line_end + 1; j++) {
+			if (j == span.start)
+				stringBuilderPrintf(sb, "^");
+			else if (j >= span.start && j < span.end)
+				stringBuilderPrintf(sb, "~");
+			else if (file_content[j] == '\t')
+				stringBuilderPrintf(sb, "\t");
+			else
+				stringBuilderPrintf(sb, " ");
+		}
+		stringBuilderPrintf(sb, "\033[m\n");
 	}
 }
 
