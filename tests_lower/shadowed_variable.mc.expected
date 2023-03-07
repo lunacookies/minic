@@ -1,8 +1,7 @@
 func a
 	var x i64
-	var x i64
 	{
 		set x = 10
-		set x = 20
+		<missing>
 	}
 tests_lower:22..32: error: cannot shadow existing variable

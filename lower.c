@@ -163,11 +163,15 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 
 		hirLocal existing_local =
 			lookupLocal(c, ast_local_definition.name);
-		if (existing_local.index != (u16)-1)
+		if (existing_local.index != (u16)-1) {
 			diagnosticsStorageRecord(
 				c->diagnostics, DIAG_ERROR,
 				astGetStatementSpan(c->ast, ast_statement),
 				"cannot shadow existing variable");
+			n.kind = HIR_MISSING;
+			n.type = HIR_TYPE_VOID;
+			break;
+		}
 
 		hirNode rhs = allocateNode(
 			c, lowerExpression(c, ast_local_definition.value, m));
