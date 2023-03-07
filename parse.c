@@ -98,7 +98,8 @@ static bool atItemFirst(parser *p)
 
 static bool atRecovery(parser *p)
 {
-	return atItemFirst(p) || at(p, TOK_LBRACE) || at(p, TOK_RBRACE);
+	return atItemFirst(p) || at(p, TOK_LBRACE) || at(p, TOK_RBRACE) ||
+	       at(p, TOK_SEMI);
 }
 
 static void errorV(parser *p, bool honor_recovery, char *fmt, va_list ap)
@@ -314,6 +315,7 @@ static fullStatement statement(parser *p, memory *m)
 	case TOK_RETURN: {
 		expect(p, TOK_RETURN);
 		astExpression value = allocateExpression(p, expression(p, m));
+		expect(p, TOK_SEMI);
 		s.kind = AST_STMT_RETURN;
 		s.data.retrn.value = value;
 		break;
@@ -324,6 +326,7 @@ static fullStatement statement(parser *p, memory *m)
 		identifierId name = expectIdentifier(p);
 		expect(p, TOK_EQUAL);
 		astExpression value = allocateExpression(p, expression(p, m));
+		expect(p, TOK_SEMI);
 		s.kind = AST_STMT_LOCAL_DEFINITION;
 		s.data.local_definition.name = name;
 		s.data.local_definition.value = value;
@@ -335,6 +338,7 @@ static fullStatement statement(parser *p, memory *m)
 		astExpression lhs = allocateExpression(p, expression(p, m));
 		expect(p, TOK_EQUAL);
 		astExpression rhs = allocateExpression(p, expression(p, m));
+		expect(p, TOK_SEMI);
 		s.kind = AST_STMT_ASSIGN;
 		s.data.assign.lhs = lhs;
 		s.data.assign.rhs = rhs;

@@ -4,4 +4,4 @@ func a
 		set x = 10
 		<missing>
 	}
-tests_lower:22..32: error: cannot shadow existing variable
+tests_lower:23..34: error: cannot shadow existing variable
