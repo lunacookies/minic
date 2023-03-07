@@ -80,7 +80,7 @@ void diagnosticsStorageShow(diagnosticsStorage diagnostics, stringBuilder *sb)
 			offsetToLineColumn(span.start, file_content);
 		lineColumn end_lc = offsetToLineColumn(span.end, file_content);
 
-		stringBuilderPrintf(sb, "\033[95m%s:%u:%u:\033[m ", file_name,
+		stringBuilderPrintf(sb, "\033[90m%s:%u:%u:\033[m ", file_name,
 				    start_lc.line + 1, end_lc.column + 1);
 
 		switch (diagnostics.severities[i]) {
@@ -93,7 +93,7 @@ void diagnosticsStorageShow(diagnosticsStorage diagnostics, stringBuilder *sb)
 			stringBuilderPrintf(sb, "error");
 			break;
 		}
-		stringBuilderPrintf(sb, ": \033[0;1m");
+		stringBuilderPrintf(sb, ": \033[1;97m");
 
 		u32 message_start = diagnostics.message_starts[i];
 		u8 *message = diagnostics.all_messages.top + message_start;
@@ -121,7 +121,7 @@ void diagnosticsStorageShow(diagnosticsStorage diagnostics, stringBuilder *sb)
 		stringBuilderPrintf(sb, "%.*s\n", line_length,
 				    &file_content[line_start]);
 
-		stringBuilderPrintf(sb, "\033[32m");
+		stringBuilderPrintf(sb, "\033[92m");
 		for (usize j = line_start; j < line_end + 1; j++) {
 			if (j == span.start)
 				stringBuilderPrintf(sb, "^");
