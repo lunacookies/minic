@@ -168,7 +168,7 @@ static void expect(parser *p, tokenKind expected, errorMode mode)
 		addToken(p);
 		return;
 	}
-	error(p, mode, tokenKindShow(expected));
+	error(p, mode, (char *)tokenKindShow(expected));
 }
 
 static identifierId expectIdentifier(parser *p)
@@ -372,8 +372,10 @@ static fullStatement statement(parser *p, memory *m)
 
 	case TOK_IF: {
 		expect(p, TOK_IF, ERROR_RECOVER);
+		expect(p, TOK_LPAREN, ERROR_RECOVER);
 		astExpression condition =
 			allocateExpression(p, expression(p, m));
+		expect(p, TOK_RPAREN, ERROR_RECOVER);
 		astStatement true_branch =
 			allocateStatement(p, statement(p, m));
 		astStatement false_branch = { .index = -1 };
@@ -390,8 +392,10 @@ static fullStatement statement(parser *p, memory *m)
 
 	case TOK_WHILE: {
 		expect(p, TOK_WHILE, ERROR_RECOVER);
+		expect(p, TOK_LPAREN, ERROR_RECOVER);
 		astExpression condition =
 			allocateExpression(p, expression(p, m));
+		expect(p, TOK_RPAREN, ERROR_RECOVER);
 		astStatement body = allocateStatement(p, statement(p, m));
 		s.kind = AST_STMT_WHILE;
 		s.data.while_.condition = condition;
