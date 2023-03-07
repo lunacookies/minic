@@ -171,18 +171,22 @@ static void expect(parser *p, tokenKind expected, errorMode mode)
 	error(p, mode, (char *)tokenKindShow(expected));
 }
 
-static identifierId expectIdentifier(parser *p)
+static identifierId expectIdentifier(parser *p, char *name)
 {
+	if (current(p) == TOK_IDENTIFIER) {
+		identifierId id = p->tokens.identifier_ids[p->cursor];
+		addToken(p);
+		return id;
+	}
+
 	identifierId id = { .raw = -1 };
-	if (current(p) == TOK_IDENTIFIER)
-		id = p->tokens.identifier_ids[p->cursor];
-	expect(p, TOK_IDENTIFIER, ERROR_RECOVER);
+	error(p, ERROR_RECOVER, name);
 	return id;
 }
 
-static fullExpression expression(parser *p, memory *m);
+static fullExpression expression(parser *p, char *error_name, memory *m);
 
-static fullExpression expressionLhs(parser *p, memory *m)
+static fullExpression expressionLhs(parser *p, char *error_name, memory *m)
 {
 	fullExpression e = {
 		.data = { 0 },
@@ -210,7 +214,7 @@ static fullExpression expressionLhs(parser *p, memory *m)
 	}
 
 	case TOK_IDENTIFIER: {
-		identifierId name = expectIdentifier(p);
+		identifierId name = expectIdentifier(p, "variable name");
 		e.kind = AST_EXPR_VARIABLE;
 		e.data.variable.name = name;
 		break;
@@ -218,13 +222,21 @@ static fullExpression expressionLhs(parser *p, memory *m)
 
 	case TOK_LPAREN: {
 		expect(p, TOK_LPAREN, ERROR_RECOVER);
-		fullExpression inner = expression(p, m);
+		fullExpression inner =
+			expression(p, "parenthesized expression", m);
 		expect(p, TOK_RPAREN, ERROR_RECOVER);
 		return inner;
 	}
 
+	// We don’t want to skip past these.
+	case TOK_RPAREN:
+	case TOK_EQUAL:
+		error(p, ERROR_EAT_NONE, error_name);
+		e.kind = AST_EXPR_MISSING;
+		break;
+
 	default:
-		error(p, ERROR_RECOVER, "expression");
+		error(p, ERROR_RECOVER, error_name);
 		e.kind = AST_EXPR_MISSING;
 		break;
 	}
@@ -235,9 +247,9 @@ static fullExpression expressionLhs(parser *p, memory *m)
 }
 
 static fullExpression expressionBindingPower(parser *p, u8 min_binding_power,
-					     memory *m)
+					     char *error_name, memory *m)
 {
-	fullExpression lhs = expressionLhs(p, m);
+	fullExpression lhs = expressionLhs(p, error_name, m);
 
 	for (;;) {
 		if (atEof(p))
@@ -298,8 +310,8 @@ static fullExpression expressionBindingPower(parser *p, u8 min_binding_power,
 		// skip past operator token
 		addToken(p);
 
-		fullExpression rhs =
-			expressionBindingPower(p, binding_power + 1, m);
+		fullExpression rhs = expressionBindingPower(
+			p, binding_power + 1, "operand", m);
 
 		astExpression allocd_lhs = allocateExpression(p, lhs);
 		astExpression allocd_rhs = allocateExpression(p, rhs);
@@ -322,12 +334,12 @@ static fullExpression expressionBindingPower(parser *p, u8 min_binding_power,
 	}
 }
 
-static fullExpression expression(parser *p, memory *m)
+static fullExpression expression(parser *p, char *error_name, memory *m)
 {
-	return expressionBindingPower(p, 0, m);
+	return expressionBindingPower(p, 0, error_name, m);
 }
 
-static fullStatement statement(parser *p, memory *m)
+static fullStatement statement(parser *p, char *error_name, memory *m)
 {
 	fullStatement s = {
 		.data = { 0 },
@@ -339,7 +351,8 @@ static fullStatement statement(parser *p, memory *m)
 	switch (current(p)) {
 	case TOK_RETURN: {
 		expect(p, TOK_RETURN, ERROR_RECOVER);
-		astExpression value = allocateExpression(p, expression(p, m));
+		astExpression value =
+			allocateExpression(p, expression(p, "return value", m));
 		expect(p, TOK_SEMI, ERROR_EAT_NONE);
 		s.kind = AST_STMT_RETURN;
 		s.data.retrn.value = value;
@@ -348,9 +361,10 @@ static fullStatement statement(parser *p, memory *m)
 
 	case TOK_VAR: {
 		expect(p, TOK_VAR, ERROR_RECOVER);
-		identifierId name = expectIdentifier(p);
+		identifierId name = expectIdentifier(p, "variable name");
 		expect(p, TOK_EQUAL, ERROR_RECOVER);
-		astExpression value = allocateExpression(p, expression(p, m));
+		astExpression value = allocateExpression(
+			p, expression(p, "variable value", m));
 		expect(p, TOK_SEMI, ERROR_EAT_NONE);
 		s.kind = AST_STMT_LOCAL_DEFINITION;
 		s.data.local_definition.name = name;
@@ -360,9 +374,11 @@ static fullStatement statement(parser *p, memory *m)
 
 	case TOK_SET: {
 		expect(p, TOK_SET, ERROR_RECOVER);
-		astExpression lhs = allocateExpression(p, expression(p, m));
+		astExpression lhs = allocateExpression(
+			p, expression(p, "left-hand side of assignment", m));
 		expect(p, TOK_EQUAL, ERROR_RECOVER);
-		astExpression rhs = allocateExpression(p, expression(p, m));
+		astExpression rhs = allocateExpression(
+			p, expression(p, "right-hand side of assignment", m));
 		expect(p, TOK_SEMI, ERROR_EAT_NONE);
 		s.kind = AST_STMT_ASSIGN;
 		s.data.assign.lhs = lhs;
@@ -373,15 +389,17 @@ static fullStatement statement(parser *p, memory *m)
 	case TOK_IF: {
 		expect(p, TOK_IF, ERROR_RECOVER);
 		expect(p, TOK_LPAREN, ERROR_EAT_NONE);
-		astExpression condition =
-			allocateExpression(p, expression(p, m));
+		astExpression condition = allocateExpression(
+			p, expression(p, "if statement condition", m));
 		expect(p, TOK_RPAREN, ERROR_RECOVER);
-		astStatement true_branch =
-			allocateStatement(p, statement(p, m));
+		astStatement true_branch = allocateStatement(
+			p, statement(p, "if statement true branch", m));
 		astStatement false_branch = { .index = -1 };
 		if (at(p, TOK_ELSE)) {
 			expect(p, TOK_ELSE, ERROR_RECOVER);
-			false_branch = allocateStatement(p, statement(p, m));
+			false_branch = allocateStatement(
+				p,
+				statement(p, "if statement false branch", m));
 		}
 		s.kind = AST_STMT_IF;
 		s.data.if_.condition = condition;
@@ -393,10 +411,11 @@ static fullStatement statement(parser *p, memory *m)
 	case TOK_WHILE: {
 		expect(p, TOK_WHILE, ERROR_RECOVER);
 		expect(p, TOK_LPAREN, ERROR_EAT_NONE);
-		astExpression condition =
-			allocateExpression(p, expression(p, m));
+		astExpression condition = allocateExpression(
+			p, expression(p, "while loop condition", m));
 		expect(p, TOK_RPAREN, ERROR_RECOVER);
-		astStatement body = allocateStatement(p, statement(p, m));
+		astStatement body = allocateStatement(
+			p, statement(p, "while loop body", m));
 		s.kind = AST_STMT_WHILE;
 		s.data.while_.condition = condition;
 		s.data.while_.true_branch = body;
@@ -412,7 +431,7 @@ static fullStatement statement(parser *p, memory *m)
 		bumpMark mark = bumpCreateMark(&m->temp);
 
 		while (!at(p, TOK_RBRACE) && !atEof(p) && !atItemFirst(p)) {
-			fullStatement stmt = statement(p, m);
+			fullStatement stmt = statement(p, "statement", m);
 			fullStatement *stmt_ptr =
 				bumpAllocate(&m->temp, sizeof(fullStatement));
 			*stmt_ptr = stmt;
@@ -438,7 +457,7 @@ static fullStatement statement(parser *p, memory *m)
 	}
 
 	default:
-		error(p, ERROR_RECOVER, "statement");
+		error(p, ERROR_RECOVER, error_name);
 		s.kind = AST_STMT_MISSING;
 		break;
 	}
@@ -453,8 +472,9 @@ static astFunction function(parser *p, memory *m)
 	assert(at(p, TOK_FUNC));
 	expect(p, TOK_FUNC, ERROR_RECOVER);
 
-	identifierId name = expectIdentifier(p);
-	astStatement body = allocateStatement(p, statement(p, m));
+	identifierId name = expectIdentifier(p, "function name");
+	astStatement body =
+		allocateStatement(p, statement(p, "function body", m));
 
 	return (astFunction){
 		.name = name,

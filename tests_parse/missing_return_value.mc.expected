@@ -1,4 +1,4 @@
 func main {
 	return <missing>
 }
-tests_parse:19..20: error: missing expression
+tests_parse:19..20: error: missing return value

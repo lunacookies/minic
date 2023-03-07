@@ -1,0 +1,4 @@
+func main {
+	set <missing> = x
+}
+tests_parse:16..17: error: missing left-hand side of assignment

@@ -1,4 +1,4 @@
 func main {
 	var x = <missing>
 }
-tests_parse:20..21: error: missing expression
+tests_parse:20..21: error: missing variable value

@@ -1,0 +1,18 @@
+func a {
+	if 0
+		<missing>
+	
+}
+
+func b {
+	if 0 {
+		var x = 1
+	} else
+		<missing>
+}
+
+func c {}
+tests_parse:16..17: error: missing if statement true branch
+tests_parse:16..17: error: missing “}”
+tests_parse:57..58: error: missing if statement false branch
+tests_parse:57..58: error: missing “}”

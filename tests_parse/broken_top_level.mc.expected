@@ -2,5 +2,5 @@ func <missing>
 	<missing>
 tests_parse:0..6: error: expected function but found identifier
 tests_parse:7..12: error: expected function but found number literal
-tests_parse:18..20: error: expected identifier but found “==”
-tests_parse:20..21: error: missing statement
+tests_parse:18..20: error: expected function name but found “==”
+tests_parse:20..21: error: missing function body

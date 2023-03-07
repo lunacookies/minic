@@ -1,0 +1,4 @@
+func main {
+	var x = (1 + <missing>)
+}
+tests_parse:24..25: error: missing operand

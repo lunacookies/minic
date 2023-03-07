@@ -1,0 +1,10 @@
+func main {
+	if <missing> {} 
+	if <missing>
+		<missing>
+	
+}
+tests_parse:17..18: error: missing if statement condition
+tests_parse:27..28: error: missing if statement condition
+tests_parse:27..28: error: missing “)”
+tests_parse:27..28: error: missing if statement true branch

@@ -1,0 +1,3 @@
+func a
+	<missing>
+tests_parse:6..7: error: missing function body

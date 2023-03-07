@@ -8,9 +8,9 @@ func main {
 }
 tests_parse:23..24: error: missing “;”
 tests_parse:34..35: error: missing “;”
-tests_parse:43..44: error: missing expression
+tests_parse:43..44: error: missing variable value
 tests_parse:43..44: error: missing “;”
 tests_parse:54..55: error: missing “;”
-tests_parse:63..64: error: missing expression
+tests_parse:63..64: error: missing variable value
 tests_parse:63..64: error: missing “;”
 tests_parse:75..76: error: missing “;”

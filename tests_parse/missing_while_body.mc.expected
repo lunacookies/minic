@@ -1,0 +1,8 @@
+func a {
+	while 0
+		<missing>
+}
+
+func b {}
+tests_parse:19..20: error: missing while loop body
+tests_parse:19..20: error: missing “}”
