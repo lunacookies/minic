@@ -1,0 +1,5 @@
+func main
+	var x void
+	{
+		set x = <missing>
+	}

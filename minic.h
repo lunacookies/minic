@@ -447,6 +447,8 @@ u8 *hirTypeDebug(hirType type);
 void hirDebug(hirRoot hir, interner interner, stringBuilder *sb);
 void hirDebugPrint(hirRoot hir, interner interner, bump *b);
 
+u8 *lowerTests(u8 *input, memory *m);
+
 // ----------------------------------------------------------------------------
 // codegen.c
 

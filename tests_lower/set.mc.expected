@@ -1,0 +1,9 @@
+func main
+	var foo i64
+	var bar i64
+	{
+		set foo = 3
+		set bar = foo
+		set foo = 4
+		set bar = (foo - 20)
+	}

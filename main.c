@@ -11,6 +11,9 @@ int main(int argc, char **argv)
 		runTests((u8 *)"tests_lex", lexTests, &m.temp);
 		assert(m.temp.bytes_used == 0);
 		runTests((u8 *)"tests_parse", parseTests, &m.temp);
+		assert(m.temp.bytes_used == 0);
+		runTests((u8 *)"tests_lower", lowerTests, &m.temp);
+		assert(m.temp.bytes_used == 0);
 		return 0;
 	}
 

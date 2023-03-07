@@ -618,3 +618,21 @@ void hirDebugPrint(hirRoot hir, interner interner, bump *b)
 	printf("%s", stringBuilderFinish(sb));
 	bumpClearToMark(b, mark);
 }
+
+u8 *lowerTests(u8 *input, memory *m)
+{
+	diagnosticsStorage diagnostics = diagnosticsStorageCreate(&m->general);
+	tokenBuffer buf = lex(input, &diagnostics, m);
+	interner interner = intern(&buf, &input, 1, m);
+	astRoot ast = parse(buf, input, &diagnostics, m);
+
+	// Remove all diagnostics up to this point.
+	diagnostics.count = 0;
+	diagnostics.all_messages.bytes_used = 0;
+
+	hirRoot hir = lower(ast, &diagnostics, m);
+	stringBuilder sb = stringBuilderCreate(&m->temp);
+	hirDebug(hir, interner, &sb);
+	diagnosticsStorageDebug(diagnostics, &sb);
+	return stringBuilderFinish(sb);
+}

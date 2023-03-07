@@ -1,0 +1,6 @@
+func a
+	var x void
+	{
+		set x = <missing>
+	}
+tests_lower:18..19: error: undefined variable
