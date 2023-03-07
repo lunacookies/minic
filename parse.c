@@ -114,9 +114,8 @@ typedef enum errorMode {
 	ERROR_EAT_NONE
 } errorMode;
 
-static void errorV(parser *p, errorMode mode, char *fmt, va_list ap)
+static void error(parser *p, errorMode mode, char *expected_syntax_name)
 {
-
 	bool skip_token = false;
 	switch (mode) {
 	case ERROR_RECOVER:
@@ -137,8 +136,10 @@ static void errorV(parser *p, errorMode mode, char *fmt, va_list ap)
 		skip_token = false;
 
 	span s = { 0 };
+	tokenKind found_token_kind = -1;
 	if (skip_token) {
 		s = currentSpan(p);
+		found_token_kind = current(p);
 		addToken(p);
 	} else {
 		p->cursor--;
@@ -148,15 +149,16 @@ static void errorV(parser *p, errorMode mode, char *fmt, va_list ap)
 		s.start = previousTokenSpan.end;
 		s.end = previousTokenSpan.end + 1;
 	}
-	diagnosticsStorageRecordV(p->diagnostics, DIAG_ERROR, s, fmt, ap);
-}
 
-static void error(parser *p, errorMode mode, char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	errorV(p, mode, fmt, ap);
-	va_end(ap);
+	if (skip_token) {
+		assert(found_token_kind != (tokenKind)-1);
+		diagnosticsStorageRecord(p->diagnostics, DIAG_ERROR, s,
+					 "expected %s but found %s",
+					 expected_syntax_name,
+					 tokenKindShow(found_token_kind));
+	} else
+		diagnosticsStorageRecord(p->diagnostics, DIAG_ERROR, s,
+					 "missing %s", expected_syntax_name);
 }
 
 static void expect(parser *p, tokenKind expected, errorMode mode)
@@ -166,8 +168,7 @@ static void expect(parser *p, tokenKind expected, errorMode mode)
 		addToken(p);
 		return;
 	}
-	error(p, mode, "expected %s but found %s", tokenKindShow(expected),
-	      tokenKindShow(actual));
+	error(p, mode, tokenKindShow(expected));
 }
 
 static identifierId expectIdentifier(parser *p)
@@ -223,7 +224,7 @@ static fullExpression expressionLhs(parser *p, memory *m)
 	}
 
 	default:
-		error(p, ERROR_RECOVER, "expected expression");
+		error(p, ERROR_RECOVER, "expression");
 		e.kind = AST_EXPR_MISSING;
 		break;
 	}
@@ -433,7 +434,7 @@ static fullStatement statement(parser *p, memory *m)
 	}
 
 	default:
-		error(p, ERROR_RECOVER, "expected statement");
+		error(p, ERROR_RECOVER, "statement");
 		s.kind = AST_STMT_MISSING;
 		break;
 	}
@@ -492,7 +493,7 @@ astRoot parse(tokenBuffer tokens, u8 *content, diagnosticsStorage *diagnostics,
 			break;
 		}
 		default:
-			error(&p, ERROR_EAT_ALL, "expected function");
+			error(&p, ERROR_EAT_ALL, "function");
 			break;
 		}
 	}

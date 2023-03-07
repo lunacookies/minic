@@ -5,6 +5,6 @@ func a {
 }
 
 func b {}
-tests_parse:10..11: error: expected “}” but found “func”
-tests_parse:10..11: error: expected “}” but found “func”
-tests_parse:10..11: error: expected “}” but found “func”
+tests_parse:10..11: error: missing “}”
+tests_parse:10..11: error: missing “}”
+tests_parse:10..11: error: missing “}”
