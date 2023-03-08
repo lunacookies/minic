@@ -8,6 +8,7 @@ CFLAGS=\
 	-Wextra \
 	-Wpedantic \
 	-Wimplicit-fallthrough \
+	-Wimplicit-int-conversion \
 	-Wshadow \
 	-Wstrict-prototypes \
 	-Wmissing-prototypes
