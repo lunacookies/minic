@@ -5,3 +5,4 @@ func a
 		<missing>
 	}
 tests_lower:23..34: error: cannot shadow existing variable
+tests_lower:10..21: warning: unused variable

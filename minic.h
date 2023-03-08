@@ -429,6 +429,7 @@ typedef struct hirRoot {
 
 	identifierId *local_names;
 	hirType *local_types;
+	span *local_spans;
 
 	u16 function_count;
 	u16 node_count;
@@ -444,6 +445,7 @@ hirType hirGetNodeType(hirRoot hir, hirNode node);
 span hirGetNodeSpan(hirRoot hir, hirNode node);
 identifierId hirGetLocalName(hirRoot hir, hirLocal local);
 hirType hirGetLocalType(hirRoot hir, hirLocal local);
+span hirGetLocalSpan(hirRoot hir, hirLocal local);
 u32 hirTypeSize(hirType type);
 u8 *hirTypeDebug(hirType type);
 void hirDebug(hirRoot hir, interner interner, stringBuilder *sb);

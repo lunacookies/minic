@@ -47,13 +47,15 @@ static hirNode allocateNode(ctx *c, fullNode node)
 	return (hirNode){ .index = i };
 }
 
-static hirLocal allocateLocal(ctx *c, identifierId name, hirType type)
+static hirLocal allocateLocal(ctx *c, identifierId name, hirType type,
+			      span span)
 {
 	assert(c->hir.local_count < MAX_LOCAL_COUNT);
 	u16 i = c->hir.local_count;
 	c->hir.local_count++;
 	c->hir.local_names[i] = name;
 	c->hir.local_types[i] = type;
+	c->hir.local_spans[i] = span;
 	return (hirLocal){ .index = i };
 }
 
@@ -182,8 +184,10 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 			break;
 		}
 
-		hirLocal local = allocateLocal(c, ast_local_definition.name,
-					       hirGetNodeType(c->hir, rhs));
+		hirLocal local = allocateLocal(
+			c, ast_local_definition.name,
+			hirGetNodeType(c->hir, rhs),
+			astGetStatementSpan(c->ast, ast_statement));
 
 		fullNode lhs_unallocd = {
 			.data.variable.local = local,
@@ -283,6 +287,77 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 	return n;
 }
 
+static bool isLocalUsedInNode(hirRoot hir, hirNode node, hirLocal local)
+{
+	switch (hirGetNodeKind(hir, node)) {
+	case HIR_MISSING:
+	case HIR_INT_LITERAL:
+		return false;
+
+	case HIR_VARIABLE:
+		return hirGetNode(hir, node).variable.local.index ==
+		       local.index;
+
+	case HIR_BINARY_OPERATION: {
+		hirBinaryOperation binary_operation =
+			hirGetNode(hir, node).binary_operation;
+		return isLocalUsedInNode(hir, binary_operation.lhs, local) ||
+		       isLocalUsedInNode(hir, binary_operation.rhs, local);
+	}
+
+	case HIR_ASSIGN: {
+		hirAssign assign = hirGetNode(hir, node).assign;
+		if (isLocalUsedInNode(hir, assign.rhs, local))
+			return true;
+		if (!isLocalUsedInNode(hir, assign.lhs, local))
+			return false;
+
+		assert(isLocalUsedInNode(hir, assign.lhs, local) &&
+		       !isLocalUsedInNode(hir, assign.rhs, local));
+
+		// Only assigning to a local and doing nothing else with it
+		// does not count as using it.
+		if (hirGetNodeKind(hir, assign.lhs) == HIR_VARIABLE)
+			return false;
+
+		return isLocalUsedInNode(hir, assign.lhs, local) ||
+		       isLocalUsedInNode(hir, assign.rhs, local);
+	}
+
+	case HIR_IF: {
+		hirIf if_ = hirGetNode(hir, node).if_;
+		bool is_used = isLocalUsedInNode(hir, if_.condition, local) ||
+			       isLocalUsedInNode(hir, if_.true_branch, local);
+		if (is_used)
+			return true;
+		if (if_.false_branch.index != (u16)-1)
+			return isLocalUsedInNode(hir, if_.false_branch, local);
+		return false;
+	}
+
+	case HIR_WHILE: {
+		hirWhile while_ = hirGetNode(hir, node).while_;
+		return isLocalUsedInNode(hir, while_.condition, local) ||
+		       isLocalUsedInNode(hir, while_.true_branch, local);
+	}
+
+	case HIR_RETURN: {
+		hirReturn retrn = hirGetNode(hir, node).retrn;
+		return isLocalUsedInNode(hir, retrn.value, local);
+	}
+
+	case HIR_BLOCK: {
+		hirBlock block = hirGetNode(hir, node).block;
+		for (u16 i = 0; i < block.count; i++) {
+			hirNode n = { .index = block.start.index + i };
+			if (isLocalUsedInNode(hir, n, local))
+				return true;
+		}
+		return false;
+	}
+	}
+}
+
 hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 {
 	bumpMark mark = bumpCreateMark(&m->temp);
@@ -296,6 +371,7 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 			.node_spans = bumpAllocate(&m->temp, sizeof(span) * MAX_NODE_COUNT),
 			.local_names = bumpAllocate(&m->temp, sizeof(identifierId) * MAX_LOCAL_COUNT),
 			.local_types = bumpAllocate(&m->temp, sizeof(hirType) * MAX_LOCAL_COUNT),
+			.local_spans = bumpAllocate(&m->temp, sizeof(span) * MAX_LOCAL_COUNT),
 			.function_count = 0,
 			.node_count = 0,
 			.local_count = 0,
@@ -342,8 +418,24 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 				     sizeof(identifierId) * c.hir.local_count);
 	c.hir.local_types = bumpCopy(&m->general, c.hir.local_types,
 				     sizeof(hirType) * c.hir.local_count);
+	c.hir.local_spans = bumpCopy(&m->general, c.hir.local_spans,
+				     sizeof(span) * c.hir.local_count);
 
 	bumpClearToMark(&m->temp, mark);
+
+	for (u16 i = 0; i < c.hir.function_count; i++) {
+		hirFunction function = c.hir.functions[i];
+		for (u16 j = 0; j < function.locals_count; j++) {
+			hirLocal local = {
+				.index = function.locals_start.index + j
+			};
+			if (!isLocalUsedInNode(c.hir, function.body, local))
+				diagnosticsStorageRecord(
+					c.diagnostics, DIAG_WARNING,
+					hirGetLocalSpan(c.hir, local),
+					"unused variable");
+		}
+	}
 
 	return c.hir;
 }
@@ -382,6 +474,12 @@ hirType hirGetLocalType(hirRoot hir, hirLocal local)
 {
 	assert(local.index < hir.local_count);
 	return hir.local_types[local.index];
+}
+
+span hirGetLocalSpan(hirRoot hir, hirLocal local)
+{
+	assert(local.index < hir.local_count);
+	return hir.local_spans[local.index];
 }
 
 u32 hirTypeSize(hirType type)

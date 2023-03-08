@@ -17,3 +17,9 @@ func main
 		set le = ((t * 5) <= t);
 		set ge = (t <= (f - 1));
 	}
+tests_lower:37..53: warning: unused variable
+tests_lower:55..71: warning: unused variable
+tests_lower:73..89: warning: unused variable
+tests_lower:91..106: warning: unused variable
+tests_lower:108..126: warning: unused variable
+tests_lower:128..146: warning: unused variable

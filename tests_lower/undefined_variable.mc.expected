@@ -4,3 +4,4 @@ func a
 		set x = <missing>;
 	}
 tests_lower:18..19: error: undefined variable
+tests_lower:10..20: warning: unused variable
