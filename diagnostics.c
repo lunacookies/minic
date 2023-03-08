@@ -81,7 +81,7 @@ void diagnosticsStorageShow(diagnosticsStorage diagnostics, stringBuilder *sb)
 		lineColumn end_lc = offsetToLineColumn(span.end, file_content);
 
 		stringBuilderPrintf(sb, "\033[90m%s:%u:%u:\033[m ", file_name,
-				    start_lc.line + 1, end_lc.column + 1);
+				    start_lc.line + 1, start_lc.column + 1);
 
 		switch (diagnostics.severities[i]) {
 		case DIAG_WARNING:
