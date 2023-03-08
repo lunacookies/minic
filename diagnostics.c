@@ -76,10 +76,9 @@ void diagnosticsStorageShow(diagnosticsStorage diagnostics, stringBuilder *sb)
 		u8 *file_content = currentProject().file_contents[file];
 
 		span span = diagnostics.spans[i];
+
 		lineColumn start_lc =
 			offsetToLineColumn(span.start, file_content);
-		lineColumn end_lc = offsetToLineColumn(span.end, file_content);
-
 		stringBuilderPrintf(sb, "\033[90m%s:%u:%u:\033[m ", file_name,
 				    start_lc.line + 1, start_lc.column + 1);
 
