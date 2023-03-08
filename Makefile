@@ -13,23 +13,29 @@ CFLAGS=\
 	-Wstrict-prototypes \
 	-Wmissing-prototypes
 
-SRCS=$(wildcard *.c)
-OBJS=$(SRCS:.c=.o)
+NAME=minic
+BUILD_DIR=out
+HEADERS=$(wildcard *.h)
+SOURCES=$(wildcard *.c)
+OBJECTS=$(addprefix $(BUILD_DIR)/, $(SOURCES:.c=.o))
 
-all: minic tidy
+all: $(BUILD_DIR)/$(NAME) tidy
 
-minic: $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+$(BUILD_DIR)/$(NAME): $(OBJECTS)
+	@ mkdir -p $(BUILD_DIR)
+	@ $(CC) $(CFLAGS) $^ -o $@
 
-$(OBJS): minic.h
+$(BUILD_DIR)/%.o: %.c $(HEADERS)
+	@ mkdir -p $(BUILD_DIR)
+	@ $(CC) $(CFLAGS) -c -o $@ $<
 
-tidy: *.c *.h
-	clang-format -i $^
+tidy: $(HEADERS) $(SOURCES)
+	@ clang-format -i $^
 
 test: all
 	./test.sh
 
 clean:
-	rm minic *.o
+	@ rm -r $(BUILD_DIR)
 
-.PHONY: tidy test clean
+.PHONY: all tidy test clean
