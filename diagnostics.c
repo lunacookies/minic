@@ -85,7 +85,7 @@ void diagnosticsStorageShow(diagnosticsStorage diagnostics, stringBuilder *sb)
 
 		switch (diagnostics.severities[i]) {
 		case DIAG_WARNING:
-			stringBuilderPrintf(sb, "\033[33m"); // yellow
+			stringBuilderPrintf(sb, "\033[95m"); // magenta
 			stringBuilderPrintf(sb, "warning");
 			break;
 		case DIAG_ERROR:
