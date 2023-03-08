@@ -1,3 +1,5 @@
+CC=clang
+
 CFLAGS=\
 	-std=c11 \
 	-fshort-enums \
