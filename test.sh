@@ -1,13 +1,13 @@
 #!/bin/sh
 
-./minic --test
+./out/minic --test
 
 assert() {
 	expected="$1"
 	input="$2"
 
 	echo "$input" > main.mc
-	../minic
+	../out/minic
 	./out
 	actual="$?"
 
