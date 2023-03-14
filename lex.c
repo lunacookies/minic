@@ -293,10 +293,10 @@ void tokenBufferDebug(tokenBuffer buf, stringBuilder *sb)
 	stringBuilderPrintf(sb, "{");
 
 	for (usize i = 0; i < buf.count; i++) {
-		span s = buf.spans[i];
-		stringBuilderPrintf(sb, "\n\t%s %u..%u",
-				    tokenKindDebug(buf.kinds[i]), s.start,
-				    s.end);
+		span span = buf.spans[i];
+		tokenKind kind = buf.kinds[i];
+		stringBuilderPrintf(sb, "\n\t%s %u..%u", tokenKindDebug(kind),
+				    span.start, span.end);
 
 		u32 id = buf.identifier_ids[i].raw;
 		if (id == (u32)-1)
