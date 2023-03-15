@@ -2,7 +2,7 @@
 
 enum { UNINIT_SENTINEL = '`' };
 
-static void *bumpAllocateInternal(bump *b, usize size)
+static void *bumpConsumeSpace(bump *b, usize size)
 {
 	if (b->bytes_used + size > b->max_size)
 		internalError("out of memory\n%zu KiB attempted\n"
@@ -14,7 +14,6 @@ static void *bumpAllocateInternal(bump *b, usize size)
 
 	void *ptr = b->top + b->bytes_used;
 	b->bytes_used += size;
-	memset(ptr, UNINIT_SENTINEL, size);
 	return ptr;
 }
 
@@ -50,7 +49,9 @@ void bumpClearToMark(bump *b, bumpMark mark)
 void *bumpAllocate(bump *b, usize size)
 {
 	assert(b->array_builder_nesting_level == 0);
-	return bumpAllocateInternal(b, size);
+	void *ptr = bumpConsumeSpace(b, size);
+	memset(ptr, UNINIT_SENTINEL, size);
+	return ptr;
 }
 
 void *bumpCopy(bump *b, void *buffer, usize size)
@@ -91,8 +92,7 @@ u8 *bumpPrintfV(bump *b, char *fmt, va_list ap)
 	// the null terminator.
 	length++;
 
-	assert(length < remaining_bytes);
-	b->bytes_used += length;
+	bumpConsumeSpace(b, length);
 	return p;
 }
 
@@ -108,7 +108,7 @@ arrayBuilder bumpStartArrayBuilder(bump *b, usize element_size)
 
 void arrayBuilderPush(arrayBuilder *ab, void *element)
 {
-	void *ptr = bumpAllocateInternal(ab->b, ab->element_size);
+	void *ptr = bumpConsumeSpace(ab->b, ab->element_size);
 	memcpy(ptr, element, ab->element_size);
 }
 
