@@ -29,7 +29,7 @@ static u32 calculateStackLayout(ctx *c, hirFunction function)
 	return roundUpTo(offset, 16);
 }
 
-static void directive(ctx *c, char *directive_name, char *fmt, ...)
+static void directive(ctx *c, const char *directive_name, const char *fmt, ...)
 {
 	stringBuilderPrintf(c->assembly, ".%s ", directive_name);
 	va_list ap;
@@ -39,7 +39,7 @@ static void directive(ctx *c, char *directive_name, char *fmt, ...)
 	stringBuilderPrintf(c->assembly, "\n");
 }
 
-static void label(ctx *c, char *fmt, ...)
+static void label(ctx *c, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -48,7 +48,8 @@ static void label(ctx *c, char *fmt, ...)
 	stringBuilderPrintf(c->assembly, ":\n");
 }
 
-static void instruction(ctx *c, char *instruction_mnemonic, char *fmt, ...)
+static void instruction(ctx *c, const char *instruction_mnemonic,
+			const char *fmt, ...)
 {
 	stringBuilderPrintf(c->assembly, "\t%s\t", instruction_mnemonic);
 	va_list ap;
@@ -64,7 +65,7 @@ static void push(ctx *c)
 	instruction(c, "str", "x8, [sp]");
 }
 
-static void pop(ctx *c, char *reg)
+static void pop(ctx *c, const char *reg)
 {
 	instruction(c, "ldr", "%s, [sp]", reg);
 	instruction(c, "add", "sp, sp, #16");

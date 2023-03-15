@@ -9,7 +9,7 @@ stringBuilder stringBuilderCreate(bump *b)
 	};
 }
 
-void stringBuilderPrintf(stringBuilder *sb, char *fmt, ...)
+void stringBuilderPrintf(stringBuilder *sb, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -17,7 +17,7 @@ void stringBuilderPrintf(stringBuilder *sb, char *fmt, ...)
 	va_end(ap);
 }
 
-void stringBuilderPrintfV(stringBuilder *sb, char *fmt, va_list ap)
+void stringBuilderPrintfV(stringBuilder *sb, const char *fmt, va_list ap)
 {
 	assert(sb->bump->bytes_used == sb->previous_bytes_used);
 

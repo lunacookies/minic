@@ -114,7 +114,7 @@ typedef enum errorMode {
 	ERROR_EAT_NONE
 } errorMode;
 
-static void error(parser *p, errorMode mode, char *expected_syntax_name)
+static void error(parser *p, errorMode mode, const char *expected_syntax_name)
 {
 	bool skip_token = false;
 	switch (mode) {
@@ -171,7 +171,7 @@ static void expect(parser *p, tokenKind expected, errorMode mode)
 	error(p, mode, (char *)tokenKindShow(expected));
 }
 
-static identifierId expectIdentifier(parser *p, char *name)
+static identifierId expectIdentifier(parser *p, const char *name)
 {
 	if (current(p) == TOK_IDENTIFIER) {
 		identifierId id = p->tokens.identifier_ids[p->cursor];
@@ -184,9 +184,10 @@ static identifierId expectIdentifier(parser *p, char *name)
 	return id;
 }
 
-static fullExpression expression(parser *p, char *error_name, memory *m);
+static fullExpression expression(parser *p, const char *error_name, memory *m);
 
-static fullExpression expressionLhs(parser *p, char *error_name, memory *m)
+static fullExpression expressionLhs(parser *p, const char *error_name,
+				    memory *m)
 {
 	fullExpression e = {
 		.data = { 0 },
@@ -247,7 +248,7 @@ static fullExpression expressionLhs(parser *p, char *error_name, memory *m)
 }
 
 static fullExpression expressionBindingPower(parser *p, u8 min_binding_power,
-					     char *error_name, memory *m)
+					     const char *error_name, memory *m)
 {
 	fullExpression lhs = expressionLhs(p, error_name, m);
 
@@ -334,12 +335,12 @@ static fullExpression expressionBindingPower(parser *p, u8 min_binding_power,
 	}
 }
 
-static fullExpression expression(parser *p, char *error_name, memory *m)
+static fullExpression expression(parser *p, const char *error_name, memory *m)
 {
 	return expressionBindingPower(p, 0, error_name, m);
 }
 
-static fullStatement statement(parser *p, char *error_name, memory *m)
+static fullStatement statement(parser *p, const char *error_name, memory *m)
 {
 	fullStatement s = {
 		.data = { 0 },

@@ -32,10 +32,10 @@ typedef ssize_t isize;
 // ----------------------------------------------------------------------------
 // utils.c
 
-void internalError(char *fmt, ...);
-void internalErrorV(char *fmt, va_list ap);
-void debugLog(char *fmt, ...);
-void debugLogV(char *fmt, va_list ap);
+void internalError(const char *fmt, ...);
+void internalErrorV(const char *fmt, va_list ap);
+void debugLog(const char *fmt, ...);
+void debugLogV(const char *fmt, va_list ap);
 u32 numCpus(void);
 u64 rotl(u64 value, u64 count);
 u64 rotr(u64 value, u64 count);
@@ -69,8 +69,8 @@ void bumpClearToMark(bump *b, bumpMark mark);
 void *bumpAllocateArray_(bump *b, usize count, usize element_size);
 void *bumpCopyArray_(bump *b, void *buffer, usize count, usize element_size);
 bump bumpCreateSubBump(bump *b, usize size);
-u8 *bumpPrintf(bump *b, char *fmt, ...);
-u8 *bumpPrintfV(bump *b, char *fmt, va_list ap);
+u8 *bumpPrintf(bump *b, const char *fmt, ...);
+u8 *bumpPrintfV(bump *b, const char *fmt, va_list ap);
 
 #define bumpAllocateArray(type, b, count)                                      \
 	((type *)(bumpAllocateArray_((b), (count), sizeof(type))))
@@ -91,8 +91,8 @@ typedef struct stringBuilder {
 } stringBuilder;
 
 stringBuilder stringBuilderCreate(bump *b);
-void stringBuilderPrintf(stringBuilder *sb, char *fmt, ...);
-void stringBuilderPrintfV(stringBuilder *sb, char *fmt, va_list ap);
+void stringBuilderPrintf(stringBuilder *sb, const char *fmt, ...);
+void stringBuilderPrintfV(stringBuilder *sb, const char *fmt, va_list ap);
 u8 *stringBuilderFinish(stringBuilder sb);
 
 // ----------------------------------------------------------------------------
@@ -149,9 +149,10 @@ typedef struct diagnosticsStorage {
 
 diagnosticsStorage diagnosticsStorageCreate(bump *b);
 void diagnosticsStorageRecord(diagnosticsStorage *diagnostics,
-			      severity severity, span span, char *fmt, ...);
+			      severity severity, span span, const char *fmt,
+			      ...);
 void diagnosticsStorageRecordV(diagnosticsStorage *diagnostics,
-			       severity severity, span span, char *fmt,
+			       severity severity, span span, const char *fmt,
 			       va_list ap);
 void diagnosticsStorageShow(diagnosticsStorage diagnostics, stringBuilder *sb);
 void diagnosticsStorageDebug(diagnosticsStorage diagnostics, stringBuilder *sb);

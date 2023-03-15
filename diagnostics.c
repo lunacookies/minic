@@ -44,7 +44,8 @@ static lineColumn offsetToLineColumn(u32 offset, u8 *content)
 }
 
 void diagnosticsStorageRecord(diagnosticsStorage *diagnostics,
-			      severity severity, span span, char *fmt, ...)
+			      severity severity, span span, const char *fmt,
+			      ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -53,7 +54,7 @@ void diagnosticsStorageRecord(diagnosticsStorage *diagnostics,
 }
 
 void diagnosticsStorageRecordV(diagnosticsStorage *diagnostics,
-			       severity severity, span span, char *fmt,
+			       severity severity, span span, const char *fmt,
 			       va_list ap)
 {
 	assert(diagnostics->count < MAX_DIAGNOSTIC_COUNT);

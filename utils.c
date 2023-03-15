@@ -1,6 +1,6 @@
 #include "minic.h"
 
-void internalError(char *fmt, ...)
+void internalError(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -9,7 +9,7 @@ void internalError(char *fmt, ...)
 	// because we’ve already aborted by this point
 }
 
-void internalErrorV(char *fmt, va_list ap)
+void internalErrorV(const char *fmt, va_list ap)
 {
 	fprintf(stderr, "\033[31minternal error:\033[0;1;97m ");
 	vfprintf(stderr, fmt, ap);
@@ -18,7 +18,7 @@ void internalErrorV(char *fmt, va_list ap)
 	abort();
 }
 
-void debugLog(char *fmt, ...)
+void debugLog(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -26,7 +26,7 @@ void debugLog(char *fmt, ...)
 	va_end(ap);
 }
 
-void debugLogV(char *fmt, va_list ap)
+void debugLogV(const char *fmt, va_list ap)
 {
 	fprintf(stderr, "\033[35mlog:\033[0;1;97m ");
 	vfprintf(stderr, fmt, ap);

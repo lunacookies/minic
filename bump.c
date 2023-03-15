@@ -102,7 +102,7 @@ bump bumpCreateSubBump(bump *b, usize size)
 	return bumpCreate(buffer, size);
 }
 
-u8 *bumpPrintf(bump *b, char *fmt, ...)
+u8 *bumpPrintf(bump *b, const char *fmt, ...)
 {
 	assert(b->array_builder_nesting_level == 0);
 	va_list ap;
@@ -112,7 +112,7 @@ u8 *bumpPrintf(bump *b, char *fmt, ...)
 	return p;
 }
 
-u8 *bumpPrintfV(bump *b, char *fmt, va_list ap)
+u8 *bumpPrintfV(bump *b, const char *fmt, va_list ap)
 {
 	assert(b->array_builder_nesting_level == 0);
 
