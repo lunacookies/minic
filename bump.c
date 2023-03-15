@@ -102,24 +102,24 @@ bump bumpCreateSubBump(bump *b, usize size)
 	return bumpCreate(buffer, size);
 }
 
-u8 *bumpPrintf(bump *b, const char *fmt, ...)
+char *bumpPrintf(bump *b, const char *fmt, ...)
 {
 	assert(b->array_builder_nesting_level == 0);
 	va_list ap;
 	va_start(ap, fmt);
-	u8 *p = bumpPrintfV(b, fmt, ap);
+	char *p = bumpPrintfV(b, fmt, ap);
 	va_end(ap);
 	return p;
 }
 
-u8 *bumpPrintfV(bump *b, const char *fmt, va_list ap)
+char *bumpPrintfV(bump *b, const char *fmt, va_list ap)
 {
 	assert(b->array_builder_nesting_level == 0);
 
 	usize remaining_bytes = b->max_size - b->bytes_used;
 
-	u8 *p = b->top + b->bytes_used;
-	usize length = vsnprintf((char *)p, remaining_bytes, fmt, ap);
+	char *p = (char *)(b->top + b->bytes_used);
+	usize length = vsnprintf(p, remaining_bytes, fmt, ap);
 
 	// The length returned by vsnprintf does not include
 	// the null terminator.

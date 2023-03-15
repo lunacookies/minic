@@ -8,11 +8,11 @@ int main(int argc, char **argv)
 	diagnosticsStorage diagnostics = diagnosticsStorageCreate(&m.general);
 
 	if (argc == 2 && strcmp(argv[1], "--test") == 0) {
-		runTests((u8 *)"tests_lex", lexTests, &m.temp);
+		runTests("tests_lex", lexTests, &m.temp);
 		assert(m.temp.bytes_used == 0);
-		runTests((u8 *)"tests_parse", parseTests, &m.temp);
+		runTests("tests_parse", parseTests, &m.temp);
 		assert(m.temp.bytes_used == 0);
-		runTests((u8 *)"tests_lower", lowerTests, &m.temp);
+		runTests("tests_lower", lowerTests, &m.temp);
 		assert(m.temp.bytes_used == 0);
 		return 0;
 	}
@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 
 	for (u16 i = 0; i < current_project.num_files; i++) {
 		setCurrentFile(i);
-		u8 *content = current_project.file_contents[i];
+		char *content = current_project.file_contents[i];
 		tokenBuffer tokens = lex(content, &diagnostics, &m);
 		token_buffers[i] = tokens;
 		assert(m.temp.bytes_used == 0);

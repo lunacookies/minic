@@ -261,8 +261,7 @@ void codegen(hirRoot hir, interner interner, stringBuilder *assembly,
 	for (u16 i = 0; i < hir.function_count; i++) {
 		hirFunction function = hir.functions[i];
 
-		c.function_name =
-			(char *)internerLookup(interner, function.name);
+		c.function_name = internerLookup(interner, function.name);
 		c.id = 0;
 
 		u32 stack_size = calculateStackLayout(&c, function);

@@ -34,22 +34,22 @@ static void pushToken(lexer *lexer, tokenKind kind, u32 start, u32 end)
 	lexer->count++;
 }
 
-static bool isWhitespace(u8 c)
+static bool isWhitespace(char c)
 {
 	return c == ' ' || c == '\t' || c == '\n';
 }
 
-static bool isDigit(u8 c)
+static bool isDigit(char c)
 {
 	return c >= '0' && c <= '9';
 }
 
-static bool isIdentifierFirst(u8 c)
+static bool isIdentifierFirst(char c)
 {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_');
 }
 
-static void convertKeywords(u8 *input, tokenBuffer *buf)
+static void convertKeywords(char *input, tokenBuffer *buf)
 {
 	usize keywords_count = sizeof(keywords) / sizeof(keywords[0]);
 
@@ -65,8 +65,8 @@ static void convertKeywords(u8 *input, tokenBuffer *buf)
 		for (usize j = 0; j < keywords_count; j++) {
 			if (strlen(keywords[j]) != length)
 				continue;
-			if (strncmp((char *)input + span.start, keywords[j],
-				    length) != 0)
+			if (strncmp(input + span.start, keywords[j], length) !=
+			    0)
 				continue;
 			*kind = keywordKinds[j];
 			break;
@@ -74,7 +74,7 @@ static void convertKeywords(u8 *input, tokenBuffer *buf)
 	}
 }
 
-tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m)
+tokenBuffer lex(char *input, diagnosticsStorage *diagnostics, memory *m)
 {
 	bumpMark mark = bumpCreateMark(&m->temp);
 
@@ -173,127 +173,127 @@ tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m)
 	return buf;
 }
 
-u8 *tokenKindShow(tokenKind kind)
+const char *tokenKindShow(tokenKind kind)
 {
 	switch (kind) {
 	case TOK_EOF:
-		return (u8 *)"EOF";
+		return "EOF";
 	case TOK_ERROR:
-		return (u8 *)"unrecognized token";
+		return "unrecognized token";
 	case TOK_NUMBER:
-		return (u8 *)"number literal";
+		return "number literal";
 	case TOK_IDENTIFIER:
-		return (u8 *)"identifier";
+		return "identifier";
 	case TOK_FUNC:
-		return (u8 *)"“func”";
+		return "“func”";
 	case TOK_RETURN:
-		return (u8 *)"“return”";
+		return "“return”";
 	case TOK_VAR:
-		return (u8 *)"“var”";
+		return "“var”";
 	case TOK_SET:
-		return (u8 *)"“set”";
+		return "“set”";
 	case TOK_IF:
-		return (u8 *)"“if”";
+		return "“if”";
 	case TOK_ELSE:
-		return (u8 *)"“else”";
+		return "“else”";
 	case TOK_WHILE:
-		return (u8 *)"“while”";
+		return "“while”";
 	case TOK_EQUAL:
-		return (u8 *)"“=”";
+		return "“=”";
 	case TOK_EQUAL_EQUAL:
-		return (u8 *)"“==”";
+		return "“==”";
 	case TOK_BANG_EQUAL:
-		return (u8 *)"“!=”";
+		return "“!=”";
 	case TOK_PLUS:
-		return (u8 *)"“+”";
+		return "“+”";
 	case TOK_DASH:
-		return (u8 *)"“-”";
+		return "“-”";
 	case TOK_STAR:
-		return (u8 *)"“*”";
+		return "“*”";
 	case TOK_SLASH:
-		return (u8 *)"“/”";
+		return "“/”";
 	case TOK_LBRACE:
-		return (u8 *)"“{”";
+		return "“{”";
 	case TOK_RBRACE:
-		return (u8 *)"“}”";
+		return "“}”";
 	case TOK_LPAREN:
-		return (u8 *)"“(”";
+		return "“(”";
 	case TOK_RPAREN:
-		return (u8 *)"“)”";
+		return "“)”";
 	case TOK_LANGLE:
-		return (u8 *)"“<”";
+		return "“<”";
 	case TOK_LANGLE_EQUAL:
-		return (u8 *)"“<=”";
+		return "“<=”";
 	case TOK_RANGLE:
-		return (u8 *)"“>”";
+		return "“>”";
 	case TOK_RANGLE_EQUAL:
-		return (u8 *)"“>=”";
+		return "“>=”";
 	case TOK_COLON:
-		return (u8 *)"“:”";
+		return "“:”";
 	case TOK_SEMI:
-		return (u8 *)"“;”";
+		return "“;”";
 	}
 }
 
-u8 *tokenKindDebug(tokenKind kind)
+const char *tokenKindDebug(tokenKind kind)
 {
 	switch (kind) {
 	case TOK_EOF:
-		return (u8 *)"EOF";
+		return "EOF";
 	case TOK_ERROR:
-		return (u8 *)"ERROR";
+		return "ERROR";
 	case TOK_NUMBER:
-		return (u8 *)"NUMBER";
+		return "NUMBER";
 	case TOK_IDENTIFIER:
-		return (u8 *)"IDENTIFIER";
+		return "IDENTIFIER";
 	case TOK_FUNC:
-		return (u8 *)"FUNC";
+		return "FUNC";
 	case TOK_RETURN:
-		return (u8 *)"RETURN";
+		return "RETURN";
 	case TOK_VAR:
-		return (u8 *)"VAR";
+		return "VAR";
 	case TOK_SET:
-		return (u8 *)"SET";
+		return "SET";
 	case TOK_IF:
-		return (u8 *)"IF";
+		return "IF";
 	case TOK_ELSE:
-		return (u8 *)"ELSE";
+		return "ELSE";
 	case TOK_WHILE:
-		return (u8 *)"WHILE";
+		return "WHILE";
 	case TOK_EQUAL:
-		return (u8 *)"EQUAL";
+		return "EQUAL";
 	case TOK_EQUAL_EQUAL:
-		return (u8 *)"EQUAL_EQUAL";
+		return "EQUAL_EQUAL";
 	case TOK_BANG_EQUAL:
-		return (u8 *)"BANG_EQUAL";
+		return "BANG_EQUAL";
 	case TOK_PLUS:
-		return (u8 *)"PLUS";
+		return "PLUS";
 	case TOK_DASH:
-		return (u8 *)"DASH";
+		return "DASH";
 	case TOK_STAR:
-		return (u8 *)"STAR";
+		return "STAR";
 	case TOK_SLASH:
-		return (u8 *)"SLASH";
+		return "SLASH";
 	case TOK_LBRACE:
-		return (u8 *)"LBRACE";
+		return "LBRACE";
 	case TOK_RBRACE:
-		return (u8 *)"RBRACE";
+		return "RBRACE";
 	case TOK_LPAREN:
-		return (u8 *)"LPAREN";
+		return "LPAREN";
 	case TOK_RPAREN:
-		return (u8 *)"RPAREN";
+		return "RPAREN";
 	case TOK_LANGLE:
-		return (u8 *)"LANGLE";
+		return "LANGLE";
 	case TOK_LANGLE_EQUAL:
-		return (u8 *)"LANGLE_EQUAL";
+		return "LANGLE_EQUAL";
 	case TOK_RANGLE:
-		return (u8 *)"RANGLE";
+		return "RANGLE";
 	case TOK_RANGLE_EQUAL:
-		return (u8 *)"RANGLE_EQUAL";
+		return "RANGLE_EQUAL";
 	case TOK_COLON:
-		return (u8 *)"COLON";
+		return "COLON";
 	case TOK_SEMI:
-		return (u8 *)"SEMI";
+		return "SEMI";
 	}
 }
 
@@ -325,7 +325,7 @@ void tokenBufferDebugPrint(tokenBuffer buf, bump *b)
 	bumpClearToMark(b, mark);
 }
 
-u8 *lexTests(u8 *input, memory *m)
+char *lexTests(char *input, memory *m)
 {
 	diagnosticsStorage diagnostics = diagnosticsStorageCreate(&m->general);
 	tokenBuffer buf = lex(input, &diagnostics, m);

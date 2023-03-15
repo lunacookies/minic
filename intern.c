@@ -3,18 +3,18 @@
 typedef struct slot {
 	u32 length;
 	identifierId id;
-	u8 *ptr;
+	char *ptr;
 	u64 hash;
 } slot;
 
 typedef struct ctx {
 	slot *map;
 	usize slot_count;
-	u8 **identifier_contents;
+	char **identifier_contents;
 	identifierId ident_id;
 } ctx;
 
-static void processToken(tokenBuffer *buf, u8 *contents, usize token, ctx *c,
+static void processToken(tokenBuffer *buf, char *contents, usize token, ctx *c,
 			 memory *m)
 {
 	assert(buf->identifier_ids[token].raw == (u32)-1);
@@ -24,8 +24,8 @@ static void processToken(tokenBuffer *buf, u8 *contents, usize token, ctx *c,
 
 	span span = buf->spans[token];
 	u32 length = span.end - span.start;
-	u8 *ptr = contents + span.start;
-	u64 hash = fxhash(ptr, length);
+	char *ptr = contents + span.start;
+	u64 hash = fxhash((u8 *)ptr, length);
 
 	usize slot_index = hash % c->slot_count;
 	slot *slot = &c->map[slot_index];
@@ -70,14 +70,14 @@ static void processToken(tokenBuffer *buf, u8 *contents, usize token, ctx *c,
 
 	buf->identifier_ids[token] = c->ident_id;
 
-	u8 *s = bumpCopyArray(u8, &m->general, ptr, length + 1);
+	char *s = bumpCopyArray(char, &m->general, ptr, length + 1);
 	s[length] = 0;
 	c->identifier_contents[c->ident_id.raw] = s;
 
 	c->ident_id.raw++;
 }
 
-interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count, memory *m)
+interner intern(tokenBuffer *bufs, char **contents, usize buf_count, memory *m)
 {
 	usize identifier_count = 0;
 	for (u16 i = 0; i < buf_count; i++)
@@ -98,8 +98,8 @@ interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count, memory *m)
 	ctx c = {
 		.map = map,
 		.slot_count = slot_count,
-		.identifier_contents =
-			bumpAllocateArray(u8 *, &m->general, identifier_count),
+		.identifier_contents = bumpAllocateArray(char *, &m->general,
+							 identifier_count),
 		.ident_id = { .raw = 0 },
 	};
 
@@ -119,7 +119,7 @@ interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count, memory *m)
 	};
 }
 
-u8 *internerLookup(interner i, identifierId id)
+char *internerLookup(interner i, identifierId id)
 {
 	return i.contents[id.raw];
 }

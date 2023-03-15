@@ -69,8 +69,8 @@ void bumpClearToMark(bump *b, bumpMark mark);
 void *bumpAllocateArray_(bump *b, usize count, usize element_size);
 void *bumpCopyArray_(bump *b, void *buffer, usize count, usize element_size);
 bump bumpCreateSubBump(bump *b, usize size);
-u8 *bumpPrintf(bump *b, const char *fmt, ...);
-u8 *bumpPrintfV(bump *b, const char *fmt, va_list ap);
+char *bumpPrintf(bump *b, const char *fmt, ...);
+char *bumpPrintfV(bump *b, const char *fmt, va_list ap);
 
 #define bumpAllocateArray(type, b, count)                                      \
 	((type *)(bumpAllocateArray_((b), (count), sizeof(type))))
@@ -86,14 +86,14 @@ void *bumpFinishArrayBuilder(bump *b, arrayBuilder *ab);
 
 typedef struct stringBuilder {
 	bump *bump;
-	u8 *s;
+	char *s;
 	usize previous_bytes_used;
 } stringBuilder;
 
 stringBuilder stringBuilderCreate(bump *b);
 void stringBuilderPrintf(stringBuilder *sb, const char *fmt, ...);
 void stringBuilderPrintfV(stringBuilder *sb, const char *fmt, va_list ap);
-u8 *stringBuilderFinish(stringBuilder sb);
+char *stringBuilderFinish(stringBuilder sb);
 
 // ----------------------------------------------------------------------------
 // memory.c
@@ -109,16 +109,16 @@ memory memoryCreate(void);
 // ----------------------------------------------------------------------------
 // test.c
 
-typedef u8 *(*transformer)(u8 *, memory *);
-void runTests(u8 *dir_name, transformer t, bump *b);
+typedef char *(*transformer)(char *, memory *);
+void runTests(const char *dir_name, transformer t, bump *b);
 
 // ----------------------------------------------------------------------------
 // project.c
 
 typedef struct projectSpec {
 	u16 num_files;
-	u8 **file_names;
-	u8 **file_contents;
+	char **file_names;
+	char **file_contents;
 } projectSpec;
 
 projectSpec projectDiscover(memory *m);
@@ -202,24 +202,24 @@ typedef struct tokenBuffer {
 	usize count;
 } tokenBuffer;
 
-tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m);
-u8 *tokenBufferIdentifierText(tokenBuffer buf, u32 token_id);
-u8 *tokenKindShow(tokenKind kind);
-u8 *tokenKindDebug(tokenKind kind);
+tokenBuffer lex(char *input, diagnosticsStorage *diagnostics, memory *m);
+char *tokenBufferIdentifierText(tokenBuffer buf, u32 token_id);
+const char *tokenKindShow(tokenKind kind);
+const char *tokenKindDebug(tokenKind kind);
 void tokenBufferDebug(tokenBuffer buf, stringBuilder *sb);
 void tokenBufferDebugPrint(tokenBuffer buf, bump *b);
 
-u8 *lexTests(u8 *input, memory *m);
+char *lexTests(char *input, memory *m);
 
 // ----------------------------------------------------------------------------
 // intern.c
 
 typedef struct interner {
-	u8 **contents;
+	char **contents;
 } interner;
 
-interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count, memory *m);
-u8 *internerLookup(interner i, identifierId id);
+interner intern(tokenBuffer *bufs, char **contents, usize buf_count, memory *m);
+char *internerLookup(interner i, identifierId id);
 
 // ----------------------------------------------------------------------------
 // parse.c
@@ -330,11 +330,11 @@ typedef struct astRoot {
 	astFunction *functions;
 
 	astStatementData *statements;
-	u8 *statement_kinds;
+	astStatementKind *statement_kinds;
 	span *statement_spans;
 
 	astExpressionData *expressions;
-	u8 *expression_kinds;
+	astExpressionKind *expression_kinds;
 	span *expression_spans;
 
 	u16 function_count;
@@ -342,8 +342,8 @@ typedef struct astRoot {
 	u16 expression_count;
 } astRoot;
 
-astRoot parse(tokenBuffer tokens, u8 *content, diagnosticsStorage *diagnostics,
-	      memory *m);
+astRoot parse(tokenBuffer tokens, char *content,
+	      diagnosticsStorage *diagnostics, memory *m);
 astStatementData astGetStatement(astRoot ast, astStatement statement);
 astStatementKind astGetStatementKind(astRoot ast, astStatement statement);
 span astGetStatementSpan(astRoot ast, astStatement statement);
@@ -353,7 +353,7 @@ span astGetExpressionSpan(astRoot ast, astExpression expression);
 void astDebug(astRoot ast, interner interner, stringBuilder *sb);
 void astDebugPrint(astRoot ast, interner interner, bump *b);
 
-u8 *parseTests(u8 *input, memory *m);
+char *parseTests(char *input, memory *m);
 
 // ----------------------------------------------------------------------------
 // lower.c
@@ -465,11 +465,11 @@ identifierId hirGetLocalName(hirRoot hir, hirLocal local);
 hirType hirGetLocalType(hirRoot hir, hirLocal local);
 span hirGetLocalSpan(hirRoot hir, hirLocal local);
 u32 hirTypeSize(hirType type);
-u8 *hirTypeDebug(hirType type);
+const char *hirTypeDebug(hirType type);
 void hirDebug(hirRoot hir, interner interner, stringBuilder *sb);
 void hirDebugPrint(hirRoot hir, interner interner, bump *b);
 
-u8 *lowerTests(u8 *input, memory *m);
+char *lowerTests(char *input, memory *m);
 
 // ----------------------------------------------------------------------------
 // codegen.c

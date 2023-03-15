@@ -20,7 +20,7 @@ typedef struct fullStatement {
 typedef struct parser {
 	tokenBuffer tokens;
 	usize cursor;
-	u8 *content;
+	char *content;
 	astRoot ast;
 	diagnosticsStorage *diagnostics;
 } parser;
@@ -168,7 +168,7 @@ static void expect(parser *p, tokenKind expected, errorMode mode)
 		addToken(p);
 		return;
 	}
-	error(p, mode, (char *)tokenKindShow(expected));
+	error(p, mode, tokenKindShow(expected));
 }
 
 static identifierId expectIdentifier(parser *p, const char *name)
@@ -483,8 +483,8 @@ static astFunction function(parser *p, memory *m)
 	};
 }
 
-astRoot parse(tokenBuffer tokens, u8 *content, diagnosticsStorage *diagnostics,
-	      memory *m)
+astRoot parse(tokenBuffer tokens, char *content,
+	      diagnosticsStorage *diagnostics, memory *m)
 {
 	bumpMark mark = bumpCreateMark(&m->temp);
 
@@ -845,7 +845,7 @@ void astDebugPrint(astRoot ast, interner interner, bump *b)
 	bumpClearToMark(b, mark);
 }
 
-u8 *parseTests(u8 *input, memory *m)
+char *parseTests(char *input, memory *m)
 {
 	diagnosticsStorage diagnostics = diagnosticsStorageCreate(&m->general);
 	tokenBuffer buf = lex(input, &diagnostics, m);

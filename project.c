@@ -12,8 +12,8 @@ projectSpec projectDiscover(memory *m)
 	// memory for now since allocations are occurring in general memory
 	// while the aux arrays are being populated.
 	bumpMark mark = bumpCreateMark(&m->temp);
-	u8 **file_names = bumpAllocateArray(u8 *, &m->temp, MAX_FILES);
-	u8 **file_contents = bumpAllocateArray(u8 *, &m->temp, MAX_FILES);
+	char **file_names = bumpAllocateArray(char *, &m->temp, MAX_FILES);
+	char **file_contents = bumpAllocateArray(char *, &m->temp, MAX_FILES);
 
 	DIR *d = opendir(".");
 
@@ -40,13 +40,13 @@ projectSpec projectDiscover(memory *m)
 		usize size = stat.st_size;
 
 		// Copy file name into general memory.
-		u8 *name = bumpCopyArray(u8, &m->general, entry->d_name,
-					 entry->d_namlen +
-						 1); // for null terminator
+		char *name = bumpCopyArray(char, &m->general, entry->d_name,
+					   entry->d_namlen +
+						   1); // for null terminator
 
 		// Read file content into general memory.
-		u8 *content =
-			bumpAllocateArray(u8, &m->general,
+		char *content =
+			bumpAllocateArray(char, &m->general,
 					  size + 1); // for null terminator
 		usize bytes_read = read(fd, content, size);
 		assert(bytes_read == size);
@@ -61,9 +61,9 @@ projectSpec projectDiscover(memory *m)
 
 	// Now that general memory isn’t being touched anymore, we can copy the
 	// aux arrays there.
-	file_names = bumpCopyArray(u8 *, &m->general, file_names, num_files);
+	file_names = bumpCopyArray(char *, &m->general, file_names, num_files);
 	file_contents =
-		bumpCopyArray(u8 *, &m->general, file_contents, num_files);
+		bumpCopyArray(char *, &m->general, file_contents, num_files);
 	bumpClearToMark(&m->temp, mark);
 
 	return (projectSpec){

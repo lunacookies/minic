@@ -511,13 +511,13 @@ static void newline(debugCtx *c)
 		stringBuilderPrintf(c->sb, "\t");
 }
 
-u8 *hirTypeDebug(hirType type)
+const char *hirTypeDebug(hirType type)
 {
 	switch (type) {
 	case HIR_TYPE_VOID:
-		return (u8 *)"void";
+		return "void";
 	case HIR_TYPE_I64:
-		return (u8 *)"i64";
+		return "i64";
 	}
 }
 
@@ -730,7 +730,7 @@ void hirDebugPrint(hirRoot hir, interner interner, bump *b)
 	bumpClearToMark(b, mark);
 }
 
-u8 *lowerTests(u8 *input, memory *m)
+char *lowerTests(char *input, memory *m)
 {
 	diagnosticsStorage diagnostics = diagnosticsStorageCreate(&m->general);
 	tokenBuffer buf = lex(input, &diagnostics, m);

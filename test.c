@@ -1,13 +1,13 @@
 #include "minic.h"
 
-static u8 *readFile(u8 *name, bump *b)
+static char *readFile(char *name, bump *b)
 {
-	int fd = open((char *)name, O_RDONLY);
+	int fd = open(name, O_RDONLY);
 	struct stat s;
 	fstat(fd, &s);
 	usize size = s.st_size;
 
-	u8 *content = bumpAllocateArray(u8, b, size + 1);
+	char *content = bumpAllocateArray(char, b, size + 1);
 	usize bytes_read = read(fd, content, size);
 	assert(bytes_read == size);
 	content[size] = 0;
@@ -16,13 +16,13 @@ static u8 *readFile(u8 *name, bump *b)
 	return content;
 }
 
-static bool exists(u8 *name)
+static bool exists(char *name)
 {
 	struct stat s;
-	return stat((char *)name, &s) == 0;
+	return stat(name, &s) == 0;
 }
 
-void runTests(u8 *dir_name, transformer t, bump *b)
+void runTests(const char *dir_name, transformer t, bump *b)
 {
 	bumpMark mark = bumpCreateMark(b);
 
@@ -35,7 +35,7 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 		.temp = transformer_temp,
 	};
 
-	DIR *d = opendir((char *)dir_name);
+	DIR *d = opendir(dir_name);
 	for (;;) {
 		struct dirent *entry = readdir(d);
 		if (entry == NULL)
@@ -54,15 +54,16 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 
 		bumpMark local_mark = bumpCreateMark(b);
 
-		u8 *path = bumpPrintf(b, "%s/%s", dir_name, entry->d_name);
-		u8 *expected_path = bumpPrintf(b, "%s.expected", path);
-		u8 *actual_path = bumpPrintf(b, "%s.actual", path);
+		char *path = bumpPrintf(b, "%s/%s", dir_name, entry->d_name);
+		char *expected_path = bumpPrintf(b, "%s.expected", path);
+		char *actual_path = bumpPrintf(b, "%s.actual", path);
 
-		u8 *source_code = readFile(path, b);
+		char *source_code = readFile(path, b);
 
+		char *dir_name_unconstified = bumpPrintf(b, dir_name);
 		setCurrentProject((projectSpec){
 			.num_files = 1,
-			.file_names = &dir_name,
+			.file_names = &dir_name_unconstified,
 			.file_contents = &source_code,
 		});
 		setCurrentFile(0);
@@ -70,43 +71,43 @@ void runTests(u8 *dir_name, transformer t, bump *b)
 		bumpClearToMark(&transformer_memory.general,
 				transformer_general_top);
 		bumpClearToMark(&transformer_memory.temp, transformer_temp_top);
-		u8 *actual = t(source_code, &transformer_memory);
+		char *actual = t(source_code, &transformer_memory);
 
 		if (!exists(expected_path)) {
 			printf("\033[35mwarning:\033[0;1;97m “expected” file "
 			       "%s "
 			       "missing; creating\033[0m\n",
 			       expected_path);
-			int fd = open((char *)expected_path,
+			int fd = open(expected_path,
 				      O_WRONLY | O_CREAT | O_TRUNC, 0666);
-			write(fd, actual, strlen((char *)actual));
+			write(fd, actual, strlen(actual));
 			close(fd);
 		}
 
-		u8 *expected = readFile(expected_path, b);
+		char *expected = readFile(expected_path, b);
 
-		if (strcmp((char *)expected, (char *)actual) == 0) {
+		if (strcmp(expected, actual) == 0) {
 			printf("\033[32mtest passed:\033[0;1;97m %s\033[0m\n",
 			       path);
 			if (exists(actual_path)) {
 				printf("\033[35mwarning:\033[0;1;97m stale "
 				       "“actual” file %s; deleting\033[0m\n",
 				       actual_path);
-				remove((char *)actual_path);
+				remove(actual_path);
 			}
 		} else {
-			int fd = open((char *)actual_path,
-				      O_WRONLY | O_CREAT | O_TRUNC, 0666);
-			write(fd, actual, strlen((char *)actual));
+			int fd = open(actual_path, O_WRONLY | O_CREAT | O_TRUNC,
+				      0666);
+			write(fd, actual, strlen(actual));
 			close(fd);
 
 			printf("\033[31mtest failed:\033[0;1;97m %s\033[0m\n",
 			       path);
 
-			u8 *command =
+			char *command =
 				bumpPrintf(b, "diff -u --color=auto %s %s",
 					   expected_path, actual_path);
-			system((char *)command);
+			system(command);
 		}
 
 		bumpClearToMark(b, local_mark);
