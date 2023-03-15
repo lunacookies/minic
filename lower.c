@@ -12,7 +12,7 @@ typedef struct fullNode {
 	span span;
 } fullNode;
 
-typedef struct ctx {
+typedef struct lexer {
 	hirRoot hir;
 	astRoot ast;
 	diagnosticsStorage *diagnostics;
@@ -251,23 +251,25 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 		astBlock ast_block =
 			astGetStatement(c->ast, ast_statement).block;
 
-		fullNode *nodes_start =
-			(fullNode *)(m->temp.top + m->temp.bytes_used);
-
 		bumpMark mark = bumpCreateMark(&m->temp);
+		arrayBuilder nodes_builder =
+			bumpStartArrayBuilder(&m->temp, sizeof(fullNode));
 
 		for (u16 i = 0; i < ast_block.count; i++) {
 			astStatement ast_s = { .index = ast_block.start.index +
 							i };
-			fullNode *ptr =
-				bumpAllocate(&m->temp, sizeof(fullNode));
-			*ptr = lowerStatement(c, ast_s, m);
+
+			fullNode node = lowerStatement(c, ast_s, m);
+			arrayBuilderPush(&nodes_builder, &node);
 		}
+
+		fullNode *nodes =
+			bumpFinishArrayBuilder(&m->temp, &nodes_builder);
 
 		hirNode start = { .index = -1 };
 
 		for (u16 i = 0; i < ast_block.count; i++) {
-			hirNode this = allocateNode(c, nodes_start[i]);
+			hirNode this = allocateNode(c, nodes[i]);
 			if (start.index == (u16)-1)
 				start = this;
 		}
@@ -362,9 +364,12 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 {
 	bumpMark mark = bumpCreateMark(&m->temp);
 
+	arrayBuilder functions =
+		bumpStartArrayBuilder(&m->general, sizeof(hirFunction));
+
 	ctx c = {
 		.hir = {
-			.functions = (hirFunction *)(m->general.top + m->general.bytes_used),
+			.functions = NULL,
 			.nodes = bumpAllocate(&m->temp, sizeof(hirNodeData) * MAX_NODE_COUNT),
 			.node_kinds = bumpAllocate(&m->temp, sizeof(hirNodeKind) * MAX_NODE_COUNT),
 			.node_types = bumpAllocate(&m->temp, sizeof(hirType) * MAX_NODE_COUNT),
@@ -399,11 +404,11 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 			.body = body,
 			.name = ast_function.name,
 		};
-		hirFunction *ptr =
-			bumpAllocate(&m->general, sizeof(hirFunction));
-		*ptr = function;
+		arrayBuilderPush(&functions, &function);
 		c.hir.function_count++;
 	}
+
+	c.hir.functions = bumpFinishArrayBuilder(&m->general, &functions);
 
 	c.hir.nodes = bumpCopy(&m->general, c.hir.nodes,
 			       sizeof(hirNodeData) * c.hir.node_count);

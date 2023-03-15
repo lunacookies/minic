@@ -424,26 +424,26 @@ static fullStatement statement(parser *p, char *error_name, memory *m)
 
 	case TOK_LBRACE: {
 		expect(p, TOK_LBRACE, ERROR_RECOVER);
-		fullStatement *statements_start =
-			(fullStatement *)(m->temp.top + m->temp.bytes_used);
-		u16 count = 0;
 
 		bumpMark mark = bumpCreateMark(&m->temp);
+		arrayBuilder statements_builder =
+			bumpStartArrayBuilder(&m->temp, sizeof(fullStatement));
+		u16 count = 0;
 
 		while (!at(p, TOK_RBRACE) && !atEof(p) && !atItemFirst(p)) {
 			fullStatement stmt = statement(p, "statement", m);
-			fullStatement *stmt_ptr =
-				bumpAllocate(&m->temp, sizeof(fullStatement));
-			*stmt_ptr = stmt;
+			arrayBuilderPush(&statements_builder, &stmt);
 			count++;
 		}
 		expect(p, TOK_RBRACE, ERROR_RECOVER);
 
+		fullStatement *statements =
+			bumpFinishArrayBuilder(&m->temp, &statements_builder);
+
 		astStatement start = { .index = -1 };
 
 		for (u16 i = 0; i < count; i++) {
-			astStatement this =
-				allocateStatement(p, statements_start[i]);
+			astStatement this = allocateStatement(p, statements[i]);
 			if (start.index == (u16)-1)
 				start = this;
 		}
@@ -487,12 +487,15 @@ astRoot parse(tokenBuffer tokens, u8 *content, diagnosticsStorage *diagnostics,
 {
 	bumpMark mark = bumpCreateMark(&m->temp);
 
+	arrayBuilder functions =
+		bumpStartArrayBuilder(&m->general, sizeof(astFunction));
+
 	parser p = {
 		.tokens = tokens,
 		.cursor = 0,
 		.content = content,
 		.ast = {
-			.functions = (astFunction *)(m->general.top + m->general.bytes_used),
+			.functions = NULL,
 			.statements = bumpAllocate(&m->temp, sizeof(astStatementData) * MAX_STATEMENT_COUNT),
 			.statement_kinds = bumpAllocate(&m->temp, sizeof(astStatementKind) * MAX_STATEMENT_COUNT),
 			.statement_spans = bumpAllocate(&m->temp, sizeof(span) * MAX_STATEMENT_COUNT),
@@ -510,9 +513,7 @@ astRoot parse(tokenBuffer tokens, u8 *content, diagnosticsStorage *diagnostics,
 		switch (current(&p)) {
 		case TOK_FUNC: {
 			astFunction f = function(&p, m);
-			astFunction *ptr =
-				bumpAllocate(&m->general, sizeof(astFunction));
-			*ptr = f;
+			arrayBuilderPush(&functions, &f);
 			p.ast.function_count++;
 			break;
 		}
@@ -521,6 +522,8 @@ astRoot parse(tokenBuffer tokens, u8 *content, diagnosticsStorage *diagnostics,
 			break;
 		}
 	}
+
+	p.ast.functions = bumpFinishArrayBuilder(&m->general, &functions);
 
 	p.ast.statements =
 		bumpCopy(&m->general, p.ast.statements,

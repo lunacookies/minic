@@ -21,17 +21,17 @@ static const tokenKind oneCharTokenKinds[] = {
 	TOK_RANGLE, TOK_COLON,	TOK_SEMI
 };
 
-static void pushToken(tokenKind kind, u32 start, u32 end, tokenBuffer *buf,
-		      memory *m)
+typedef struct lexer {
+	arrayBuilder kinds;
+	arrayBuilder spans;
+	usize count;
+} lexer;
+
+static void pushToken(lexer *lexer, tokenKind kind, u32 start, u32 end)
 {
-	tokenKind *k = bumpAllocate(&m->general, sizeof(tokenKind));
-	*k = kind;
-
-	span *span = bumpAllocate(&m->temp, sizeof(span));
-	span->start = start;
-	span->end = end;
-
-	buf->count++;
+	arrayBuilderPush(&lexer->kinds, &kind);
+	arrayBuilderPush(&lexer->spans, &(span){ .start = start, .end = end });
+	lexer->count++;
 }
 
 static bool isWhitespace(u8 c)
@@ -78,11 +78,9 @@ tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m)
 {
 	bumpMark mark = bumpCreateMark(&m->temp);
 
-	tokenBuffer buf = {
-		.kinds = (tokenKind *)(m->general.top + m->general.bytes_used),
-		.spans = (span *)(m->temp.top + m->temp.bytes_used),
-		.identifier_ids = NULL,
-		.count = 0,
+	lexer lexer = {
+		.kinds = bumpStartArrayBuilder(&m->general, sizeof(tokenKind)),
+		.spans = bumpStartArrayBuilder(&m->temp, sizeof(span)),
 	};
 
 	usize i = 0;
@@ -98,7 +96,7 @@ tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m)
 			while (isDigit(input[i]))
 				i++;
 			u32 end = i;
-			pushToken(TOK_NUMBER, start, end, &buf, m);
+			pushToken(&lexer, TOK_NUMBER, start, end);
 			goto next;
 		}
 
@@ -107,7 +105,7 @@ tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m)
 			while (isIdentifierFirst(input[i]) || isDigit(input[i]))
 				i++;
 			u32 end = i;
-			pushToken(TOK_IDENTIFIER, start, end, &buf, m);
+			pushToken(&lexer, TOK_IDENTIFIER, start, end);
 			goto next;
 		}
 
@@ -123,7 +121,7 @@ tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m)
 				continue;
 			i += 2;
 			u32 end = i;
-			pushToken(twoCharTokenKinds[j], start, end, &buf, m);
+			pushToken(&lexer, twoCharTokenKinds[j], start, end);
 			goto next;
 		}
 
@@ -135,7 +133,7 @@ tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m)
 			u32 start = i;
 			i++;
 			u32 end = i;
-			pushToken(oneCharTokenKinds[j], start, end, &buf, m);
+			pushToken(&lexer, oneCharTokenKinds[j], start, end);
 			goto next;
 		}
 
@@ -146,16 +144,27 @@ tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m)
 		diagnosticsStorageRecord(diagnostics, DIAG_ERROR, span,
 					 "invalid token “%c”", input[i]);
 		i++;
-		pushToken(TOK_ERROR, span.start, span.end, &buf, m);
+		pushToken(&lexer, TOK_ERROR, span.start, span.end);
 
 	next:;
 	}
 
-	convertKeywords(input, &buf);
+	tokenKind *kinds =
+		(tokenKind *)bumpFinishArrayBuilder(&m->general, &lexer.kinds);
+	span *spans = (span *)bumpFinishArrayBuilder(&m->temp, &lexer.spans);
 
-	// copy spans from temp memory into general memory
-	buf.spans = bumpCopy(&m->general, buf.spans, sizeof(span) * buf.count);
+	// Copy spans from temp memory into general memory.
+	spans = bumpCopy(&m->general, spans, sizeof(span) * lexer.count);
 	bumpClearToMark(&m->temp, mark);
+
+	tokenBuffer buf = {
+		.kinds = kinds,
+		.spans = spans,
+		.identifier_ids = NULL,
+		.count = lexer.count,
+	};
+
+	convertKeywords(input, &buf);
 
 	usize identifier_ids_size = buf.count * sizeof(u32);
 	buf.identifier_ids = bumpAllocate(&m->general, identifier_ids_size);
