@@ -1,9 +1,6 @@
 #include "minic.h"
 
-enum {
-	MAX_FILES = 1 << 16,
-	PTR_PER_FILE_SIZE = sizeof(void *) * MAX_FILES,
-};
+enum { MAX_FILES = 1 << 16 };
 
 projectSpec projectDiscover(memory *m)
 {
@@ -15,8 +12,8 @@ projectSpec projectDiscover(memory *m)
 	// memory for now since allocations are occurring in general memory
 	// while the aux arrays are being populated.
 	bumpMark mark = bumpCreateMark(&m->temp);
-	u8 **file_names = bumpAllocate(&m->temp, PTR_PER_FILE_SIZE);
-	u8 **file_contents = bumpAllocate(&m->temp, PTR_PER_FILE_SIZE);
+	u8 **file_names = bumpAllocateArray(u8 *, &m->temp, MAX_FILES);
+	u8 **file_contents = bumpAllocateArray(u8 *, &m->temp, MAX_FILES);
 
 	DIR *d = opendir(".");
 
@@ -43,12 +40,14 @@ projectSpec projectDiscover(memory *m)
 		usize size = stat.st_size;
 
 		// Copy file name into general memory.
-		u8 *name = bumpCopy(&m->general, entry->d_name,
-				    entry->d_namlen + 1); // for null terminator
+		u8 *name = bumpCopyArray(u8, &m->general, entry->d_name,
+					 entry->d_namlen +
+						 1); // for null terminator
 
 		// Read file content into general memory.
-		u8 *content = bumpAllocate(&m->general,
-					   size + 1); // for null terminator
+		u8 *content =
+			bumpAllocateArray(u8, &m->general,
+					  size + 1); // for null terminator
 		usize bytes_read = read(fd, content, size);
 		assert(bytes_read == size);
 		content[size] = 0;
@@ -62,9 +61,9 @@ projectSpec projectDiscover(memory *m)
 
 	// Now that general memory isn’t being touched anymore, we can copy the
 	// aux arrays there.
-	usize bytes_used = num_files * sizeof(u8 *);
-	file_names = bumpCopy(&m->general, file_names, bytes_used);
-	file_contents = bumpCopy(&m->general, file_contents, bytes_used);
+	file_names = bumpCopyArray(u8 *, &m->general, file_names, num_files);
+	file_contents =
+		bumpCopyArray(u8 *, &m->general, file_contents, num_files);
 	bumpClearToMark(&m->temp, mark);
 
 	return (projectSpec){

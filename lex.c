@@ -154,7 +154,7 @@ tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m)
 	span *spans = (span *)bumpFinishArrayBuilder(&m->temp, &lexer.spans);
 
 	// Copy spans from temp memory into general memory.
-	spans = bumpCopy(&m->general, spans, sizeof(span) * lexer.count);
+	spans = bumpCopyArray(span, &m->general, spans, lexer.count);
 	bumpClearToMark(&m->temp, mark);
 
 	tokenBuffer buf = {
@@ -166,9 +166,9 @@ tokenBuffer lex(u8 *input, diagnosticsStorage *diagnostics, memory *m)
 
 	convertKeywords(input, &buf);
 
-	usize identifier_ids_size = buf.count * sizeof(u32);
-	buf.identifier_ids = bumpAllocate(&m->general, identifier_ids_size);
-	memset(buf.identifier_ids, -1, identifier_ids_size);
+	buf.identifier_ids =
+		bumpAllocateArray(identifierId, &m->general, buf.count);
+	memset(buf.identifier_ids, -1, buf.count * sizeof(identifierId));
 
 	return buf;
 }

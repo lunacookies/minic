@@ -48,6 +48,7 @@ typedef struct bump {
 	u8 *top;
 	usize bytes_used;
 	usize max_size;
+	usize padding_bytes_used;
 	u32 array_builder_nesting_level;
 } bump;
 
@@ -65,11 +66,16 @@ typedef struct arrayBuilder {
 bump bumpCreate(void *buffer, usize size);
 bumpMark bumpCreateMark(bump *b);
 void bumpClearToMark(bump *b, bumpMark mark);
-void *bumpAllocate(bump *b, usize size);
-void *bumpCopy(bump *b, void *buffer, usize size);
+void *bumpAllocateArray_(bump *b, usize count, usize element_size);
+void *bumpCopyArray_(bump *b, void *buffer, usize count, usize element_size);
 bump bumpCreateSubBump(bump *b, usize size);
 u8 *bumpPrintf(bump *b, char *fmt, ...);
 u8 *bumpPrintfV(bump *b, char *fmt, va_list ap);
+
+#define bumpAllocateArray(type, b, count)                                      \
+	((type *)(bumpAllocateArray_((b), (count), sizeof(type))))
+#define bumpCopyArray(type, b, buffer, count)                                  \
+	((type *)(bumpCopyArray_((b), (buffer), (count), sizeof(type))))
 
 arrayBuilder bumpStartArrayBuilder(bump *b, usize element_size);
 void arrayBuilderPush(arrayBuilder *ab, void *element);

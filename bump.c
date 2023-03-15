@@ -17,12 +17,38 @@ static void *bumpConsumeSpace(bump *b, usize size)
 	return ptr;
 }
 
+static void bumpAlignTo(bump *b, usize alignment)
+{
+	assert(b->array_builder_nesting_level == 0);
+
+	usize padding_size =
+		alignment - ((usize)(b->top + b->bytes_used) % alignment);
+	b->padding_bytes_used += padding_size;
+
+	void *padding = bumpConsumeSpace(b, padding_size);
+
+	// We’re pedantic, and mark padding as uninitialized.
+	memset(padding, UNINIT_SENTINEL, padding_size);
+
+	assert((usize)(b->top + b->bytes_used) % alignment == 0);
+}
+
+static void *bumpAllocate(bump *b, usize size, usize alignment)
+{
+	assert(b->array_builder_nesting_level == 0);
+	bumpAlignTo(b, alignment);
+	void *ptr = bumpConsumeSpace(b, size);
+	memset(ptr, UNINIT_SENTINEL, size);
+	return ptr;
+}
+
 bump bumpCreate(void *buffer, usize size)
 {
 	return (bump){
 		.top = buffer,
 		.bytes_used = 0,
 		.max_size = size,
+		.padding_bytes_used = 0,
 		.array_builder_nesting_level = 0,
 	};
 }
@@ -46,26 +72,33 @@ void bumpClearToMark(bump *b, bumpMark mark)
 	b->bytes_used = mark.bytes_used;
 }
 
-void *bumpAllocate(bump *b, usize size)
+void *bumpAllocateArray_(bump *b, usize count, usize element_size)
 {
 	assert(b->array_builder_nesting_level == 0);
-	void *ptr = bumpConsumeSpace(b, size);
-	memset(ptr, UNINIT_SENTINEL, size);
-	return ptr;
+
+	// We align to the element size to minimize chances that,
+	// when the array we’re currently allocating is later accessed,
+	// an element straddles a cache line boundary (which is bad for perf).
+	usize alignment = element_size;
+
+	return bumpAllocate(b, element_size * count, alignment);
 }
 
-void *bumpCopy(bump *b, void *buffer, usize size)
+void *bumpCopyArray_(bump *b, void *buffer, usize count, usize element_size)
 {
 	assert(b->array_builder_nesting_level == 0);
-	void *ptr = bumpAllocate(b, size);
-	memcpy(ptr, buffer, size);
+	void *ptr = bumpAllocateArray_(b, count, element_size);
+	memcpy(ptr, buffer, element_size * count);
 	return ptr;
 }
 
 bump bumpCreateSubBump(bump *b, usize size)
 {
 	assert(b->array_builder_nesting_level == 0);
-	void *buffer = bumpAllocate(b, size);
+
+	// We default to an alignment of 16, like malloc.
+	void *buffer = bumpAllocate(b, size, 16);
+
 	return bumpCreate(buffer, size);
 }
 

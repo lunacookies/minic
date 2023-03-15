@@ -70,7 +70,7 @@ static void processToken(tokenBuffer *buf, u8 *contents, usize token, ctx *c,
 
 	buf->identifier_ids[token] = c->ident_id;
 
-	u8 *s = bumpCopy(&m->general, ptr, length + 1);
+	u8 *s = bumpCopyArray(u8, &m->general, ptr, length + 1);
 	s[length] = 0;
 	c->identifier_contents[c->ident_id.raw] = s;
 
@@ -85,19 +85,21 @@ interner intern(tokenBuffer *bufs, u8 **contents, usize buf_count, memory *m)
 			if (bufs[i].kinds[j] == TOK_IDENTIFIER)
 				identifier_count++;
 
-	// allocate space for load factor of 0.75
+	// We allocate enough space to have a load factor of 0.75
+	// once the map has been populated.
 	usize slot_count = identifier_count * 4 / 3;
-	usize map_size = slot_count * sizeof(slot);
 
 	bumpMark mark = bumpCreateMark(&m->temp);
-	slot *map = bumpAllocate(&m->temp, map_size);
-	memset(map, 0, map_size); // each ptr in map starts out as null
+	slot *map = bumpAllocateArray(slot, &m->temp, slot_count);
+
+	// Zero everything out so that each ptr starts out as null.
+	memset(map, 0, slot_count * sizeof(slot));
 
 	ctx c = {
 		.map = map,
 		.slot_count = slot_count,
-		.identifier_contents = bumpAllocate(
-			&m->general, identifier_count * sizeof(u8 *)),
+		.identifier_contents =
+			bumpAllocateArray(u8 *, &m->general, identifier_count),
 		.ident_id = { .raw = 0 },
 	};
 

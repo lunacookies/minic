@@ -5,12 +5,12 @@ enum { MAX_DIAGNOSTIC_COUNT = 1024 };
 diagnosticsStorage diagnosticsStorageCreate(bump *b)
 {
 	return (diagnosticsStorage){
-		.files = bumpAllocate(b, sizeof(u16) * MAX_DIAGNOSTIC_COUNT),
-		.spans = bumpAllocate(b, sizeof(span) * MAX_DIAGNOSTIC_COUNT),
-		.severities = bumpAllocate(b, sizeof(severity) *
-						      MAX_DIAGNOSTIC_COUNT),
+		.files = bumpAllocateArray(u16, b, MAX_DIAGNOSTIC_COUNT),
+		.spans = bumpAllocateArray(span, b, MAX_DIAGNOSTIC_COUNT),
+		.severities =
+			bumpAllocateArray(severity, b, MAX_DIAGNOSTIC_COUNT),
 		.message_starts =
-			bumpAllocate(b, sizeof(u32) * MAX_DIAGNOSTIC_COUNT),
+			bumpAllocateArray(u32, b, MAX_DIAGNOSTIC_COUNT),
 		.all_messages =
 			bumpCreateSubBump(b, 128 * MAX_DIAGNOSTIC_COUNT),
 		.count = 0,

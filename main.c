@@ -24,8 +24,8 @@ int main(int argc, char **argv)
 
 	setCurrentProject(current_project);
 
-	tokenBuffer *token_buffers = bumpAllocate(
-		&m.general, sizeof(tokenBuffer) * current_project.num_files);
+	tokenBuffer *token_buffers = bumpAllocateArray(
+		tokenBuffer, &m.general, current_project.num_files);
 
 	for (u16 i = 0; i < current_project.num_files; i++) {
 		setCurrentFile(i);
@@ -66,8 +66,8 @@ int main(int argc, char **argv)
 
 	if (debug) {
 		debugLog("compiled %u files using", current_project.num_files);
-		debugLog("    %zu bytes of general memory",
-			 m.general.bytes_used);
+		debugLog("    %zu bytes of general memory (%zu bytes padding)",
+			 m.general.bytes_used, m.general.padding_bytes_used);
 		debugLog("    %zu bytes of assembly", assembly_bump.bytes_used);
 	}
 

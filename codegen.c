@@ -253,8 +253,8 @@ void codegen(hirRoot hir, interner interner, stringBuilder *assembly,
 		.function_name = NULL,
 		.assembly = assembly,
 		.diagnostics = diagnostics,
-		.local_offsets = bumpAllocate(&m->general,
-					      sizeof(u32) * hir.local_count),
+		.local_offsets =
+			bumpAllocateArray(u32, &m->general, hir.local_count),
 	};
 
 	for (u16 i = 0; i < hir.function_count; i++) {

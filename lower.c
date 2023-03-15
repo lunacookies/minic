@@ -370,13 +370,13 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 	ctx c = {
 		.hir = {
 			.functions = NULL,
-			.nodes = bumpAllocate(&m->temp, sizeof(hirNodeData) * MAX_NODE_COUNT),
-			.node_kinds = bumpAllocate(&m->temp, sizeof(hirNodeKind) * MAX_NODE_COUNT),
-			.node_types = bumpAllocate(&m->temp, sizeof(hirType) * MAX_NODE_COUNT),
-			.node_spans = bumpAllocate(&m->temp, sizeof(span) * MAX_NODE_COUNT),
-			.local_names = bumpAllocate(&m->temp, sizeof(identifierId) * MAX_LOCAL_COUNT),
-			.local_types = bumpAllocate(&m->temp, sizeof(hirType) * MAX_LOCAL_COUNT),
-			.local_spans = bumpAllocate(&m->temp, sizeof(span) * MAX_LOCAL_COUNT),
+			.nodes = bumpAllocateArray(hirNodeData, &m->temp, MAX_NODE_COUNT),
+			.node_kinds = bumpAllocateArray(hirNodeKind, &m->temp, MAX_NODE_COUNT),
+			.node_types = bumpAllocateArray(hirType, &m->temp, MAX_NODE_COUNT),
+			.node_spans = bumpAllocateArray(span, &m->temp, MAX_NODE_COUNT),
+			.local_names = bumpAllocateArray(identifierId, &m->temp, MAX_LOCAL_COUNT),
+			.local_types = bumpAllocateArray(hirType, &m->temp, MAX_LOCAL_COUNT),
+			.local_spans = bumpAllocateArray(span, &m->temp, MAX_LOCAL_COUNT),
 			.function_count = 0,
 			.node_count = 0,
 			.local_count = 0,
@@ -410,21 +410,21 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 
 	c.hir.functions = bumpFinishArrayBuilder(&m->general, &functions);
 
-	c.hir.nodes = bumpCopy(&m->general, c.hir.nodes,
-			       sizeof(hirNodeData) * c.hir.node_count);
-	c.hir.node_kinds = bumpCopy(&m->general, c.hir.node_kinds,
-				    sizeof(hirNodeKind) * c.hir.node_count);
-	c.hir.node_types = bumpCopy(&m->general, c.hir.node_kinds,
-				    sizeof(hirType) * c.hir.node_count);
-	c.hir.node_spans = bumpCopy(&m->general, c.hir.node_spans,
-				    sizeof(span) * c.hir.node_count);
+	c.hir.nodes = bumpCopyArray(hirNodeData, &m->general, c.hir.nodes,
+				    c.hir.node_count);
+	c.hir.node_kinds = bumpCopyArray(hirNodeKind, &m->general,
+					 c.hir.node_kinds, c.hir.node_count);
+	c.hir.node_types = bumpCopyArray(hirType, &m->general, c.hir.node_kinds,
+					 c.hir.node_count);
+	c.hir.node_spans = bumpCopyArray(span, &m->general, c.hir.node_spans,
+					 c.hir.node_count);
 
-	c.hir.local_names = bumpCopy(&m->general, c.hir.local_names,
-				     sizeof(identifierId) * c.hir.local_count);
-	c.hir.local_types = bumpCopy(&m->general, c.hir.local_types,
-				     sizeof(hirType) * c.hir.local_count);
-	c.hir.local_spans = bumpCopy(&m->general, c.hir.local_spans,
-				     sizeof(span) * c.hir.local_count);
+	c.hir.local_names = bumpCopyArray(identifierId, &m->general,
+					  c.hir.local_names, c.hir.local_count);
+	c.hir.local_types = bumpCopyArray(hirType, &m->general,
+					  c.hir.local_types, c.hir.local_count);
+	c.hir.local_spans = bumpCopyArray(span, &m->general, c.hir.local_spans,
+					  c.hir.local_count);
 
 	bumpClearToMark(&m->temp, mark);
 

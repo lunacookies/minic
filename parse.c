@@ -496,12 +496,12 @@ astRoot parse(tokenBuffer tokens, u8 *content, diagnosticsStorage *diagnostics,
 		.content = content,
 		.ast = {
 			.functions = NULL,
-			.statements = bumpAllocate(&m->temp, sizeof(astStatementData) * MAX_STATEMENT_COUNT),
-			.statement_kinds = bumpAllocate(&m->temp, sizeof(astStatementKind) * MAX_STATEMENT_COUNT),
-			.statement_spans = bumpAllocate(&m->temp, sizeof(span) * MAX_STATEMENT_COUNT),
-			.expressions = bumpAllocate(&m->temp, sizeof(astStatementData) * MAX_EXPRESSION_COUNT),
-			.expression_kinds = bumpAllocate(&m->temp, sizeof(astStatementKind) * MAX_EXPRESSION_COUNT),
-			.expression_spans = bumpAllocate(&m->temp, sizeof(span) * MAX_EXPRESSION_COUNT),
+			.statements = bumpAllocateArray(astStatementData, &m->temp, MAX_STATEMENT_COUNT),
+			.statement_kinds = bumpAllocateArray(astStatementKind, &m->temp, MAX_STATEMENT_COUNT),
+			.statement_spans = bumpAllocateArray(span, &m->temp, MAX_STATEMENT_COUNT),
+			.expressions = bumpAllocateArray(astExpressionData, &m->temp, MAX_EXPRESSION_COUNT),
+			.expression_kinds = bumpAllocateArray(astExpressionKind, &m->temp, MAX_EXPRESSION_COUNT),
+			.expression_spans = bumpAllocateArray(span, &m->temp, MAX_EXPRESSION_COUNT),
 			.function_count = 0,
 			.statement_count = 0,
 			.expression_count = 0,
@@ -526,23 +526,24 @@ astRoot parse(tokenBuffer tokens, u8 *content, diagnosticsStorage *diagnostics,
 	p.ast.functions = bumpFinishArrayBuilder(&m->general, &functions);
 
 	p.ast.statements =
-		bumpCopy(&m->general, p.ast.statements,
-			 sizeof(astStatementData) * p.ast.statement_count);
+		bumpCopyArray(astStatementData, &m->general, p.ast.statements,
+			      p.ast.statement_count);
 	p.ast.statement_kinds =
-		bumpCopy(&m->general, p.ast.statement_kinds,
-			 sizeof(astStatementKind) * p.ast.statement_count);
-	p.ast.statement_spans = bumpCopy(&m->general, p.ast.statement_spans,
-					 sizeof(span) * p.ast.statement_count);
+		bumpCopyArray(astStatementKind, &m->general,
+			      p.ast.statement_kinds, p.ast.statement_count);
+	p.ast.statement_spans =
+		bumpCopyArray(span, &m->general, p.ast.statement_spans,
+			      p.ast.statement_count);
 
 	p.ast.expressions =
-		bumpCopy(&m->general, p.ast.expressions,
-			 sizeof(astExpressionData) * p.ast.expression_count);
+		bumpCopyArray(astExpressionData, &m->general, p.ast.expressions,
+			      p.ast.expression_count);
 	p.ast.expression_kinds =
-		bumpCopy(&m->general, p.ast.expression_kinds,
-			 sizeof(astExpressionKind) * p.ast.expression_count);
+		bumpCopyArray(astExpressionKind, &m->general,
+			      p.ast.expression_kinds, p.ast.expression_count);
 	p.ast.expression_spans =
-		bumpCopy(&m->general, p.ast.expression_spans,
-			 sizeof(span) * p.ast.expression_count);
+		bumpCopyArray(span, &m->general, p.ast.expression_spans,
+			      p.ast.expression_count);
 
 	bumpClearToMark(&m->temp, mark);
 

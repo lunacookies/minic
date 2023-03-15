@@ -7,7 +7,7 @@ static u8 *readFile(u8 *name, bump *b)
 	fstat(fd, &s);
 	usize size = s.st_size;
 
-	u8 *content = bumpAllocate(b, size + 1);
+	u8 *content = bumpAllocateArray(u8, b, size + 1);
 	usize bytes_read = read(fd, content, size);
 	assert(bytes_read == size);
 	content[size] = 0;
