@@ -68,6 +68,10 @@ tests() {
 	assert 1 'func main { return 0<=1; }'
 
 	assert 32 'func main { var x=1; var i=0; while (i!=5) { set x=x*2; set i=i+1; } return x; }'
+
+	assert 5 'func main { var x=5; return *&x; }'
+	assert 40 'func main { var a=40; var b=&a; return *b; }'
+	assert 10 'func main { var a=1; var b=&a; set *b = 10; return a; }'
 }
 
 mkdir test

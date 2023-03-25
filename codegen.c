@@ -71,6 +71,8 @@ static void pop(ctx *c, const char *reg)
 	instruction(c, "add", "sp, sp, #16");
 }
 
+static void gen(ctx *c, hirNode node);
+
 static void genAddress(ctx *c, hirNode node)
 {
 	switch (hirGetNodeKind(c->hir, node)) {
@@ -78,6 +80,13 @@ static void genAddress(ctx *c, hirNode node)
 		hirVariable variable = hirGetNode(c->hir, node).variable;
 		u32 offset = c->local_offsets[variable.local.index];
 		instruction(c, "sub", "x8, fp, #%u", offset);
+		break;
+	}
+
+	case HIR_DEREFERENCE: {
+		hirDereference dereference =
+			hirGetNode(c->hir, node).dereference;
+		gen(c, dereference.value);
 		break;
 	}
 
@@ -155,6 +164,20 @@ static void gen(ctx *c, hirNode node)
 			instruction(c, "cset", "x8, ge");
 			break;
 		}
+		break;
+	}
+
+	case HIR_ADDRESS_OF: {
+		hirAddressOf address_of = hirGetNode(c->hir, node).address_of;
+		genAddress(c, address_of.value);
+		break;
+	}
+
+	case HIR_DEREFERENCE: {
+		hirDereference dereference =
+			hirGetNode(c->hir, node).dereference;
+		gen(c, dereference.value);
+		instruction(c, "ldr", "x8, [x8]");
 		break;
 	}
 
