@@ -3,11 +3,11 @@ func lonely {
 }
 
 func variable {
-	var x = 1;
+	x := 1;
 	return x;
 }
 
 func complex {
-	var x = 10;
+	x := 10;
 	return 10 * (x - 5);
 }

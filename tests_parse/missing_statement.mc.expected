@@ -1,0 +1,7 @@
+func main {
+	<missing>
+	<missing>
+}
+tests_parse:16..17: error: invalid token “$”
+tests_parse:16..17: error: expected statement but found unrecognized token
+tests_parse:22..25: error: expected statement but found “var”

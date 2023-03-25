@@ -98,8 +98,8 @@ static bool atItemFirst(parser *p)
 
 static bool atStatementFirst(parser *p)
 {
-	return at(p, TOK_RETURN) || at(p, TOK_VAR) || at(p, TOK_SET) ||
-	       at(p, TOK_IF) || at(p, TOK_ELSE) || at(p, TOK_WHILE);
+	return at(p, TOK_RETURN) || at(p, TOK_SET) || at(p, TOK_IF) ||
+	       at(p, TOK_ELSE) || at(p, TOK_WHILE);
 }
 
 static bool atRecovery(parser *p)
@@ -378,19 +378,6 @@ static fullStatement statement(parser *p, const char *error_name, memory *m)
 		break;
 	}
 
-	case TOK_VAR: {
-		expect(p, TOK_VAR, ERROR_RECOVER);
-		identifierId name = expectIdentifier(p, "variable name");
-		expect(p, TOK_EQUAL, ERROR_RECOVER);
-		astExpression value = allocateExpression(
-			p, expression(p, "variable value", m));
-		expect(p, TOK_SEMI, ERROR_EAT_NONE);
-		s.kind = AST_STMT_LOCAL_DEFINITION;
-		s.data.local_definition.name = name;
-		s.data.local_definition.value = value;
-		break;
-	}
-
 	case TOK_SET: {
 		expect(p, TOK_SET, ERROR_RECOVER);
 		astExpression lhs = allocateExpression(
@@ -472,6 +459,18 @@ static fullStatement statement(parser *p, const char *error_name, memory *m)
 		s.kind = AST_STMT_BLOCK;
 		s.data.block.start = start;
 		s.data.block.count = count;
+		break;
+	}
+
+	case TOK_IDENTIFIER: {
+		identifierId name = expectIdentifier(p, "variable name");
+		expect(p, TOK_COLON_EQUAL, ERROR_RECOVER);
+		astExpression value = allocateExpression(
+			p, expression(p, "variable value", m));
+		expect(p, TOK_SEMI, ERROR_EAT_NONE);
+		s.kind = AST_STMT_LOCAL_DEFINITION;
+		s.data.local_definition.name = name;
+		s.data.local_definition.value = value;
 		break;
 	}
 
@@ -725,7 +724,6 @@ static void debugStatement(ctx *c, astStatement statement)
 	case AST_STMT_LOCAL_DEFINITION: {
 		astLocalDefinition local_definition =
 			astGetStatement(c->ast, statement).local_definition;
-		stringBuilderPrintf(c->sb, "var ");
 
 		if (local_definition.name.raw == (u32)-1)
 			stringBuilderPrintf(c->sb, "<missing>");
@@ -735,7 +733,7 @@ static void debugStatement(ctx *c, astStatement statement)
 				internerLookup(c->interner,
 					       local_definition.name));
 
-		stringBuilderPrintf(c->sb, " = ");
+		stringBuilderPrintf(c->sb, " := ");
 		debugExpression(c, local_definition.value);
 		stringBuilderPrintf(c->sb, ";");
 		break;

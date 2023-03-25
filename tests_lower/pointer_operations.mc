@@ -1,5 +1,5 @@
 func main {
-	var x = 10;
-	var y = &x;
-	var z = (*y + *&x);
+	x := 10;
+	y := &x;
+	z := (*y + *&x);
 }

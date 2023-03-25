@@ -1,3 +1,3 @@
 func a {
-	var x = y;
+	x := y;
 }

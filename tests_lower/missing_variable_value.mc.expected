@@ -3,4 +3,4 @@ func main
 	{
 		set x = <missing>;
 	}
-tests_lower:13..22: warning: unused variable
+tests_lower:13..19: warning: unused variable

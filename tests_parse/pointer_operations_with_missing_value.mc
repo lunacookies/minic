@@ -1,4 +1,4 @@
 func main {
-	var address_of = &;
-	var dereference = *;
+	address_of := &;
+	dereference := *;
 }

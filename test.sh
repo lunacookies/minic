@@ -34,10 +34,10 @@ tests() {
 	assert 5 'func main { return 1+1+1+1+1+1-1; }'
 	assert 64 'func main { return 2*2*2*2*2*2; }'
 
-	assert 5 'func main { var x=5; return x; }'
-	assert 10 'func main { var x=10; var y=x; return y; }'
-	assert 20 'func main { var x=1; set x=20; return x; }'
-	assert 9 'func main { var x=2; set x=x+1; set x=x*3; return x; }'
+	assert 5 'func main { x:=5; return x; }'
+	assert 10 'func main { x:=10; y:=x; return y; }'
+	assert 20 'func main { x:=1; set x=20; return x; }'
+	assert 9 'func main { x:=2; set x=x+1; set x=x*3; return x; }'
 
 	assert 4 'func main { if (0) return 2; else return 4; }'
 	assert 2 'func main { if (1) return 2; else return 4; }'
@@ -46,7 +46,7 @@ tests() {
 
 	assert 1 'func main { return 0==0; }'
 	assert 1 'func main { return 5==5; }'
-	assert 1 'func main { var a=99; var b=a; return a==b; }'
+	assert 1 'func main { a:=99; b:=a; return a==b; }'
 	assert 0 'func main { return 4==8; }'
 	assert 0 'func main { return 5!=5; }'
 	assert 1 'func main { return 4!=8; }'
@@ -67,11 +67,11 @@ tests() {
 	assert 1 'func main { return 0<=0; }'
 	assert 1 'func main { return 0<=1; }'
 
-	assert 32 'func main { var x=1; var i=0; while (i!=5) { set x=x*2; set i=i+1; } return x; }'
+	assert 32 'func main { x:=1; i:=0; while (i!=5) { set x=x*2; set i=i+1; } return x; }'
 
-	assert 5 'func main { var x=5; return *&x; }'
-	assert 40 'func main { var a=40; var b=&a; return *b; }'
-	assert 10 'func main { var a=1; var b=&a; set *b = 10; return a; }'
+	assert 5 'func main { x:=5; return *&x; }'
+	assert 40 'func main { a:=40; b:=&a; return *b; }'
+	assert 10 'func main { a:=1; b:=&a; set *b = 10; return a; }'
 }
 
 mkdir test

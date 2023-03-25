@@ -1,5 +1,5 @@
 func main {
-	var x = 92;
+	x := 92;
 	if (x > 40) {
 		set x = 1 - x;
 		return 60;

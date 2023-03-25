@@ -1,4 +1,4 @@
 func main {
-	var x = (1 + <missing>);
+	x := (1 + <missing>);
 }
-tests_parse:24..25: error: missing operand
+tests_parse:21..22: error: missing operand

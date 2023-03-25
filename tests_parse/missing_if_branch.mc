@@ -3,7 +3,7 @@ func a {
 
 func b {
 	if (0) {
-		var x = 1;
+		x := 1;
 	} else
 
 func c {}

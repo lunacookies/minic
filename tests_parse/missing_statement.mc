@@ -1,3 +1,4 @@
 func main {
-	x := ();
+    $
+    var
 }

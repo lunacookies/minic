@@ -188,6 +188,7 @@ typedef enum tokenKind {
 	TOK_RANGLE,
 	TOK_RANGLE_EQUAL,
 	TOK_COLON,
+	TOK_COLON_EQUAL,
 	TOK_SEMI,
 	TOK_AMPERSAND
 } tokenKind;

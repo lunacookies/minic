@@ -7,4 +7,4 @@ func main
 		set y = &x;
 		set z = (*y + *&x);
 	}
-tests_lower:39..58: warning: unused variable
+tests_lower:33..49: warning: unused variable

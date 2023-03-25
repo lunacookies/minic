@@ -1,3 +1,3 @@
 func main {
-	var x = 1 +;
+	x := 1 +;
 }

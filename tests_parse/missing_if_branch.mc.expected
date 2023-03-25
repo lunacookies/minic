@@ -6,7 +6,7 @@ func a {
 
 func b {
 	if (0) {
-		var x = 1;
+		x := 1;
 	} else
 		<missing>
 }
@@ -14,5 +14,5 @@ func b {
 func c {}
 tests_parse:16..17: error: missing if statement true branch
 tests_parse:16..17: error: missing “}”
-tests_parse:57..58: error: missing if statement false branch
-tests_parse:57..58: error: missing “}”
+tests_parse:54..55: error: missing if statement false branch
+tests_parse:54..55: error: missing “}”

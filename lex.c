@@ -7,11 +7,12 @@ static const tokenKind keywordKinds[] = { TOK_FUNC, TOK_RETURN, TOK_VAR,
 					  TOK_WHILE };
 
 static const char twoCharTokens[][2] = {
-	{ '=', '=' }, { '!', '=' }, { '<', '=' }, { '>', '=' }
+	{ '=', '=' }, { '!', '=' }, { '<', '=' }, { '>', '=' }, { ':', '=' }
 };
 static const tokenKind twoCharTokenKinds[] = { TOK_EQUAL_EQUAL, TOK_BANG_EQUAL,
 					       TOK_LANGLE_EQUAL,
-					       TOK_RANGLE_EQUAL };
+					       TOK_RANGLE_EQUAL,
+					       TOK_COLON_EQUAL };
 
 static const char oneCharTokens[] = { '=', '+', '-', '*', '/', '{', '}',
 				      '(', ')', '<', '>', ':', ';', '&' };
@@ -230,6 +231,8 @@ const char *tokenKindShow(tokenKind kind)
 		return "“>=”";
 	case TOK_COLON:
 		return "“:”";
+	case TOK_COLON_EQUAL:
+		return "“:=”";
 	case TOK_SEMI:
 		return "“;”";
 	case TOK_AMPERSAND:
@@ -294,6 +297,8 @@ const char *tokenKindDebug(tokenKind kind)
 		return "RANGLE_EQUAL";
 	case TOK_COLON:
 		return "COLON";
+	case TOK_COLON_EQUAL:
+		return "COLON_EQUAL";
 	case TOK_SEMI:
 		return "SEMI";
 	case TOK_AMPERSAND:
