@@ -188,7 +188,8 @@ typedef enum tokenKind {
 	TOK_RANGLE,
 	TOK_RANGLE_EQUAL,
 	TOK_COLON,
-	TOK_SEMI
+	TOK_SEMI,
+	TOK_AMPERSAND
 } tokenKind;
 
 typedef struct identifierId {
@@ -237,6 +238,8 @@ typedef enum astExpressionKind {
 	AST_EXPR_INT_LITERAL,
 	AST_EXPR_VARIABLE,
 	AST_EXPR_BINARY_OPERATION,
+	AST_EXPR_ADDRESS_OF,
+	AST_EXPR_DEREFERENCE
 } astExpressionKind;
 
 typedef enum astBinaryOperator {
@@ -266,10 +269,20 @@ typedef struct astBinaryOperation {
 	astBinaryOperator op;
 } astBinaryOperation;
 
+typedef struct astAddressOf {
+	astExpression value;
+} astAddressOf;
+
+typedef struct astDereference {
+	astExpression value;
+} astDereference;
+
 typedef union astExpressionData {
 	astIntLiteral int_literal;
 	astVariable variable;
 	astBinaryOperation binary_operation;
+	astAddressOf address_of;
+	astDereference dereference;
 } astExpressionData;
 
 typedef enum astStatementKind {

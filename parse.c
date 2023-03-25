@@ -221,6 +221,24 @@ static fullExpression expressionLhs(parser *p, const char *error_name,
 		break;
 	}
 
+	case TOK_AMPERSAND: {
+		expect(p, TOK_AMPERSAND, ERROR_RECOVER);
+		astExpression value = allocateExpression(
+			p, expressionLhs(p, "expression", m));
+		e.kind = AST_EXPR_ADDRESS_OF;
+		e.data.address_of.value = value;
+		break;
+	}
+
+	case TOK_STAR: {
+		expect(p, TOK_STAR, ERROR_RECOVER);
+		astExpression value = allocateExpression(
+			p, expressionLhs(p, "expression", m));
+		e.kind = AST_EXPR_DEREFERENCE;
+		e.data.dereference.value = value;
+		break;
+	}
+
 	case TOK_LPAREN: {
 		expect(p, TOK_LPAREN, ERROR_RECOVER);
 		fullExpression inner =
@@ -668,6 +686,22 @@ static void debugExpression(ctx *c, astExpression expression)
 
 		debugExpression(c, binary_operation.rhs);
 		stringBuilderPrintf(c->sb, ")");
+		break;
+	}
+
+	case AST_EXPR_ADDRESS_OF: {
+		astAddressOf address_of =
+			astGetExpression(c->ast, expression).address_of;
+		stringBuilderPrintf(c->sb, "&");
+		debugExpression(c, address_of.value);
+		break;
+	}
+
+	case AST_EXPR_DEREFERENCE: {
+		astDereference dereference =
+			astGetExpression(c->ast, expression).dereference;
+		stringBuilderPrintf(c->sb, "*");
+		debugExpression(c, dereference.value);
 		break;
 	}
 	}

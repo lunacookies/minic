@@ -14,11 +14,11 @@ static const tokenKind twoCharTokenKinds[] = { TOK_EQUAL_EQUAL, TOK_BANG_EQUAL,
 					       TOK_RANGLE_EQUAL };
 
 static const char oneCharTokens[] = { '=', '+', '-', '*', '/', '{', '}',
-				      '(', ')', '<', '>', ':', ';' };
+				      '(', ')', '<', '>', ':', ';', '&' };
 static const tokenKind oneCharTokenKinds[] = {
-	TOK_EQUAL,  TOK_PLUS,	TOK_DASH,   TOK_STAR,	TOK_SLASH,
-	TOK_LBRACE, TOK_RBRACE, TOK_LPAREN, TOK_RPAREN, TOK_LANGLE,
-	TOK_RANGLE, TOK_COLON,	TOK_SEMI
+	TOK_EQUAL,  TOK_PLUS,	TOK_DASH,   TOK_STAR,	  TOK_SLASH,
+	TOK_LBRACE, TOK_RBRACE, TOK_LPAREN, TOK_RPAREN,	  TOK_LANGLE,
+	TOK_RANGLE, TOK_COLON,	TOK_SEMI,   TOK_AMPERSAND
 };
 
 typedef struct lexer {
@@ -232,6 +232,8 @@ const char *tokenKindShow(tokenKind kind)
 		return "“:”";
 	case TOK_SEMI:
 		return "“;”";
+	case TOK_AMPERSAND:
+		return "“&”";
 	}
 }
 
@@ -294,6 +296,8 @@ const char *tokenKindDebug(tokenKind kind)
 		return "COLON";
 	case TOK_SEMI:
 		return "SEMI";
+	case TOK_AMPERSAND:
+		return "AMPERSAND";
 	}
 }
 

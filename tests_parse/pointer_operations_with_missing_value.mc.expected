@@ -1,0 +1,6 @@
+func main {
+	var address_of = &<missing>;
+	var dereference = *<missing>;
+}
+tests_parse:31..32: error: missing expression
+tests_parse:53..54: error: missing expression
