@@ -386,6 +386,8 @@ typedef enum hirNodeKind {
 	HIR_INT_LITERAL,
 	HIR_VARIABLE,
 	HIR_BINARY_OPERATION,
+	HIR_ADDRESS_OF,
+	HIR_DEREFERENCE,
 	HIR_ASSIGN,
 	HIR_IF,
 	HIR_WHILE,
@@ -406,6 +408,14 @@ typedef struct hirBinaryOperation {
 	hirNode rhs;
 	astBinaryOperator op;
 } hirBinaryOperation;
+
+typedef struct hirAddressOf {
+	hirNode value;
+} hirAddressOf;
+
+typedef struct hirDereference {
+	hirNode value;
+} hirDereference;
 
 typedef struct hirAssign {
 	hirNode lhs;
@@ -436,6 +446,8 @@ typedef struct hirNodeData {
 	hirIntLiteral int_literal;
 	hirVariable variable;
 	hirBinaryOperation binary_operation;
+	hirAddressOf address_of;
+	hirDereference dereference;
 	hirAssign assign;
 	hirIf if_;
 	hirWhile while_;

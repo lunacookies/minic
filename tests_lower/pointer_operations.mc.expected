@@ -1,0 +1,10 @@
+func main
+	var x i64;
+	var y i64;
+	var z i64;
+	{
+		set x = 10;
+		set y = &x;
+		set z = (*y + *&x);
+	}
+tests_lower:39..58: warning: unused variable

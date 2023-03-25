@@ -127,6 +127,32 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 		n.data.binary_operation.op = ast_binary_operation.op;
 		break;
 	}
+
+	case AST_EXPR_ADDRESS_OF: {
+		astAddressOf ast_address_of =
+			astGetExpression(c->ast, ast_expression).address_of;
+
+		hirNode value = allocateNode(
+			c, lowerExpression(c, ast_address_of.value, m));
+
+		n.kind = HIR_ADDRESS_OF;
+		n.type = HIR_TYPE_I64;
+		n.data.address_of.value = value;
+		break;
+	}
+
+	case AST_EXPR_DEREFERENCE: {
+		astDereference ast_dereference =
+			astGetExpression(c->ast, ast_expression).dereference;
+
+		hirNode value = allocateNode(
+			c, lowerExpression(c, ast_dereference.value, m));
+
+		n.kind = HIR_DEREFERENCE;
+		n.type = HIR_TYPE_I64;
+		n.data.dereference.value = value;
+		break;
+	}
 	}
 
 	assert(n.kind != (hirNodeKind)-1);
@@ -305,6 +331,16 @@ static bool isLocalUsedInNode(hirRoot hir, hirNode node, hirLocal local)
 			hirGetNode(hir, node).binary_operation;
 		return isLocalUsedInNode(hir, binary_operation.lhs, local) ||
 		       isLocalUsedInNode(hir, binary_operation.rhs, local);
+	}
+
+	case HIR_ADDRESS_OF: {
+		hirAddressOf address_of = hirGetNode(hir, node).address_of;
+		return isLocalUsedInNode(hir, address_of.value, local);
+	}
+
+	case HIR_DEREFERENCE: {
+		hirDereference dereference = hirGetNode(hir, node).dereference;
+		return isLocalUsedInNode(hir, dereference.value, local);
 	}
 
 	case HIR_ASSIGN: {
@@ -584,6 +620,21 @@ static void debugNode(debugCtx *c, hirNode node)
 
 		debugNode(c, binary_operation.rhs);
 		stringBuilderPrintf(c->sb, ")");
+		break;
+	}
+
+	case HIR_ADDRESS_OF: {
+		hirAddressOf address_of = hirGetNode(c->hir, node).address_of;
+		stringBuilderPrintf(c->sb, "&");
+		debugNode(c, address_of.value);
+		break;
+	}
+
+	case HIR_DEREFERENCE: {
+		hirDereference dereference =
+			hirGetNode(c->hir, node).dereference;
+		stringBuilderPrintf(c->sb, "*");
+		debugNode(c, dereference.value);
 		break;
 	}
 
