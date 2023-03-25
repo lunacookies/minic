@@ -4,6 +4,7 @@ enum {
 	MAX_NODE_COUNT = 63 * 1024,
 	MAX_LOCAL_COUNT = 63 * 1024,
 	MAX_TYPE_COUNT = 63 * 1024,
+	SEEN_TYPE_SLOTS_COUNT = MAX_TYPE_COUNT * 4 / 3, // max 0.75 load factor
 };
 
 typedef struct fullNode {
@@ -13,10 +14,26 @@ typedef struct fullNode {
 	span span;
 } fullNode;
 
-typedef struct lexer {
+typedef struct slot {
+	u64 hash;
+	hirType type;
+} slot;
+
+static void makeSlotVacant(slot *slot)
+{
+	slot->type.index = -1;
+}
+
+static bool isSlotResident(slot slot)
+{
+	return slot.type.index != (u16)-1;
+}
+
+typedef struct ctx {
 	hirRoot hir;
 	astRoot ast;
 	diagnosticsStorage *diagnostics;
+	slot *seen_type_slots;
 } ctx;
 
 static hirLocal lookupLocal(ctx *c, identifierId name)
@@ -63,11 +80,51 @@ static hirLocal allocateLocal(ctx *c, identifierId name, hirType type,
 static hirType allocateType(ctx *c, hirTypeKind kind, hirTypeData data)
 {
 	assert(c->hir.type_count < MAX_TYPE_COUNT);
+
+	struct {
+		hirTypeKind kind;
+		hirTypeData data;
+	} data_to_be_hashed = { .kind = kind, .data = data };
+	u64 hash = fxhash((u8 *)&data_to_be_hashed, sizeof(data_to_be_hashed));
+
+	usize slot_index = hash % SEEN_TYPE_SLOTS_COUNT;
+	slot *slot = &c->seen_type_slots[slot_index];
+	while (isSlotResident(*slot)) {
+		if (slot->hash != hash)
+			goto no_match;
+
+		if (hirGetTypeKind(c->hir, slot->type) != kind)
+			goto no_match;
+
+		hirTypeData slot_data = hirGetType(c->hir, slot->type);
+		if (memcmp(&slot_data, &data, sizeof(hirTypeData)) != 0)
+			goto no_match;
+
+		// At this point we have certainly found a match,
+		// so we just return this slot’s index in the HIR’s type arrays.
+		return slot->type;
+
+	no_match:
+		slot_index++;
+		slot_index %= SEEN_TYPE_SLOTS_COUNT;
+		slot = &c->seen_type_slots[slot_index];
+	}
+
+	// At this point we didn’t find a matching slot
+	// and exited the loop because we found an empty slot.
+	// And so, we remember this type by putting it in the empty slot,
+	// and we also store the type’s information in the HIR.
+
 	u16 i = c->hir.type_count;
+	hirType type = { .index = i };
+	slot->type = type;
+	slot->hash = hash;
+
 	c->hir.type_count++;
 	c->hir.types[i] = data;
 	c->hir.type_kinds[i] = kind;
-	return (hirType){ .index = i };
+
+	return type;
 }
 
 static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
@@ -423,6 +480,11 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 	arrayBuilder functions =
 		bumpStartArrayBuilder(&m->general, sizeof(hirFunction));
 
+	slot *seen_type_slots =
+		bumpAllocateArray(slot, &m->temp, SEEN_TYPE_SLOTS_COUNT);
+	for (usize i = 0; i < SEEN_TYPE_SLOTS_COUNT; i++)
+		makeSlotVacant(&seen_type_slots[i]);
+
 	ctx c = {
 		.hir = {
 			.functions = NULL,
@@ -442,6 +504,7 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 		},
 		.ast = ast,
 		.diagnostics = diagnostics,
+		.seen_type_slots = seen_type_slots,
 	};
 
 	for (u16 i = 0; i < c.ast.function_count; i++) {
