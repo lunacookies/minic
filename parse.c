@@ -477,6 +477,15 @@ static fullStatement statement(parser *p, const char *error_name, memory *m)
 		break;
 	}
 
+	case TOK_ELSE: {
+		span span = currentSpan(p);
+		expect(p, TOK_ELSE, ERROR_RECOVER);
+		diagnosticsStorageRecord(p->diagnostics, DIAG_ERROR, span,
+					 "unmatched “else”");
+		s.kind = AST_STMT_MISSING;
+		break;
+	}
+
 	case TOK_WHILE: {
 		expect(p, TOK_WHILE, ERROR_RECOVER);
 		astExpression condition = allocateExpression(

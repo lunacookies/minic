@@ -1,0 +1,4 @@
+func main {
+	<missing>
+}
+tests_parse:13..17: error: unmatched “else”

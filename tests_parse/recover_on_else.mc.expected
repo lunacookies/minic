@@ -1,0 +1,10 @@
+func main {
+	if a {
+		set foo = (1 + <missing>)
+		<missing>
+		{}
+	}
+}
+tests_parse:35..36: error: missing operand
+tests_parse:37..41: error: unmatched “else”
+tests_parse:46..47: error: missing “}”

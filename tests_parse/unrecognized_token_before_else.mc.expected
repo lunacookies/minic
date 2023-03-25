@@ -1,0 +1,10 @@
+func main {
+	if x <missing>
+	<missing>
+	<missing>
+	{}
+}
+tests_parse:30..31: error: invalid token “$”
+tests_parse:20..29: error: expected block but found a single statement
+tests_parse:30..31: error: expected statement but found unrecognized token
+tests_parse:33..37: error: unmatched “else”
