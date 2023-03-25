@@ -148,8 +148,13 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 		hirNode value = allocateNode(
 			c, lowerExpression(c, ast_address_of.value, m));
 
+		hirPointer type = {
+			.child_type = hirGetNodeType(c->hir, value),
+		};
+
 		n.kind = HIR_ADDRESS_OF;
-		n.type = allocateType(c, HIR_TYPE_I64, (hirTypeData){ 0 });
+		n.type = allocateType(c, HIR_TYPE_POINTER,
+				      (hirTypeData){ .pointer = type });
 		n.data.address_of.value = value;
 		break;
 	}
@@ -564,6 +569,8 @@ u32 hirTypeSize(hirRoot hir, hirType type)
 		return 0;
 	case HIR_TYPE_I64:
 		return 8;
+	case HIR_TYPE_POINTER:
+		return 8;
 	}
 }
 
@@ -590,6 +597,12 @@ void hirTypeDebug(hirRoot hir, hirType type, stringBuilder *sb)
 	case HIR_TYPE_I64:
 		stringBuilderPrintf(sb, "i64");
 		break;
+	case HIR_TYPE_POINTER: {
+		hirPointer pointer = hirGetType(hir, type).pointer;
+		stringBuilderPrintf(sb, "*");
+		hirTypeDebug(hir, pointer.child_type, sb);
+		break;
+	}
 	}
 }
 

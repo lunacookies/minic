@@ -1,6 +1,6 @@
 func main
 	var x i64
-	var y i64
+	var y *i64
 	var z i64
 	{
 		set x = 10

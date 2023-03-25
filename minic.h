@@ -458,14 +458,18 @@ typedef union hirNodeData {
 	hirBlock block;
 } hirNodeData;
 
-typedef enum hirTypeKind { HIR_TYPE_VOID, HIR_TYPE_I64 } hirTypeKind;
+typedef enum hirTypeKind {
+	HIR_TYPE_VOID,
+	HIR_TYPE_I64,
+	HIR_TYPE_POINTER
+} hirTypeKind;
 
-typedef struct hirPointerType {
+typedef struct hirPointer {
 	hirType child_type;
-} hirPointerType;
+} hirPointer;
 
 typedef union hirTypeData {
-	u8 dummy;
+	hirPointer pointer;
 } hirTypeData;
 
 typedef struct hirFunction {
