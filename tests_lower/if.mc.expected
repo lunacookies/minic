@@ -2,9 +2,10 @@ func main
 	var x i64;
 	{
 		set x = 92;
-		if ((x > 40)) {
+		if (x > 40) {
 			set x = (1 - x);
 			return 60;
-		} else
+		} else {
 			return 1;
+		}
 	}

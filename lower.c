@@ -249,14 +249,14 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 		n.data.if_.condition = allocateNode(
 			c, lowerExpression(c, ast_if.condition, m));
 
-		n.data.if_.true_branch = allocateNode(
-			c, lowerStatement(c, ast_if.true_branch, m));
+		n.data.if_.true_block = allocateNode(
+			c, lowerStatement(c, ast_if.true_block, m));
 
-		if (ast_if.false_branch.index != (u16)-1)
-			n.data.if_.false_branch = allocateNode(
-				c, lowerStatement(c, ast_if.false_branch, m));
+		if (ast_if.false_block.index != (u16)-1)
+			n.data.if_.false_block = allocateNode(
+				c, lowerStatement(c, ast_if.false_block, m));
 		else
-			n.data.if_.false_branch.index = -1;
+			n.data.if_.false_block.index = -1;
 
 		break;
 	}
@@ -268,8 +268,8 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 		n.type = HIR_TYPE_VOID;
 		n.data.while_.condition = allocateNode(
 			c, lowerExpression(c, ast_while.condition, m));
-		n.data.while_.true_branch = allocateNode(
-			c, lowerStatement(c, ast_while.true_branch, m));
+		n.data.while_.true_block = allocateNode(
+			c, lowerStatement(c, ast_while.true_block, m));
 		break;
 	}
 
@@ -365,18 +365,18 @@ static bool isLocalUsedInNode(hirRoot hir, hirNode node, hirLocal local)
 	case HIR_IF: {
 		hirIf if_ = hirGetNode(hir, node).if_;
 		bool is_used = isLocalUsedInNode(hir, if_.condition, local) ||
-			       isLocalUsedInNode(hir, if_.true_branch, local);
+			       isLocalUsedInNode(hir, if_.true_block, local);
 		if (is_used)
 			return true;
-		if (if_.false_branch.index != (u16)-1)
-			return isLocalUsedInNode(hir, if_.false_branch, local);
+		if (if_.false_block.index != (u16)-1)
+			return isLocalUsedInNode(hir, if_.false_block, local);
 		return false;
 	}
 
 	case HIR_WHILE: {
 		hirWhile while_ = hirGetNode(hir, node).while_;
 		return isLocalUsedInNode(hir, while_.condition, local) ||
-		       isLocalUsedInNode(hir, while_.true_branch, local);
+		       isLocalUsedInNode(hir, while_.true_block, local);
 	}
 
 	case HIR_RETURN: {
@@ -650,54 +650,25 @@ static void debugNode(debugCtx *c, hirNode node)
 
 	case HIR_IF: {
 		hirIf if_ = hirGetNode(c->hir, node).if_;
-		stringBuilderPrintf(c->sb, "if (");
+		stringBuilderPrintf(c->sb, "if ");
 		debugNode(c, if_.condition);
-		stringBuilderPrintf(c->sb, ")");
+		stringBuilderPrintf(c->sb, " ");
+		debugNode(c, if_.true_block);
 
-		if (hirGetNodeKind(c->hir, if_.true_branch) == HIR_BLOCK) {
-			stringBuilderPrintf(c->sb, " ");
-			debugNode(c, if_.true_branch);
-			stringBuilderPrintf(c->sb, " ");
-		} else {
-			c->indentation++;
-			newline(c);
-			debugNode(c, if_.true_branch);
-			c->indentation--;
-			newline(c);
-		}
-
-		if (if_.false_branch.index == (u16)-1)
+		if (if_.false_block.index == (u16)-1)
 			break;
 
-		stringBuilderPrintf(c->sb, "else");
-
-		if (hirGetNodeKind(c->hir, if_.false_branch) == HIR_BLOCK) {
-			stringBuilderPrintf(c->sb, " ");
-			debugNode(c, if_.false_branch);
-		} else {
-			c->indentation++;
-			newline(c);
-			debugNode(c, if_.false_branch);
-			c->indentation--;
-		}
+		stringBuilderPrintf(c->sb, " else ");
+		debugNode(c, if_.false_block);
 		break;
 	}
 
 	case HIR_WHILE: {
 		hirWhile while_ = hirGetNode(c->hir, node).while_;
-		stringBuilderPrintf(c->sb, "while (");
+		stringBuilderPrintf(c->sb, "while ");
 		debugNode(c, while_.condition);
-		stringBuilderPrintf(c->sb, ")");
-
-		if (hirGetNodeKind(c->hir, while_.true_branch) == HIR_BLOCK) {
-			stringBuilderPrintf(c->sb, " ");
-			debugNode(c, while_.true_branch);
-		} else {
-			c->indentation++;
-			newline(c);
-			debugNode(c, while_.true_branch);
-			c->indentation--;
-		}
+		stringBuilderPrintf(c->sb, " ");
+		debugNode(c, while_.true_block);
 		break;
 	}
 

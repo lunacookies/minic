@@ -197,11 +197,11 @@ static void gen(ctx *c, hirNode node)
 		c->id++;
 		gen(c, if_.condition);
 		instruction(c, "cbz", "x8, ELSE_%s_%u", c->function_name, i);
-		gen(c, if_.true_branch);
+		gen(c, if_.true_block);
 		instruction(c, "b", "ENDIF_%s_%u", c->function_name, i);
 		label(c, "ELSE_%s_%u", c->function_name, i);
-		if (if_.false_branch.index != (u16)-1)
-			gen(c, if_.false_branch);
+		if (if_.false_block.index != (u16)-1)
+			gen(c, if_.false_block);
 		label(c, "ENDIF_%s_%u", c->function_name, i);
 		break;
 	}
@@ -214,7 +214,7 @@ static void gen(ctx *c, hirNode node)
 		gen(c, while_.condition);
 		instruction(c, "cbz", "x8, ENDWHILE_%s_%u", c->function_name,
 			    i);
-		gen(c, while_.true_branch);
+		gen(c, while_.true_block);
 		instruction(c, "b", "WHILE_%s_%u", c->function_name, i);
 		label(c, "ENDWHILE_%s_%u", c->function_name, i);
 		break;

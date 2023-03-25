@@ -1,4 +1,4 @@
 func main {
-	if {}
-	if
+	if foo
+		$
 }

@@ -1,3 +1,3 @@
 func a {
-	while (0)
+	while 0
 func b {}

@@ -39,10 +39,10 @@ tests() {
 	assert 20 'func main { x:=1; set x=20; return x; }'
 	assert 9 'func main { x:=2; set x=x+1; set x=x*3; return x; }'
 
-	assert 4 'func main { if (0) return 2; else return 4; }'
-	assert 2 'func main { if (1) return 2; else return 4; }'
-	assert 4 'func main { if (0) return 2; return 4; }'
-	assert 2 'func main { if (1) return 2; return 4; }'
+	assert 4 'func main { if 0 { return 2; } else { return 4; } }'
+	assert 2 'func main { if 1 { return 2; } else { return 4; } }'
+	assert 4 'func main { if 0 { return 2; } return 4; }'
+	assert 2 'func main { if 1 { return 2; } return 4; }'
 
 	assert 1 'func main { return 0==0; }'
 	assert 1 'func main { return 5==5; }'
@@ -67,7 +67,7 @@ tests() {
 	assert 1 'func main { return 0<=0; }'
 	assert 1 'func main { return 0<=1; }'
 
-	assert 32 'func main { x:=1; i:=0; while (i!=5) { set x=x*2; set i=i+1; } return x; }'
+	assert 32 'func main { x:=1; i:=0; while i!=5 { set x=x*2; set i=i+1; } return x; }'
 
 	assert 5 'func main { x:=5; return *&x; }'
 	assert 40 'func main { a:=40; b:=&a; return *b; }'

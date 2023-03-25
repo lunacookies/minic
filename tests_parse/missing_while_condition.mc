@@ -1,4 +1,4 @@
 func main {
-	while () {}
-	while (
+	while {}
+	while
 }

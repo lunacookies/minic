@@ -1,8 +1,8 @@
 func a {
-	if (0)
+	if 0
 
 func b {
-	if (0) {
+	if 0 {
 		x := 1;
 	} else
 

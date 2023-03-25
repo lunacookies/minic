@@ -1,10 +1,7 @@
 func main {
-	if (<missing>) {} 
-	if (<missing>)
-		<missing>
-	
+	if <missing> {}
+	if <missing> <missing>
 }
-tests_parse:17..18: error: missing if statement condition
-tests_parse:27..28: error: missing if statement condition
-tests_parse:27..28: error: missing “)”
-tests_parse:27..28: error: missing if statement true branch
+tests_parse:15..16: error: missing if statement condition
+tests_parse:22..23: error: missing if statement condition
+tests_parse:22..23: error: missing if statement true branch

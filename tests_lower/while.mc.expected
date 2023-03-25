@@ -5,13 +5,14 @@ func main
 	var a i64;
 	{
 		set i = 0;
-		while ((i < 10))
+		while (i < 10) {
 			set i = (i + 1);
+		}
 		set x = 0;
 		set y = 0;
 		set a = 0;
-		while ((x < 100)) {
-			while ((y < 100)) {
+		while (x < 100) {
+			while (y < 100) {
 				set a = (a + (x * y));
 			}
 		}

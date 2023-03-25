@@ -312,13 +312,13 @@ typedef struct astAssign {
 
 typedef struct astIf {
 	astExpression condition;
-	astStatement true_branch;
-	astStatement false_branch;
+	astStatement true_block;
+	astStatement false_block;
 } astIf;
 
 typedef struct astWhile {
 	astExpression condition;
-	astStatement true_branch;
+	astStatement true_block;
 } astWhile;
 
 typedef struct astBlock {
@@ -425,13 +425,13 @@ typedef struct hirAssign {
 
 typedef struct hirIf {
 	hirNode condition;
-	hirNode true_branch;
-	hirNode false_branch;
+	hirNode true_block;
+	hirNode false_block;
 } hirIf;
 
 typedef struct hirWhile {
 	hirNode condition;
-	hirNode true_branch;
+	hirNode true_block;
 } hirWhile;
 
 typedef struct hirReturn {

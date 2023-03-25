@@ -1,9 +1,7 @@
 func main {
-	while (<missing>) {}
-	while (<missing>)
-		<missing>
+	while <missing> {}
+	while <missing> <missing>
 }
-tests_parse:20..21: error: missing while loop condition
-tests_parse:33..34: error: missing while loop condition
-tests_parse:33..34: error: missing “)”
-tests_parse:33..34: error: missing while loop body
+tests_parse:18..19: error: missing while loop condition
+tests_parse:28..29: error: missing while loop condition
+tests_parse:28..29: error: missing while loop body

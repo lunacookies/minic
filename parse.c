@@ -358,6 +358,73 @@ static fullExpression expression(parser *p, const char *error_name, memory *m)
 	return expressionBindingPower(p, 0, error_name, m);
 }
 
+static fullStatement statement(parser *p, const char *error_name, memory *m);
+
+static fullStatement blockStatement(parser *p, const char *error_name,
+				    memory *m)
+{
+	fullStatement s = {
+		.data = { 0 },
+		.kind = -1,
+		.span = { .start = atEof(p) ? p->tokens.spans[p->cursor - 1].end
+					    : currentSpan(p).start },
+	};
+
+	if (current(p) != TOK_LBRACE) {
+		// We expected a block, but we didn’t get one.
+		// Let’s parse a statement, just so we can get the span --
+		// we don’t actually keep the parsed statement.
+
+		fullStatement erroneousStatement = statement(p, error_name, m);
+
+		// Only bother the user about this not being a block
+		// if we have a working statement in the first place!
+		if (erroneousStatement.kind != AST_STMT_MISSING)
+			diagnosticsStorageRecord(
+				p->diagnostics, DIAG_ERROR,
+				erroneousStatement.span,
+				"expected block but found a single statement");
+
+		s.kind = AST_STMT_MISSING;
+		return s;
+	}
+
+	expect(p, TOK_LBRACE, ERROR_RECOVER);
+
+	bumpMark mark = bumpCreateMark(&m->temp);
+	arrayBuilder statements_builder =
+		bumpStartArrayBuilder(&m->temp, sizeof(fullStatement));
+	u16 count = 0;
+
+	while (!at(p, TOK_RBRACE) && !atEof(p) && !atItemFirst(p)) {
+		fullStatement stmt = statement(p, "statement", m);
+		arrayBuilderPush(&statements_builder, &stmt);
+		count++;
+	}
+	expect(p, TOK_RBRACE, ERROR_RECOVER);
+
+	fullStatement *statements =
+		bumpFinishArrayBuilder(&m->temp, &statements_builder);
+
+	astStatement start = { .index = -1 };
+
+	for (u16 i = 0; i < count; i++) {
+		astStatement this = allocateStatement(p, statements[i]);
+		if (start.index == (u16)-1)
+			start = this;
+	}
+
+	bumpClearToMark(&m->temp, mark);
+
+	s.kind = AST_STMT_BLOCK;
+	s.data.block.start = start;
+	s.data.block.count = count;
+
+	assert(s.kind != (astStatementKind)-1);
+	s.span.end = p->tokens.spans[p->cursor - 1].end;
+	return s;
+}
+
 static fullStatement statement(parser *p, const char *error_name, memory *m)
 {
 	fullStatement s = {
@@ -394,73 +461,38 @@ static fullStatement statement(parser *p, const char *error_name, memory *m)
 
 	case TOK_IF: {
 		expect(p, TOK_IF, ERROR_RECOVER);
-		expect(p, TOK_LPAREN, ERROR_EAT_NONE);
 		astExpression condition = allocateExpression(
 			p, expression(p, "if statement condition", m));
-		expect(p, TOK_RPAREN, ERROR_RECOVER);
-		astStatement true_branch = allocateStatement(
-			p, statement(p, "if statement true branch", m));
-		astStatement false_branch = { .index = -1 };
+		astStatement true_block = allocateStatement(
+			p, blockStatement(p, "if statement true branch", m));
+		astStatement false_block = { .index = -1 };
 		if (at(p, TOK_ELSE)) {
 			expect(p, TOK_ELSE, ERROR_RECOVER);
-			false_branch = allocateStatement(
-				p,
-				statement(p, "if statement false branch", m));
+			false_block = allocateStatement(
+				p, blockStatement(
+					   p, "if statement false branch", m));
 		}
 		s.kind = AST_STMT_IF;
 		s.data.if_.condition = condition;
-		s.data.if_.true_branch = true_branch;
-		s.data.if_.false_branch = false_branch;
+		s.data.if_.true_block = true_block;
+		s.data.if_.false_block = false_block;
 		break;
 	}
 
 	case TOK_WHILE: {
 		expect(p, TOK_WHILE, ERROR_RECOVER);
-		expect(p, TOK_LPAREN, ERROR_EAT_NONE);
 		astExpression condition = allocateExpression(
 			p, expression(p, "while loop condition", m));
-		expect(p, TOK_RPAREN, ERROR_RECOVER);
 		astStatement body = allocateStatement(
-			p, statement(p, "while loop body", m));
+			p, blockStatement(p, "while loop body", m));
 		s.kind = AST_STMT_WHILE;
 		s.data.while_.condition = condition;
-		s.data.while_.true_branch = body;
+		s.data.while_.true_block = body;
 		break;
 	}
 
-	case TOK_LBRACE: {
-		expect(p, TOK_LBRACE, ERROR_RECOVER);
-
-		bumpMark mark = bumpCreateMark(&m->temp);
-		arrayBuilder statements_builder =
-			bumpStartArrayBuilder(&m->temp, sizeof(fullStatement));
-		u16 count = 0;
-
-		while (!at(p, TOK_RBRACE) && !atEof(p) && !atItemFirst(p)) {
-			fullStatement stmt = statement(p, "statement", m);
-			arrayBuilderPush(&statements_builder, &stmt);
-			count++;
-		}
-		expect(p, TOK_RBRACE, ERROR_RECOVER);
-
-		fullStatement *statements =
-			bumpFinishArrayBuilder(&m->temp, &statements_builder);
-
-		astStatement start = { .index = -1 };
-
-		for (u16 i = 0; i < count; i++) {
-			astStatement this = allocateStatement(p, statements[i]);
-			if (start.index == (u16)-1)
-				start = this;
-		}
-
-		bumpClearToMark(&m->temp, mark);
-
-		s.kind = AST_STMT_BLOCK;
-		s.data.block.start = start;
-		s.data.block.count = count;
-		break;
-	}
+	case TOK_LBRACE:
+		return blockStatement(p, error_name, m);
 
 	case TOK_IDENTIFIER: {
 		identifierId name = expectIdentifier(p, "variable name");
@@ -751,58 +783,25 @@ static void debugStatement(ctx *c, astStatement statement)
 
 	case AST_STMT_IF: {
 		astIf if_ = astGetStatement(c->ast, statement).if_;
-		stringBuilderPrintf(c->sb, "if (");
+		stringBuilderPrintf(c->sb, "if ");
 		debugExpression(c, if_.condition);
-		stringBuilderPrintf(c->sb, ")");
+		stringBuilderPrintf(c->sb, " ");
+		debugStatement(c, if_.true_block);
 
-		if (astGetStatementKind(c->ast, if_.true_branch) ==
-		    AST_STMT_BLOCK) {
-			stringBuilderPrintf(c->sb, " ");
-			debugStatement(c, if_.true_branch);
-			stringBuilderPrintf(c->sb, " ");
-		} else {
-			c->indentation++;
-			newline(c);
-			debugStatement(c, if_.true_branch);
-			c->indentation--;
-			newline(c);
-		}
-
-		if (if_.false_branch.index == (u16)-1)
+		if (if_.false_block.index == (u16)-1)
 			break;
 
-		stringBuilderPrintf(c->sb, "else");
-
-		if (astGetStatementKind(c->ast, if_.false_branch) ==
-		    AST_STMT_BLOCK) {
-			stringBuilderPrintf(c->sb, " ");
-			debugStatement(c, if_.false_branch);
-		} else {
-			c->indentation++;
-			newline(c);
-			debugStatement(c, if_.false_branch);
-			c->indentation--;
-		}
+		stringBuilderPrintf(c->sb, " else ");
+		debugStatement(c, if_.false_block);
 		break;
 	}
 
 	case AST_STMT_WHILE: {
 		astWhile while_ = astGetStatement(c->ast, statement).while_;
-		stringBuilderPrintf(c->sb, "while (");
+		stringBuilderPrintf(c->sb, "while ");
 		debugExpression(c, while_.condition);
-		stringBuilderPrintf(c->sb, ")");
-
-		if (astGetStatementKind(c->ast, while_.true_branch) ==
-		    AST_STMT_BLOCK) {
-			stringBuilderPrintf(c->sb, " ");
-			debugStatement(c, while_.true_branch);
-			break;
-		}
-
-		c->indentation++;
-		newline(c);
-		debugStatement(c, while_.true_branch);
-		c->indentation--;
+		stringBuilderPrintf(c->sb, " ");
+		debugStatement(c, while_.true_block);
 		break;
 	}
 
