@@ -1,0 +1,12 @@
+func main
+	var n i64
+	var np *i64
+	{
+		set n = 5
+		set np = &n
+		<missing>
+		<missing>
+	}
+tests_lower:39..41: error: expected “i64” but found “*i64”
+tests_lower:52..53: error: expected “*i64” but found “i64”
+tests_lower:21..29: warning: unused variable

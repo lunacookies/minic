@@ -309,12 +309,34 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 	case AST_STMT_ASSIGN: {
 		astAssign ast_assign =
 			astGetStatement(c->ast, ast_statement).assign;
+
+		fullNode lhs = lowerExpression(c, ast_assign.lhs, m);
+		fullNode rhs = lowerExpression(c, ast_assign.rhs, m);
+
+		if (lhs.type.index != rhs.type.index) {
+			u8 buffer[128];
+			bump b = bumpCreate(buffer, sizeof(buffer));
+			stringBuilder sb = stringBuilderCreate(&b);
+
+			stringBuilderPrintf(&sb, "expected “");
+			hirTypeShow(c->hir, lhs.type, &sb);
+			stringBuilderPrintf(&sb, "” but found “");
+			hirTypeShow(c->hir, rhs.type, &sb);
+			stringBuilderPrintf(&sb, "”");
+
+			char *message = stringBuilderFinish(sb);
+			diagnosticsStorageRecord(c->diagnostics, DIAG_ERROR,
+						 rhs.span, message);
+			n.kind = HIR_MISSING;
+			n.type = allocateType(c, HIR_TYPE_VOID,
+					      (hirTypeData){ 0 });
+			break;
+		}
+
 		n.kind = HIR_ASSIGN;
 		n.type = allocateType(c, HIR_TYPE_VOID, (hirTypeData){ 0 });
-		n.data.assign.lhs =
-			allocateNode(c, lowerExpression(c, ast_assign.lhs, m));
-		n.data.assign.rhs =
-			allocateNode(c, lowerExpression(c, ast_assign.rhs, m));
+		n.data.assign.lhs = allocateNode(c, lhs);
+		n.data.assign.rhs = allocateNode(c, rhs);
 		break;
 	}
 
