@@ -443,7 +443,7 @@ typedef struct hirBlock {
 	u16 count;
 } hirBlock;
 
-typedef struct hirNodeData {
+typedef union hirNodeData {
 	hirIntLiteral int_literal;
 	hirVariable variable;
 	hirBinaryOperation binary_operation;
