@@ -574,6 +574,24 @@ u32 hirTypeSize(hirRoot hir, hirType type)
 	}
 }
 
+void hirTypeShow(hirRoot hir, hirType type, stringBuilder *sb)
+{
+	switch (hirGetTypeKind(hir, type)) {
+	case HIR_TYPE_VOID:
+		stringBuilderPrintf(sb, "void");
+		break;
+	case HIR_TYPE_I64:
+		stringBuilderPrintf(sb, "i64");
+		break;
+	case HIR_TYPE_POINTER: {
+		hirPointer pointer = hirGetType(hir, type).pointer;
+		stringBuilderPrintf(sb, "*");
+		hirTypeShow(hir, pointer.child_type, sb);
+		break;
+	}
+	}
+}
+
 typedef struct debugCtx {
 	hirRoot hir;
 	interner interner;
@@ -586,24 +604,6 @@ static void newline(debugCtx *c)
 	stringBuilderPrintf(c->sb, "\n");
 	for (u32 i = 0; i < c->indentation; i++)
 		stringBuilderPrintf(c->sb, "\t");
-}
-
-void hirTypeDebug(hirRoot hir, hirType type, stringBuilder *sb)
-{
-	switch (hirGetTypeKind(hir, type)) {
-	case HIR_TYPE_VOID:
-		stringBuilderPrintf(sb, "void");
-		break;
-	case HIR_TYPE_I64:
-		stringBuilderPrintf(sb, "i64");
-		break;
-	case HIR_TYPE_POINTER: {
-		hirPointer pointer = hirGetType(hir, type).pointer;
-		stringBuilderPrintf(sb, "*");
-		hirTypeDebug(hir, pointer.child_type, sb);
-		break;
-	}
-	}
 }
 
 static void debugNode(debugCtx *c, hirNode node)
@@ -761,7 +761,7 @@ static void debugFunction(debugCtx *c, hirFunction function)
 			c->sb, "var %s ",
 			internerLookup(c->interner,
 				       hirGetLocalName(c->hir, local)));
-		hirTypeDebug(c->hir, hirGetLocalType(c->hir, local), c->sb);
+		hirTypeShow(c->hir, hirGetLocalType(c->hir, local), c->sb);
 	}
 
 	newline(c);

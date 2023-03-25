@@ -513,7 +513,7 @@ span hirGetLocalSpan(hirRoot hir, hirLocal local);
 hirTypeData hirGetType(hirRoot hir, hirType type);
 hirTypeKind hirGetTypeKind(hirRoot hir, hirType type);
 u32 hirTypeSize(hirRoot hir, hirType type);
-void hirTypeDebug(hirRoot hir, hirType type, stringBuilder *sb);
+void hirTypeShow(hirRoot hir, hirType type, stringBuilder *sb);
 void hirDebug(hirRoot hir, interner interner, stringBuilder *sb);
 void hirDebugPrint(hirRoot hir, interner interner, bump *b);
 
