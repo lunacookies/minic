@@ -1,9 +1,9 @@
 func main {
 	if foo
-		x := 5;
+		x := 5
 	else
-		return 10;
+		return 10
 
 	while x
-		set a = 4;
+		set a = 4
 }

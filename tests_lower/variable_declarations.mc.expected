@@ -1,11 +1,11 @@
 func main
-	var x i64;
-	var y i64;
-	var z i64;
+	var x i64
+	var y i64
+	var z i64
 	{
-		set x = 10;
-		set y = 20;
-		set z = x;
+		set x = 10
+		set y = 20
+		set z = x
 	}
-tests_lower:23..31: warning: unused variable
-tests_lower:33..40: warning: unused variable
+tests_lower:22..29: warning: unused variable
+tests_lower:31..37: warning: unused variable

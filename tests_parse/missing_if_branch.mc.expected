@@ -4,12 +4,12 @@ func a {
 
 func b {
 	if 0 {
-		x := 1;
+		x := 1
 	} else <missing>
 }
 
 func c {}
 tests_parse:14..15: error: missing if statement true branch
 tests_parse:14..15: error: missing “}”
-tests_parse:50..51: error: missing if statement false branch
-tests_parse:50..51: error: missing “}”
+tests_parse:49..50: error: missing if statement false branch
+tests_parse:49..50: error: missing “}”

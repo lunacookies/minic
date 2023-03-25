@@ -1,6 +1,8 @@
 func main {
-	address_of := &<missing>;
-	dereference := *<missing>;
+	address_of := &<missing>
+	return a
+	dereference := *<missing>
+	return a
 }
 tests_parse:28..29: error: missing expression
-tests_parse:47..48: error: missing expression
+tests_parse:56..57: error: missing expression

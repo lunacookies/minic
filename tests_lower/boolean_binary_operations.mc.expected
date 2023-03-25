@@ -1,25 +1,25 @@
 func main
-	var t i64;
-	var f i64;
-	var eq i64;
-	var ne i64;
-	var lt i64;
-	var gt i64;
-	var le i64;
-	var ge i64;
+	var t i64
+	var f i64
+	var eq i64
+	var ne i64
+	var lt i64
+	var gt i64
+	var le i64
+	var ge i64
 	{
-		set t = 1;
-		set f = 0;
-		set eq = (t == t);
-		set ne = (t != f);
-		set lt = (f < 39);
-		set gt = (4 > t);
-		set le = ((t * 5) <= t);
-		set ge = (t <= (f - 1));
+		set t = 1
+		set f = 0
+		set eq = (t == t)
+		set ne = (t != f)
+		set lt = (f < 39)
+		set gt = (4 > t)
+		set le = ((t * 5) <= t)
+		set ge = (t <= (f - 1))
 	}
-tests_lower:31..44: warning: unused variable
-tests_lower:46..59: warning: unused variable
-tests_lower:61..74: warning: unused variable
-tests_lower:76..88: warning: unused variable
-tests_lower:90..105: warning: unused variable
-tests_lower:107..122: warning: unused variable
+tests_lower:29..41: warning: unused variable
+tests_lower:43..55: warning: unused variable
+tests_lower:57..69: warning: unused variable
+tests_lower:71..82: warning: unused variable
+tests_lower:84..98: warning: unused variable
+tests_lower:100..114: warning: unused variable

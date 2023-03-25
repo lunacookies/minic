@@ -105,7 +105,7 @@ static bool atStatementFirst(parser *p)
 static bool atRecovery(parser *p)
 {
 	return atItemFirst(p) || atStatementFirst(p) || at(p, TOK_LBRACE) ||
-	       at(p, TOK_RBRACE) || at(p, TOK_SEMI);
+	       at(p, TOK_RBRACE);
 }
 
 typedef enum errorMode {
@@ -439,7 +439,6 @@ static fullStatement statement(parser *p, const char *error_name, memory *m)
 		expect(p, TOK_RETURN, ERROR_RECOVER);
 		astExpression value =
 			allocateExpression(p, expression(p, "return value", m));
-		expect(p, TOK_SEMI, ERROR_EAT_NONE);
 		s.kind = AST_STMT_RETURN;
 		s.data.retrn.value = value;
 		break;
@@ -452,7 +451,6 @@ static fullStatement statement(parser *p, const char *error_name, memory *m)
 		expect(p, TOK_EQUAL, ERROR_RECOVER);
 		astExpression rhs = allocateExpression(
 			p, expression(p, "right-hand side of assignment", m));
-		expect(p, TOK_SEMI, ERROR_EAT_NONE);
 		s.kind = AST_STMT_ASSIGN;
 		s.data.assign.lhs = lhs;
 		s.data.assign.rhs = rhs;
@@ -499,7 +497,6 @@ static fullStatement statement(parser *p, const char *error_name, memory *m)
 		expect(p, TOK_COLON_EQUAL, ERROR_RECOVER);
 		astExpression value = allocateExpression(
 			p, expression(p, "variable value", m));
-		expect(p, TOK_SEMI, ERROR_EAT_NONE);
 		s.kind = AST_STMT_LOCAL_DEFINITION;
 		s.data.local_definition.name = name;
 		s.data.local_definition.value = value;
@@ -749,7 +746,6 @@ static void debugStatement(ctx *c, astStatement statement)
 		astReturn retrn = astGetStatement(c->ast, statement).retrn;
 		stringBuilderPrintf(c->sb, "return ");
 		debugExpression(c, retrn.value);
-		stringBuilderPrintf(c->sb, ";");
 		break;
 	}
 
@@ -767,7 +763,6 @@ static void debugStatement(ctx *c, astStatement statement)
 
 		stringBuilderPrintf(c->sb, " := ");
 		debugExpression(c, local_definition.value);
-		stringBuilderPrintf(c->sb, ";");
 		break;
 	}
 
@@ -777,7 +772,6 @@ static void debugStatement(ctx *c, astStatement statement)
 		debugExpression(c, assign.lhs);
 		stringBuilderPrintf(c->sb, " = ");
 		debugExpression(c, assign.rhs);
-		stringBuilderPrintf(c->sb, ";");
 		break;
 	}
 

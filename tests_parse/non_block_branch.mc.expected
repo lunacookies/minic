@@ -2,6 +2,6 @@ func main {
 	if foo <missing> else <missing>
 	while x <missing>
 }
-tests_parse:22..29: error: expected block but found a single statement
-tests_parse:38..48: error: expected block but found a single statement
-tests_parse:61..71: error: expected block but found a single statement
+tests_parse:22..28: error: expected block but found a single statement
+tests_parse:37..46: error: expected block but found a single statement
+tests_parse:59..68: error: expected block but found a single statement

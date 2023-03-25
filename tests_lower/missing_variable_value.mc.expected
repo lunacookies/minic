@@ -1,6 +1,6 @@
 func main
-	var x void;
+	var x void
 	{
-		set x = <missing>;
+		set x = <missing>
 	}
-tests_lower:13..19: warning: unused variable
+tests_lower:13..17: warning: unused variable

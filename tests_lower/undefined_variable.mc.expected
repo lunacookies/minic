@@ -1,7 +1,7 @@
 func a
-	var x void;
+	var x void
 	{
-		set x = <missing>;
+		set x = <missing>
 	}
 tests_lower:15..16: error: undefined variable
-tests_lower:10..17: warning: unused variable
+tests_lower:10..16: warning: unused variable

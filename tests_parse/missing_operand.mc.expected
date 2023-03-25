@@ -1,4 +1,4 @@
 func main {
-	x := (1 + <missing>);
+	x := (1 + <missing>)
 }
 tests_parse:21..22: error: missing operand

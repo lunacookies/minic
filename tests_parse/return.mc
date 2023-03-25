@@ -1,13 +1,13 @@
 func lonely {
-	return 10;
+	return 10
 }
 
 func variable {
-	x := 1;
-	return x;
+	x := 1
+	return x
 }
 
 func complex {
-	x := 10;
-	return 10 * (x - 5);
+	x := 10
+	return 10 * (x - 5)
 }

@@ -644,7 +644,6 @@ static void debugNode(debugCtx *c, hirNode node)
 		debugNode(c, assign.lhs);
 		stringBuilderPrintf(c->sb, " = ");
 		debugNode(c, assign.rhs);
-		stringBuilderPrintf(c->sb, ";");
 		break;
 	}
 
@@ -676,7 +675,6 @@ static void debugNode(debugCtx *c, hirNode node)
 		hirReturn retrn = hirGetNode(c->hir, node).retrn;
 		stringBuilderPrintf(c->sb, "return ");
 		debugNode(c, retrn.value);
-		stringBuilderPrintf(c->sb, ";");
 		break;
 	}
 
@@ -711,7 +709,7 @@ static void debugFunction(debugCtx *c, hirFunction function)
 		hirLocal local = { .index = function.locals_start.index + i };
 		newline(c);
 		stringBuilderPrintf(
-			c->sb, "var %s %s;",
+			c->sb, "var %s %s",
 			internerLookup(c->interner,
 				       hirGetLocalName(c->hir, local)),
 			hirTypeDebug(hirGetLocalType(c->hir, local)));

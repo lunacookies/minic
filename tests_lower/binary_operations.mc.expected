@@ -1,12 +1,12 @@
 func main
-	var nested i64;
-	var precedence i64;
-	var parens i64;
-	var all i64;
+	var nested i64
+	var precedence i64
+	var parens i64
+	var all i64
 	{
-		set nested = (((1 + 1) + 1) + 1);
-		set precedence = ((3 + (4 * 5)) - 6);
-		set parens = (((3 + 4) * 5) - 6);
-		set all = (nested / (precedence - (parens * 5)));
+		set nested = (((1 + 1) + 1) + 1)
+		set precedence = ((3 + (4 * 5)) - 6)
+		set parens = (((3 + 4) * 5) - 6)
+		set all = (nested / (precedence - (parens * 5)))
 	}
-tests_lower:97..139: warning: unused variable
+tests_lower:94..135: warning: unused variable

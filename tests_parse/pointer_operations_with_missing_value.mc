@@ -1,4 +1,6 @@
 func main {
-	address_of := &;
-	dereference := *;
+	address_of := &
+	return a
+	dereference := *
+	return a
 }

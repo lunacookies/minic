@@ -1,10 +1,10 @@
 func main
-	var foo i64;
-	var bar i64;
+	var foo i64
+	var bar i64
 	{
-		set foo = 3;
-		set bar = foo;
-		set foo = 4;
-		set bar = (foo - 20);
+		set foo = 3
+		set bar = foo
+		set foo = 4
+		set bar = (foo - 20)
 	}
-tests_lower:24..35: warning: unused variable
+tests_lower:23..33: warning: unused variable

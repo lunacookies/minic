@@ -1,3 +1,3 @@
 func main {
-	set = x;
+	set = x
 }
