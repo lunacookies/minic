@@ -3,6 +3,7 @@
 enum {
 	MAX_NODE_COUNT = 63 * 1024,
 	MAX_LOCAL_COUNT = 63 * 1024,
+	MAX_TYPE_COUNT = 63 * 1024,
 };
 
 typedef struct fullNode {
@@ -59,26 +60,36 @@ static hirLocal allocateLocal(ctx *c, identifierId name, hirType type,
 	return (hirLocal){ .index = i };
 }
 
+static hirType allocateType(ctx *c, hirTypeKind kind, hirTypeData data)
+{
+	assert(c->hir.type_count < MAX_TYPE_COUNT);
+	u16 i = c->hir.type_count;
+	c->hir.type_count++;
+	c->hir.types[i] = data;
+	c->hir.type_kinds[i] = kind;
+	return (hirType){ .index = i };
+}
+
 static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 {
 	fullNode n = {
 		.data = { 0 },
 		.kind = -1,
-		.type = -1,
+		.type = { .index = -1 },
 		.span = astGetExpressionSpan(c->ast, ast_expression),
 	};
 
 	switch (astGetExpressionKind(c->ast, ast_expression)) {
 	case AST_EXPR_MISSING:
 		n.kind = HIR_MISSING;
-		n.type = HIR_TYPE_VOID;
+		n.type = allocateType(c, HIR_TYPE_VOID, (hirTypeData){ 0 });
 		break;
 
 	case AST_EXPR_INT_LITERAL: {
 		astIntLiteral ast_int_literal =
 			astGetExpression(c->ast, ast_expression).int_literal;
 		n.kind = HIR_INT_LITERAL;
-		n.type = HIR_TYPE_I64;
+		n.type = allocateType(c, HIR_TYPE_I64, (hirTypeData){ 0 });
 		n.data.int_literal.value = ast_int_literal.value;
 		break;
 	}
@@ -89,7 +100,8 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 
 		if (ast_variable.name.raw == (u32)-1) {
 			n.kind = HIR_MISSING;
-			n.type = HIR_TYPE_VOID;
+			n.type = allocateType(c, HIR_TYPE_VOID,
+					      (hirTypeData){ 0 });
 			break;
 		}
 
@@ -100,7 +112,8 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 				astGetExpressionSpan(c->ast, ast_expression),
 				"undefined variable");
 			n.kind = HIR_MISSING;
-			n.type = HIR_TYPE_VOID;
+			n.type = allocateType(c, HIR_TYPE_VOID,
+					      (hirTypeData){ 0 });
 			break;
 		}
 
@@ -136,7 +149,7 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 			c, lowerExpression(c, ast_address_of.value, m));
 
 		n.kind = HIR_ADDRESS_OF;
-		n.type = HIR_TYPE_I64;
+		n.type = allocateType(c, HIR_TYPE_I64, (hirTypeData){ 0 });
 		n.data.address_of.value = value;
 		break;
 	}
@@ -149,14 +162,14 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 			c, lowerExpression(c, ast_dereference.value, m));
 
 		n.kind = HIR_DEREFERENCE;
-		n.type = HIR_TYPE_I64;
+		n.type = allocateType(c, HIR_TYPE_I64, (hirTypeData){ 0 });
 		n.data.dereference.value = value;
 		break;
 	}
 	}
 
 	assert(n.kind != (hirNodeKind)-1);
-	assert(n.type != (hirType)-1);
+	assert(n.type.index != (u16)-1);
 	return n;
 }
 
@@ -165,21 +178,21 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 	fullNode n = {
 		.data = { 0 },
 		.kind = -1,
-		.type = -1,
+		.type = { .index = -1 },
 		.span = astGetStatementSpan(c->ast, ast_statement),
 	};
 
 	switch (astGetStatementKind(c->ast, ast_statement)) {
 	case AST_STMT_MISSING:
 		n.kind = HIR_MISSING;
-		n.type = HIR_TYPE_VOID;
+		n.type = allocateType(c, HIR_TYPE_VOID, (hirTypeData){ 0 });
 		break;
 
 	case AST_STMT_RETURN: {
 		astReturn ast_retrn =
 			astGetStatement(c->ast, ast_statement).retrn;
 		n.kind = HIR_RETURN;
-		n.type = HIR_TYPE_VOID;
+		n.type = allocateType(c, HIR_TYPE_VOID, (hirTypeData){ 0 });
 		n.data.retrn.value =
 			allocateNode(c, lowerExpression(c, ast_retrn.value, m));
 		break;
@@ -197,7 +210,8 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 				astGetStatementSpan(c->ast, ast_statement),
 				"cannot shadow existing variable");
 			n.kind = HIR_MISSING;
-			n.type = HIR_TYPE_VOID;
+			n.type = allocateType(c, HIR_TYPE_VOID,
+					      (hirTypeData){ 0 });
 			break;
 		}
 
@@ -206,7 +220,8 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 
 		if (ast_local_definition.name.raw == (u32)-1) {
 			n.kind = HIR_MISSING;
-			n.type = HIR_TYPE_VOID;
+			n.type = allocateType(c, HIR_TYPE_VOID,
+					      (hirTypeData){ 0 });
 			break;
 		}
 
@@ -223,7 +238,7 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 		hirNode lhs = allocateNode(c, lhs_unallocd);
 
 		n.kind = HIR_ASSIGN;
-		n.type = HIR_TYPE_VOID;
+		n.type = allocateType(c, HIR_TYPE_VOID, (hirTypeData){ 0 });
 		n.data.assign.lhs = lhs;
 		n.data.assign.rhs = rhs;
 		break;
@@ -233,7 +248,7 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 		astAssign ast_assign =
 			astGetStatement(c->ast, ast_statement).assign;
 		n.kind = HIR_ASSIGN;
-		n.type = HIR_TYPE_VOID;
+		n.type = allocateType(c, HIR_TYPE_VOID, (hirTypeData){ 0 });
 		n.data.assign.lhs =
 			allocateNode(c, lowerExpression(c, ast_assign.lhs, m));
 		n.data.assign.rhs =
@@ -244,7 +259,7 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 	case AST_STMT_IF: {
 		astIf ast_if = astGetStatement(c->ast, ast_statement).if_;
 		n.kind = HIR_IF;
-		n.type = HIR_TYPE_VOID;
+		n.type = allocateType(c, HIR_TYPE_VOID, (hirTypeData){ 0 });
 
 		n.data.if_.condition = allocateNode(
 			c, lowerExpression(c, ast_if.condition, m));
@@ -265,7 +280,7 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 		astWhile ast_while =
 			astGetStatement(c->ast, ast_statement).while_;
 		n.kind = HIR_WHILE;
-		n.type = HIR_TYPE_VOID;
+		n.type = allocateType(c, HIR_TYPE_VOID, (hirTypeData){ 0 });
 		n.data.while_.condition = allocateNode(
 			c, lowerExpression(c, ast_while.condition, m));
 		n.data.while_.true_block = allocateNode(
@@ -303,7 +318,7 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 		bumpClearToMark(&m->temp, mark);
 
 		n.kind = HIR_BLOCK;
-		n.type = HIR_TYPE_VOID;
+		n.type = allocateType(c, HIR_TYPE_VOID, (hirTypeData){ 0 });
 		n.data.block.start = start;
 		n.data.block.count = ast_block.count;
 		break;
@@ -311,7 +326,7 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 	}
 
 	assert(n.kind != (hirNodeKind)-1);
-	assert(n.type != (hirType)-1);
+	assert(n.type.index != (u16)-1);
 	return n;
 }
 
@@ -413,6 +428,8 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 			.local_names = bumpAllocateArray(identifierId, &m->temp, MAX_LOCAL_COUNT),
 			.local_types = bumpAllocateArray(hirType, &m->temp, MAX_LOCAL_COUNT),
 			.local_spans = bumpAllocateArray(span, &m->temp, MAX_LOCAL_COUNT),
+			.types = bumpAllocateArray(hirTypeData, &m->temp, MAX_TYPE_COUNT),
+			.type_kinds = bumpAllocateArray(hirTypeKind, &m->temp, MAX_TYPE_COUNT),
 			.function_count = 0,
 			.node_count = 0,
 			.local_count = 0,
@@ -450,7 +467,7 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 				    c.hir.node_count);
 	c.hir.node_kinds = bumpCopyArray(hirNodeKind, &m->general,
 					 c.hir.node_kinds, c.hir.node_count);
-	c.hir.node_types = bumpCopyArray(hirType, &m->general, c.hir.node_kinds,
+	c.hir.node_types = bumpCopyArray(hirType, &m->general, c.hir.node_types,
 					 c.hir.node_count);
 	c.hir.node_spans = bumpCopyArray(span, &m->general, c.hir.node_spans,
 					 c.hir.node_count);
@@ -461,6 +478,11 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 					  c.hir.local_types, c.hir.local_count);
 	c.hir.local_spans = bumpCopyArray(span, &m->general, c.hir.local_spans,
 					  c.hir.local_count);
+
+	c.hir.types = bumpCopyArray(hirTypeData, &m->general, c.hir.types,
+				    c.hir.type_count);
+	c.hir.type_kinds = bumpCopyArray(hirTypeKind, &m->general,
+					 c.hir.type_kinds, c.hir.type_count);
 
 	bumpClearToMark(&m->temp, mark);
 
@@ -523,9 +545,21 @@ span hirGetLocalSpan(hirRoot hir, hirLocal local)
 	return hir.local_spans[local.index];
 }
 
-u32 hirTypeSize(hirType type)
+hirTypeData hirGetType(hirRoot hir, hirType type)
 {
-	switch (type) {
+	assert(type.index < hir.type_count);
+	return hir.types[type.index];
+}
+
+hirTypeKind hirGetTypeKind(hirRoot hir, hirType type)
+{
+	assert(type.index < hir.type_count);
+	return hir.type_kinds[type.index];
+}
+
+u32 hirTypeSize(hirRoot hir, hirType type)
+{
+	switch (hirGetTypeKind(hir, type)) {
 	case HIR_TYPE_VOID:
 		return 0;
 	case HIR_TYPE_I64:
@@ -547,13 +581,15 @@ static void newline(debugCtx *c)
 		stringBuilderPrintf(c->sb, "\t");
 }
 
-const char *hirTypeDebug(hirType type)
+void hirTypeDebug(hirRoot hir, hirType type, stringBuilder *sb)
 {
-	switch (type) {
+	switch (hirGetTypeKind(hir, type)) {
 	case HIR_TYPE_VOID:
-		return "void";
+		stringBuilderPrintf(sb, "void");
+		break;
 	case HIR_TYPE_I64:
-		return "i64";
+		stringBuilderPrintf(sb, "i64");
+		break;
 	}
 }
 
@@ -709,10 +745,10 @@ static void debugFunction(debugCtx *c, hirFunction function)
 		hirLocal local = { .index = function.locals_start.index + i };
 		newline(c);
 		stringBuilderPrintf(
-			c->sb, "var %s %s",
+			c->sb, "var %s ",
 			internerLookup(c->interner,
-				       hirGetLocalName(c->hir, local)),
-			hirTypeDebug(hirGetLocalType(c->hir, local)));
+				       hirGetLocalName(c->hir, local)));
+		hirTypeDebug(c->hir, hirGetLocalType(c->hir, local), c->sb);
 	}
 
 	newline(c);

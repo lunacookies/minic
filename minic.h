@@ -380,7 +380,9 @@ typedef struct hirLocal {
 	u16 index;
 } hirLocal;
 
-typedef enum hirType { HIR_TYPE_VOID, HIR_TYPE_I64 } hirType;
+typedef struct hirType {
+	u16 index;
+} hirType;
 
 typedef enum hirNodeKind {
 	HIR_MISSING,
@@ -456,6 +458,16 @@ typedef union hirNodeData {
 	hirBlock block;
 } hirNodeData;
 
+typedef enum hirTypeKind { HIR_TYPE_VOID, HIR_TYPE_I64 } hirTypeKind;
+
+typedef struct hirPointerType {
+	hirType child_type;
+} hirPointerType;
+
+typedef union hirTypeData {
+	u8 dummy;
+} hirTypeData;
+
 typedef struct hirFunction {
 	hirLocal locals_start;
 	u16 locals_count;
@@ -475,9 +487,13 @@ typedef struct hirRoot {
 	hirType *local_types;
 	span *local_spans;
 
+	hirTypeData *types;
+	hirTypeKind *type_kinds;
+
 	u16 function_count;
 	u16 node_count;
 	u16 local_count;
+	u16 type_count;
 
 	hirLocal current_function_locals_start;
 } hirRoot;
@@ -490,8 +506,10 @@ span hirGetNodeSpan(hirRoot hir, hirNode node);
 identifierId hirGetLocalName(hirRoot hir, hirLocal local);
 hirType hirGetLocalType(hirRoot hir, hirLocal local);
 span hirGetLocalSpan(hirRoot hir, hirLocal local);
-u32 hirTypeSize(hirType type);
-const char *hirTypeDebug(hirType type);
+hirTypeData hirGetType(hirRoot hir, hirType type);
+hirTypeKind hirGetTypeKind(hirRoot hir, hirType type);
+u32 hirTypeSize(hirRoot hir, hirType type);
+void hirTypeDebug(hirRoot hir, hirType type, stringBuilder *sb);
 void hirDebug(hirRoot hir, interner interner, stringBuilder *sb);
 void hirDebugPrint(hirRoot hir, interner interner, bump *b);
 

@@ -19,7 +19,7 @@ static u32 calculateStackLayout(ctx *c, hirFunction function)
 	u32 offset = 0;
 	for (u16 i = 0; i < function.locals_count; i++) {
 		hirLocal local = { .index = function.locals_start.index + i };
-		u32 size = hirTypeSize(hirGetLocalType(c->hir, local));
+		u32 size = hirTypeSize(c->hir, hirGetLocalType(c->hir, local));
 		offset = roundUpTo(offset, size); // align
 		c->local_offsets[local.index] = offset;
 		offset += size;
