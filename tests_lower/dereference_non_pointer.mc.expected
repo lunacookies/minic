@@ -1,0 +1,10 @@
+func main
+	var x i64
+	var y void
+	{
+		set x = 10
+		set y = <missing>
+	}
+tests_lower:28..29: error: cannot dereference non-pointer type “i64”
+tests_lower:13..20: warning: unused variable
+tests_lower:22..29: warning: unused variable

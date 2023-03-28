@@ -1,0 +1,10 @@
+func main
+	var a i64
+	var ap *i64
+	var app **i64
+	{
+		set a = 5
+		set ap = &a
+		set app = &ap
+		set ap = *app
+	}

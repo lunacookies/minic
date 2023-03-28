@@ -223,8 +223,32 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 		hirNode value = allocateNode(
 			c, lowerExpression(c, ast_dereference.value, m));
 
+		hirType value_type = hirGetNodeType(c->hir, value);
+		if (hirGetTypeKind(c->hir, value_type) != HIR_TYPE_POINTER) {
+			u8 buffer[128];
+			bump b = bumpCreate(buffer, sizeof(buffer));
+			stringBuilder sb = stringBuilderCreate(&b);
+
+			stringBuilderPrintf(
+				&sb, "cannot dereference non-pointer type “");
+			hirTypeShow(c->hir, value_type, &sb);
+			stringBuilderPrintf(&sb, "”");
+
+			char *message = stringBuilderFinish(sb);
+			diagnosticsStorageRecord(c->diagnostics, DIAG_ERROR,
+						 hirGetNodeSpan(c->hir, value),
+						 message);
+			n.kind = HIR_MISSING;
+			n.type = allocateType(c, HIR_TYPE_VOID,
+					      (hirTypeData){ 0 });
+			break;
+		}
+
+		hirType child_type =
+			hirGetType(c->hir, value_type).pointer.child_type;
+
 		n.kind = HIR_DEREFERENCE;
-		n.type = allocateType(c, HIR_TYPE_I64, (hirTypeData){ 0 });
+		n.type = child_type;
 		n.data.dereference.value = value;
 		break;
 	}
