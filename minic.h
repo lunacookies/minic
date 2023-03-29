@@ -50,6 +50,7 @@ typedef struct bump {
 	usize max_size;
 	usize padding_bytes_used;
 	u32 array_builder_nesting_level;
+	u8 pad[4];
 } bump;
 
 typedef struct bumpMark {
@@ -107,6 +108,31 @@ bump allocateFromOs(usize size);
 memory memoryCreate(void);
 
 // ----------------------------------------------------------------------------
+// map.c
+
+typedef struct map {
+	u64 *hashes;
+	bool *is_resident;
+	u8 *keys;
+	u8 *values;
+	usize slot_count;
+} map;
+
+map mapCreate_(usize slot_count, bump *b, usize key_size, usize value_size);
+void *mapLookup_(map *m, void *key, usize key_size, usize value_size);
+void mapInsert_(map *m, void *key, void *value, usize key_size,
+		usize value_size);
+void mapClear_(map *m);
+
+#define mapCreate(key_t, value_t, slot_count, b)                               \
+	(mapCreate_((slot_count), (b), sizeof(key_t), sizeof(value_t)))
+#define mapLookup(key_t, value_t, m, key)                                      \
+	((value_t *)(mapLookup_((m), (key), sizeof(key_t), sizeof(value_t))))
+#define mapInsert(key_t, value_t, m, key, value)                               \
+	(mapInsert_((m), (key), (value), sizeof(key_t), sizeof(value_t)))
+#define mapClear(key_t, value_t, m) (mapClear_((m)))
+
+// ----------------------------------------------------------------------------
 // test.c
 
 typedef char *(*transformer)(char *, memory *);
@@ -116,9 +142,10 @@ void runTests(const char *dir_name, transformer t, bump *b);
 // project.c
 
 typedef struct projectSpec {
-	u16 num_files;
 	char **file_names;
 	char **file_contents;
+	u16 num_files;
+	u8 pad[6];
 } projectSpec;
 
 projectSpec projectDiscover(memory *m);
@@ -145,6 +172,7 @@ typedef struct diagnosticsStorage {
 	u32 *message_starts;
 	bump all_messages;
 	u16 count;
+	u8 pad[6];
 } diagnosticsStorage;
 
 diagnosticsStorage diagnosticsStorageCreate(bump *b);
@@ -268,6 +296,7 @@ typedef struct astBinaryOperation {
 	astExpression lhs;
 	astExpression rhs;
 	astBinaryOperator op;
+	u8 pad;
 } astBinaryOperation;
 
 typedef struct astAddressOf {
@@ -303,6 +332,7 @@ typedef struct astReturn {
 typedef struct astLocalDefinition {
 	identifierId name;
 	astExpression value;
+	u8 pad[2];
 } astLocalDefinition;
 
 typedef struct astAssign {
@@ -338,6 +368,7 @@ typedef union astStatementData {
 typedef struct astFunction {
 	identifierId name;
 	astStatement body;
+	u8 pad[2];
 } astFunction;
 
 typedef struct astRoot {
@@ -354,6 +385,7 @@ typedef struct astRoot {
 	u16 function_count;
 	u16 statement_count;
 	u16 expression_count;
+	u8 pad[2];
 } astRoot;
 
 astRoot parse(tokenBuffer tokens, char *content,
@@ -410,6 +442,7 @@ typedef struct hirBinaryOperation {
 	hirNode lhs;
 	hirNode rhs;
 	astBinaryOperator op;
+	u8 pad;
 } hirBinaryOperation;
 
 typedef struct hirAddressOf {
@@ -473,10 +506,11 @@ typedef union hirTypeData {
 } hirTypeData;
 
 typedef struct hirFunction {
+	identifierId name;
 	hirLocal locals_start;
 	u16 locals_count;
 	hirNode body;
-	identifierId name;
+	u8 pad[2];
 } hirFunction;
 
 typedef struct hirRoot {
@@ -500,6 +534,7 @@ typedef struct hirRoot {
 	u16 type_count;
 
 	hirLocal current_function_locals_start;
+	u8 pad[6];
 } hirRoot;
 
 hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m);

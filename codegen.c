@@ -3,6 +3,7 @@
 typedef struct ctx {
 	hirRoot hir;
 	u32 id;
+	u8 pad[4];
 	char *function_name;
 	stringBuilder *assembly;
 	diagnosticsStorage *diagnostics;

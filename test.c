@@ -27,7 +27,7 @@ void runTests(const char *dir_name, transformer t, bump *b)
 	bumpMark mark = bumpCreateMark(b);
 
 	bump transformer_general = bumpCreateSubBump(b, 256 * 1024);
-	bump transformer_temp = bumpCreateSubBump(b, 4 * 1024 * 1024);
+	bump transformer_temp = bumpCreateSubBump(b, 8 * 1024 * 1024);
 	bumpMark transformer_general_top = bumpCreateMark(&transformer_general);
 	bumpMark transformer_temp_top = bumpCreateMark(&transformer_temp);
 	memory transformer_memory = {

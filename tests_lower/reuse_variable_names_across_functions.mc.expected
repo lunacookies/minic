@@ -1,0 +1,26 @@
+func a
+	var x i64
+	{
+		set x = 5
+	}
+
+func b
+	var x0 i64
+	var x *i64
+	{
+		set x0 = 5
+		set x = &x0
+	}
+
+func c
+	var x1 i64
+	var x0 *i64
+	var x **i64
+	{
+		set x1 = 5
+		set x0 = &x1
+		set x = &x0
+	}
+tests_lower:10..16: warning: unused variable
+tests_lower:39..47: warning: unused variable
+tests_lower:81..89: warning: unused variable

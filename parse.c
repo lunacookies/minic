@@ -7,14 +7,16 @@ enum {
 
 typedef struct fullExpression {
 	astExpressionData data;
-	astExpressionKind kind;
 	span span;
+	astExpressionKind kind;
+	u8 pad[7];
 } fullExpression;
 
 typedef struct fullStatement {
 	astStatementData data;
-	astStatementKind kind;
 	span span;
+	astStatementKind kind;
+	u8 pad[3];
 } fullStatement;
 
 typedef struct parser {
@@ -647,6 +649,7 @@ typedef struct ctx {
 	interner interner;
 	stringBuilder *sb;
 	u32 indentation;
+	u8 pad[4];
 } ctx;
 
 static void newline(ctx *c)

@@ -4,47 +4,39 @@ enum {
 	MAX_NODE_COUNT = 63 * 1024,
 	MAX_LOCAL_COUNT = 63 * 1024,
 	MAX_TYPE_COUNT = 63 * 1024,
-	SEEN_TYPE_SLOTS_COUNT = MAX_TYPE_COUNT * 4 / 3, // max 0.75 load factor
+	SEEN_TYPES_SLOT_COUNT = MAX_TYPE_COUNT * 4 / 3, // max 0.75 load factor
+	LOCALS_BY_NAME_SLOT_COUNT = MAX_LOCAL_COUNT * 4 / 3,
 };
 
 typedef struct fullNode {
 	hirNodeData data;
-	hirNodeKind kind;
-	hirType type;
 	span span;
+	hirType type;
+	hirNodeKind kind;
+	u8 pad[5];
 } fullNode;
 
-typedef struct slot {
-	u64 hash;
-	hirType type;
-} slot;
-
-static void makeSlotVacant(slot *slot)
-{
-	slot->type.index = -1;
-}
-
-static bool isSlotResident(slot slot)
-{
-	return slot.type.index != (u16)-1;
-}
+typedef struct fullType {
+	hirTypeData data;
+	hirTypeKind kind;
+	u8 pad;
+} fullType;
 
 typedef struct ctx {
 	hirRoot hir;
 	astRoot ast;
 	diagnosticsStorage *diagnostics;
-	slot *seen_type_slots;
+	map locals_by_name;
+	map seen_types;
 } ctx;
 
 static hirLocal lookupLocal(ctx *c, identifierId name)
 {
-	for (hirLocal local = c->hir.current_function_locals_start;
-	     local.index < c->hir.local_count; local.index++) {
-		if (hirGetLocalName(c->hir, local).raw == name.raw)
-			return local;
-	}
-
-	return (hirLocal){ .index = -1 };
+	hirLocal *local =
+		mapLookup(identifierId, hirLocal, &c->locals_by_name, &name);
+	if (local == NULL)
+		return (hirLocal){ .index = -1 };
+	return *local;
 }
 
 static hirNode allocateNode(ctx *c, fullNode node)
@@ -69,62 +61,39 @@ static hirLocal allocateLocal(ctx *c, identifierId name, hirType type,
 			      span span)
 {
 	assert(c->hir.local_count < MAX_LOCAL_COUNT);
+
 	u16 i = c->hir.local_count;
 	c->hir.local_count++;
+
+	hirLocal local = { .index = i };
+	mapInsert(identifierId, hirLocal, &c->locals_by_name, &name, &local);
+
 	c->hir.local_names[i] = name;
 	c->hir.local_types[i] = type;
 	c->hir.local_spans[i] = span;
-	return (hirLocal){ .index = i };
+	return local;
 }
 
 static hirType allocateType(ctx *c, hirTypeKind kind, hirTypeData data)
 {
 	assert(c->hir.type_count < MAX_TYPE_COUNT);
 
-	struct {
-		hirTypeKind kind;
-		hirTypeData data;
-	} data_to_be_hashed = { .kind = kind, .data = data };
-	u64 hash = fxhash((u8 *)&data_to_be_hashed, sizeof(data_to_be_hashed));
+	fullType full_type = { .kind = kind, .data = data };
+	hirType *lookup_result =
+		mapLookup(fullType, hirType, &c->seen_types, &full_type);
 
-	usize slot_index = hash % SEEN_TYPE_SLOTS_COUNT;
-	slot *slot = &c->seen_type_slots[slot_index];
-	while (isSlotResident(*slot)) {
-		if (slot->hash != hash)
-			goto no_match;
+	if (lookup_result == NULL) {
+		u16 i = c->hir.type_count;
+		hirType type = { .index = i };
+		c->hir.type_count++;
+		c->hir.types[i] = data;
+		c->hir.type_kinds[i] = kind;
 
-		if (hirGetTypeKind(c->hir, slot->type) != kind)
-			goto no_match;
-
-		hirTypeData slot_data = hirGetType(c->hir, slot->type);
-		if (memcmp(&slot_data, &data, sizeof(hirTypeData)) != 0)
-			goto no_match;
-
-		// At this point we have certainly found a match,
-		// so we just return this slot’s index in the HIR’s type arrays.
-		return slot->type;
-
-	no_match:
-		slot_index++;
-		slot_index %= SEEN_TYPE_SLOTS_COUNT;
-		slot = &c->seen_type_slots[slot_index];
+		mapInsert(fullType, hirType, &c->seen_types, &full_type, &type);
+		return type;
 	}
 
-	// At this point we didn’t find a matching slot
-	// and exited the loop because we found an empty slot.
-	// And so, we remember this type by putting it in the empty slot,
-	// and we also store the type’s information in the HIR.
-
-	u16 i = c->hir.type_count;
-	hirType type = { .index = i };
-	slot->type = type;
-	slot->hash = hash;
-
-	c->hir.type_count++;
-	c->hir.types[i] = data;
-	c->hir.type_kinds[i] = kind;
-
-	return type;
+	return *lookup_result;
 }
 
 static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
@@ -526,11 +495,6 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 	arrayBuilder functions =
 		bumpStartArrayBuilder(&m->general, sizeof(hirFunction));
 
-	slot *seen_type_slots =
-		bumpAllocateArray(slot, &m->temp, SEEN_TYPE_SLOTS_COUNT);
-	for (usize i = 0; i < SEEN_TYPE_SLOTS_COUNT; i++)
-		makeSlotVacant(&seen_type_slots[i]);
-
 	ctx c = {
 		.hir = {
 			.functions = NULL,
@@ -550,7 +514,8 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 		},
 		.ast = ast,
 		.diagnostics = diagnostics,
-		.seen_type_slots = seen_type_slots,
+		.locals_by_name = mapCreate(identifierId, hirLocal, LOCALS_BY_NAME_SLOT_COUNT, &m->temp),
+		.seen_types = mapCreate(fullType, hirType, SEEN_TYPES_SLOT_COUNT, &m->temp),
 	};
 
 	for (u16 i = 0; i < c.ast.function_count; i++) {
@@ -558,6 +523,8 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 
 		if (ast_function.name.raw == (u32)-1)
 			continue;
+
+		mapClear(identifierId, hirLocal, &c.locals_by_name);
 
 		hirLocal locals_start = { .index = c.hir.local_count };
 		c.hir.current_function_locals_start = locals_start;
@@ -706,6 +673,7 @@ typedef struct debugCtx {
 	interner interner;
 	stringBuilder *sb;
 	u32 indentation;
+	u8 pad[4];
 } debugCtx;
 
 static void newline(debugCtx *c)
@@ -865,11 +833,10 @@ static void debugFunction(debugCtx *c, hirFunction function)
 	c->indentation++;
 	for (u16 i = 0; i < function.locals_count; i++) {
 		hirLocal local = { .index = function.locals_start.index + i };
+		identifierId name = hirGetLocalName(c->hir, local);
 		newline(c);
-		stringBuilderPrintf(
-			c->sb, "var %s ",
-			internerLookup(c->interner,
-				       hirGetLocalName(c->hir, local)));
+		stringBuilderPrintf(c->sb, "var %s ",
+				    internerLookup(c->interner, name));
 		hirTypeShow(c->hir, hirGetLocalType(c->hir, local), c->sb);
 	}
 
