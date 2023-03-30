@@ -1,0 +1,8 @@
+func main {
+	a := array[0]
+	b := array[n]
+	c := foo[bar][baz]
+	d := (foo[(bar - 10)] + baz[quux])
+	e := *array[10]
+	f := *array[10]
+}

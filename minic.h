@@ -270,7 +270,8 @@ typedef enum astExpressionKind {
 	AST_EXPR_VARIABLE,
 	AST_EXPR_BINARY_OPERATION,
 	AST_EXPR_ADDRESS_OF,
-	AST_EXPR_DEREFERENCE
+	AST_EXPR_DEREFERENCE,
+	AST_EXPR_INDEX
 } astExpressionKind;
 
 typedef enum astBinaryOperator {
@@ -309,12 +310,18 @@ typedef struct astDereference {
 	astExpression value;
 } astDereference;
 
+typedef struct astIndex {
+	astExpression array;
+	astExpression index;
+} astIndex;
+
 typedef union astExpressionData {
 	astIntLiteral int_literal;
 	astVariable variable;
 	astBinaryOperation binary_operation;
 	astAddressOf address_of;
 	astDereference dereference;
+	astIndex index;
 } astExpressionData;
 
 typedef enum astStatementKind {

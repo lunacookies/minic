@@ -188,6 +188,29 @@ static identifierId expectIdentifier(parser *p, const char *name)
 
 static fullExpression expression(parser *p, const char *error_name, memory *m);
 
+static fullExpression indexExpression(parser *p, fullExpression array,
+				      memory *m)
+{
+	fullExpression e = {
+		.data = { 0 },
+		.kind = AST_EXPR_INDEX,
+		.span = array.span,
+	};
+
+	assert(at(p, TOK_LSQUARE));
+	expect(p, TOK_LSQUARE, ERROR_RECOVER);
+	astExpression index =
+		allocateExpression(p, expression(p, "index expression", m));
+	expect(p, TOK_RSQUARE, ERROR_RECOVER);
+
+	e.data.index.array = allocateExpression(p, array);
+	e.data.index.index = index;
+
+	e.span.end = p->tokens.spans[p->cursor - 1].end;
+
+	return e;
+}
+
 static fullExpression expressionLhs(parser *p, const char *error_name,
 				    memory *m)
 {
@@ -246,11 +269,13 @@ static fullExpression expressionLhs(parser *p, const char *error_name,
 		fullExpression inner =
 			expression(p, "parenthesized expression", m);
 		expect(p, TOK_RPAREN, ERROR_RECOVER);
-		return inner;
+		e = inner;
+		break;
 	}
 
 	// We don’t want to skip past these.
 	case TOK_RPAREN:
+	case TOK_RSQUARE:
 	case TOK_EQUAL:
 		error(p, ERROR_EAT_NONE, error_name);
 		e.kind = AST_EXPR_MISSING;
@@ -264,7 +289,17 @@ static fullExpression expressionLhs(parser *p, const char *error_name,
 
 	assert(e.kind != (astExpressionKind)-1);
 	e.span.end = p->tokens.spans[p->cursor - 1].end;
-	return e;
+
+	for (;;) {
+		switch (current(p)) {
+		case TOK_LSQUARE:
+			e = indexExpression(p, e, m);
+			break;
+
+		default:
+			return e;
+		}
+	}
 }
 
 static fullExpression expressionBindingPower(parser *p, u8 min_binding_power,
@@ -742,6 +777,15 @@ static void debugExpression(ctx *c, astExpression expression)
 			astGetExpression(c->ast, expression).dereference;
 		stringBuilderPrintf(c->sb, "*");
 		debugExpression(c, dereference.value);
+		break;
+	}
+
+	case AST_EXPR_INDEX: {
+		astIndex index = astGetExpression(c->ast, expression).index;
+		debugExpression(c, index.array);
+		stringBuilderPrintf(c->sb, "[");
+		debugExpression(c, index.index);
+		stringBuilderPrintf(c->sb, "]");
 		break;
 	}
 	}

@@ -1,4 +1,4 @@
 func main {
-	x := <missing>
+	x := <missing>[10]
 }
 tests_parse:19..20: error: missing parenthesized expression

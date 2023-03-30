@@ -1,3 +1,3 @@
 func main {
-	x := ()[10]
+	a := foo[]
 }
