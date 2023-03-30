@@ -273,9 +273,47 @@ static fullExpression expressionLhs(parser *p, const char *error_name,
 		break;
 	}
 
+	case TOK_LSQUARE: {
+		expect(p, TOK_LSQUARE, ERROR_RECOVER);
+
+		bumpMark mark = bumpCreateMark(&m->temp);
+		arrayBuilder expressions_builder =
+			bumpStartArrayBuilder(&m->temp, sizeof(fullExpression));
+		u16 count = 0;
+
+		while (!at(p, TOK_RSQUARE) && !atEof(p) && !atRecovery(p)) {
+			fullExpression expr = expression(p, "array element", m);
+			if (!at(p, TOK_RSQUARE) && !atEof(p) && !atRecovery(p))
+				expect(p, TOK_COMMA, ERROR_EAT_NONE);
+			arrayBuilderPush(&expressions_builder, &expr);
+			count++;
+		}
+		expect(p, TOK_RSQUARE, ERROR_RECOVER);
+
+		fullExpression *expressions =
+			bumpFinishArrayBuilder(&m->temp, &expressions_builder);
+
+		astExpression start = { .index = -1 };
+
+		for (u16 i = 0; i < count; i++) {
+			astExpression this =
+				allocateExpression(p, expressions[i]);
+			if (start.index == (u16)-1)
+				start = this;
+		}
+
+		bumpClearToMark(&m->temp, mark);
+
+		e.kind = AST_EXPR_ARRAY_LITERAL;
+		e.data.array_literal.start = start;
+		e.data.array_literal.count = count;
+		break;
+	}
+
 	// We don’t want to skip past these.
 	case TOK_RPAREN:
 	case TOK_RSQUARE:
+	case TOK_COMMA:
 	case TOK_EQUAL:
 		error(p, ERROR_EAT_NONE, error_name);
 		e.kind = AST_EXPR_MISSING;
@@ -788,6 +826,37 @@ static void debugExpression(ctx *c, astExpression expression)
 		debugExpression(c, index.array);
 		stringBuilderPrintf(c->sb, ")[");
 		debugExpression(c, index.index);
+		stringBuilderPrintf(c->sb, "]");
+		break;
+	}
+
+	case AST_EXPR_ARRAY_LITERAL: {
+		astArrayLiteral array_literal =
+			astGetExpression(c->ast, expression).array_literal;
+
+		if (array_literal.count == 0) {
+			stringBuilderPrintf(c->sb, "[]");
+			break;
+		}
+
+		if (array_literal.count == 1) {
+			stringBuilderPrintf(c->sb, "[");
+			debugExpression(c, array_literal.start);
+			stringBuilderPrintf(c->sb, "]");
+			break;
+		}
+
+		stringBuilderPrintf(c->sb, "[");
+		c->indentation++;
+		for (u16 i = 0; i < array_literal.count; i++) {
+			astExpression e = { .index = array_literal.start.index +
+						     i };
+			newline(c);
+			debugExpression(c, e);
+			stringBuilderPrintf(c->sb, ",");
+		}
+		c->indentation--;
+		newline(c);
 		stringBuilderPrintf(c->sb, "]");
 		break;
 	}

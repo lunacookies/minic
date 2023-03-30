@@ -1,0 +1,10 @@
+func main {
+	a := [
+		1,
+		2,
+		3,
+		4,
+	]
+}
+tests_parse:20..21: error: missing “,”
+tests_parse:22..23: error: missing “,”

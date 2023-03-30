@@ -224,6 +224,11 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 
 	case AST_EXPR_INDEX:
 		internalError("not implemented");
+		break;
+
+	case AST_EXPR_ARRAY_LITERAL:
+		internalError("not implemented");
+		break;
 	}
 
 	assert(n.kind != (hirNodeKind)-1);

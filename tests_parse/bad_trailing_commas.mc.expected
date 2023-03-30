@@ -1,0 +1,26 @@
+func main {
+	a := [<missing>]
+	b := [
+		<missing>,
+		<missing>,
+	]
+	c := [
+		<missing>,
+		a,
+		<missing>,
+		<missing>,
+	]
+	d := [
+		1,
+		2,
+		3,
+		<missing>,
+	]
+}
+tests_parse:19..20: error: missing array element
+tests_parse:29..30: error: missing array element
+tests_parse:30..31: error: missing array element
+tests_parse:40..41: error: missing array element
+tests_parse:43..44: error: missing array element
+tests_parse:44..45: error: missing array element
+tests_parse:62..63: error: missing array element

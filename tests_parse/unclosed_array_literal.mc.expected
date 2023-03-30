@@ -1,0 +1,28 @@
+func a {
+	a := [
+		1,
+		2,
+		3,
+	]
+}
+
+func b {
+	a := [
+		1,
+		2,
+		3,
+	]
+}
+
+func c {
+	a := [
+		1,
+		2,
+		3,
+	]
+	set a = []
+}
+tests_parse:23..24: error: missing “]”
+tests_parse:50..51: error: missing “]”
+tests_parse:50..51: error: missing “}”
+tests_parse:75..76: error: missing “]”

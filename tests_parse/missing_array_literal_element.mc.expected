@@ -1,0 +1,8 @@
+func main {
+	a := [
+		1,
+		<missing>,
+		2,
+	]
+}
+tests_parse:21..22: error: missing array element
