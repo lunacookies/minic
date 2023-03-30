@@ -220,7 +220,8 @@ typedef enum tokenKind {
 	TOK_COLON,
 	TOK_COLON_EQUAL,
 	TOK_SEMI,
-	TOK_AMPERSAND
+	TOK_AMPERSAND,
+	TOK_COMMA
 } tokenKind;
 
 typedef struct identifierId {
