@@ -767,23 +767,26 @@ static void debugExpression(ctx *c, astExpression expression)
 	case AST_EXPR_ADDRESS_OF: {
 		astAddressOf address_of =
 			astGetExpression(c->ast, expression).address_of;
-		stringBuilderPrintf(c->sb, "&");
+		stringBuilderPrintf(c->sb, "&(");
 		debugExpression(c, address_of.value);
+		stringBuilderPrintf(c->sb, ")");
 		break;
 	}
 
 	case AST_EXPR_DEREFERENCE: {
 		astDereference dereference =
 			astGetExpression(c->ast, expression).dereference;
-		stringBuilderPrintf(c->sb, "*");
+		stringBuilderPrintf(c->sb, "*(");
 		debugExpression(c, dereference.value);
+		stringBuilderPrintf(c->sb, ")");
 		break;
 	}
 
 	case AST_EXPR_INDEX: {
 		astIndex index = astGetExpression(c->ast, expression).index;
+		stringBuilderPrintf(c->sb, "(");
 		debugExpression(c, index.array);
-		stringBuilderPrintf(c->sb, "[");
+		stringBuilderPrintf(c->sb, ")[");
 		debugExpression(c, index.index);
 		stringBuilderPrintf(c->sb, "]");
 		break;

@@ -4,7 +4,7 @@ func main
 	var z i64
 	{
 		set x = 10
-		set y = &x
-		set z = (*y + *&x)
+		set y = &(x)
+		set z = (*(y) + *(&(x)))
 	}
 tests_lower:31..46: warning: unused variable

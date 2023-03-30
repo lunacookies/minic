@@ -4,7 +4,7 @@ func main
 	var app **i64
 	{
 		set a = 5
-		set ap = &a
-		set app = &ap
-		set ap = *app
+		set ap = &(a)
+		set app = &(ap)
+		set ap = *(app)
 	}

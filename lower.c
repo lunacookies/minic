@@ -754,16 +754,18 @@ static void debugNode(debugCtx *c, hirNode node)
 
 	case HIR_ADDRESS_OF: {
 		hirAddressOf address_of = hirGetNode(c->hir, node).address_of;
-		stringBuilderPrintf(c->sb, "&");
+		stringBuilderPrintf(c->sb, "&(");
 		debugNode(c, address_of.value);
+		stringBuilderPrintf(c->sb, ")");
 		break;
 	}
 
 	case HIR_DEREFERENCE: {
 		hirDereference dereference =
 			hirGetNode(c->hir, node).dereference;
-		stringBuilderPrintf(c->sb, "*");
+		stringBuilderPrintf(c->sb, "*(");
 		debugNode(c, dereference.value);
+		stringBuilderPrintf(c->sb, ")");
 		break;
 	}
 

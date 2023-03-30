@@ -3,7 +3,7 @@ func main
 	var np *i64
 	{
 		set n = 5
-		set np = &n
+		set np = &(n)
 		<missing>
 		<missing>
 	}
