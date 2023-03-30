@@ -1,0 +1,13 @@
+func main
+	var a i64
+	var b i64
+	{
+		set a = 5
+		<missing>
+		set b = 10
+		<missing>
+	}
+tests_lower:21..28: error: cannot shadow existing variable
+tests_lower:47..49: error: expected “i64” but found “*i64”
+tests_lower:13..19: warning: unused variable
+tests_lower:30..37: warning: unused variable
