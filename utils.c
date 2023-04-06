@@ -33,7 +33,7 @@ void debugLogV(const char *fmt, va_list ap)
 	fprintf(stderr, "\033[0m\n");
 }
 
-u32 numCpus()
+u32 numCpus(void)
 {
 	const char *name = "hw.logicalcpu";
 
