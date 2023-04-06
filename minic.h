@@ -50,7 +50,6 @@ typedef struct bump {
 	usize max_size;
 	usize padding_bytes_used;
 	u32 array_builder_nesting_level;
-	u8 pad[4];
 } bump;
 
 typedef struct bumpMark {
@@ -145,7 +144,6 @@ typedef struct projectSpec {
 	char **file_names;
 	char **file_contents;
 	u16 num_files;
-	u8 pad[6];
 } projectSpec;
 
 projectSpec projectDiscover(memory *m);
@@ -172,7 +170,6 @@ typedef struct diagnosticsStorage {
 	u32 *message_starts;
 	bump all_messages;
 	u16 count;
-	u8 pad[6];
 } diagnosticsStorage;
 
 diagnosticsStorage diagnosticsStorageCreate(bump *b);
@@ -301,7 +298,6 @@ typedef struct astBinaryOperation {
 	astExpression lhs;
 	astExpression rhs;
 	astBinaryOperator op;
-	u8 pad;
 } astBinaryOperation;
 
 typedef struct astAddressOf {
@@ -349,7 +345,6 @@ typedef struct astReturn {
 typedef struct astLocalDefinition {
 	identifierId name;
 	astExpression value;
-	u8 pad[2];
 } astLocalDefinition;
 
 typedef struct astAssign {
@@ -385,7 +380,6 @@ typedef union astStatementData {
 typedef struct astFunction {
 	identifierId name;
 	astStatement body;
-	u8 pad[2];
 } astFunction;
 
 typedef struct astRoot {
@@ -402,7 +396,6 @@ typedef struct astRoot {
 	u16 function_count;
 	u16 statement_count;
 	u16 expression_count;
-	u8 pad[2];
 } astRoot;
 
 astRoot parse(tokenBuffer tokens, char *content,
@@ -459,7 +452,6 @@ typedef struct hirBinaryOperation {
 	hirNode lhs;
 	hirNode rhs;
 	astBinaryOperator op;
-	u8 pad;
 } hirBinaryOperation;
 
 typedef struct hirAddressOf {
@@ -527,7 +519,6 @@ typedef struct hirFunction {
 	hirLocal locals_start;
 	u16 locals_count;
 	hirNode body;
-	u8 pad[2];
 } hirFunction;
 
 typedef struct hirRoot {
@@ -551,7 +542,6 @@ typedef struct hirRoot {
 	u16 type_count;
 
 	hirLocal current_function_locals_start;
-	u8 pad[6];
 } hirRoot;
 
 hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m);

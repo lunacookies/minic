@@ -9,14 +9,12 @@ typedef struct fullExpression {
 	astExpressionData data;
 	span span;
 	astExpressionKind kind;
-	u8 pad[7];
 } fullExpression;
 
 typedef struct fullStatement {
 	astStatementData data;
 	span span;
 	astStatementKind kind;
-	u8 pad[3];
 } fullStatement;
 
 typedef struct parser {
@@ -191,11 +189,10 @@ static fullExpression expression(parser *p, const char *error_name, memory *m);
 static fullExpression indexExpression(parser *p, fullExpression array,
 				      memory *m)
 {
-	fullExpression e = {
-		.data = { 0 },
-		.kind = AST_EXPR_INDEX,
-		.span = array.span,
-	};
+	fullExpression e;
+	memset(&e, 0, sizeof(e));
+	e.kind = AST_EXPR_INDEX;
+	e.span = array.span;
 
 	assert(at(p, TOK_LSQUARE));
 	expect(p, TOK_LSQUARE, ERROR_RECOVER);
@@ -214,12 +211,11 @@ static fullExpression indexExpression(parser *p, fullExpression array,
 static fullExpression expressionLhs(parser *p, const char *error_name,
 				    memory *m)
 {
-	fullExpression e = {
-		.data = { 0 },
-		.kind = -1,
-		.span = { .start = atEof(p) ? p->tokens.spans[p->cursor - 1].end
-					    : currentSpan(p).start },
-	};
+	fullExpression e;
+	memset(&e, 0, sizeof(e));
+	e.kind = -1;
+	e.span = (span){ .start = atEof(p) ? p->tokens.spans[p->cursor - 1].end
+					   : currentSpan(p).start };
 
 	switch (current(p)) {
 	case TOK_NUMBER: {
@@ -410,20 +406,23 @@ static fullExpression expressionBindingPower(parser *p, u8 min_binding_power,
 		astExpression allocd_lhs = allocateExpression(p, lhs);
 		astExpression allocd_rhs = allocateExpression(p, rhs);
 
-		astBinaryOperation binary_operation = {
-			.lhs = allocd_lhs,
-			.rhs = allocd_rhs,
-			.op = op,
-		};
 		span span = {
 			.start = astGetExpressionSpan(p->ast, allocd_lhs).start,
 			.end = p->tokens.spans[p->cursor - 1].end,
 		};
-		fullExpression new_lhs = {
-			.data.binary_operation = binary_operation,
-			.kind = AST_EXPR_BINARY_OPERATION,
-			.span = span,
-		};
+
+		astBinaryOperation binary_operation;
+		memset(&binary_operation, 0, sizeof(binary_operation));
+		binary_operation.lhs = allocd_lhs;
+		binary_operation.rhs = allocd_rhs;
+		binary_operation.op = op;
+
+		fullExpression new_lhs;
+		memset(&new_lhs, 0, sizeof(new_lhs));
+		new_lhs.data.binary_operation = binary_operation;
+		new_lhs.kind = AST_EXPR_BINARY_OPERATION;
+		new_lhs.span = span;
+
 		lhs = new_lhs;
 	}
 }
@@ -438,12 +437,11 @@ static fullStatement statement(parser *p, const char *error_name, memory *m);
 static fullStatement blockStatement(parser *p, const char *error_name,
 				    memory *m)
 {
-	fullStatement s = {
-		.data = { 0 },
-		.kind = -1,
-		.span = { .start = atEof(p) ? p->tokens.spans[p->cursor - 1].end
-					    : currentSpan(p).start },
-	};
+	fullStatement s;
+	memset(&s, 0, sizeof(s));
+	s.kind = -1;
+	s.span = (span){ .start = atEof(p) ? p->tokens.spans[p->cursor - 1].end
+					   : currentSpan(p).start };
 
 	if (current(p) != TOK_LBRACE) {
 		// We expected a block, but we didn’t get one.
@@ -502,12 +500,11 @@ static fullStatement blockStatement(parser *p, const char *error_name,
 
 static fullStatement statement(parser *p, const char *error_name, memory *m)
 {
-	fullStatement s = {
-		.data = { 0 },
-		.kind = -1,
-		.span = { .start = atEof(p) ? p->tokens.spans[p->cursor - 1].end
-					    : currentSpan(p).start },
-	};
+	fullStatement s;
+	memset(&s, 0, sizeof(s));
+	s.kind = -1;
+	s.span = (span){ .start = atEof(p) ? p->tokens.spans[p->cursor - 1].end
+					   : currentSpan(p).start };
 
 	switch (current(p)) {
 	case TOK_RETURN: {
@@ -607,10 +604,11 @@ static astFunction function(parser *p, memory *m)
 	astStatement body =
 		allocateStatement(p, statement(p, "function body", m));
 
-	return (astFunction){
-		.name = name,
-		.body = body,
-	};
+	astFunction function;
+	memset(&function, 0, sizeof(function));
+	function.name = name;
+	function.body = body;
+	return function;
 }
 
 astRoot parse(tokenBuffer tokens, char *content,
@@ -722,7 +720,6 @@ typedef struct ctx {
 	interner interner;
 	stringBuilder *sb;
 	u32 indentation;
-	u8 pad[4];
 } ctx;
 
 static void newline(ctx *c)

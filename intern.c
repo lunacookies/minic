@@ -12,7 +12,6 @@ typedef struct ctx {
 	usize slot_count;
 	char **identifier_contents;
 	identifierId ident_id;
-	u8 pad[4];
 } ctx;
 
 static void processToken(tokenBuffer *buf, char *contents, usize token, ctx *c,

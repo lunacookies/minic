@@ -14,8 +14,7 @@ CFLAGS=\
 	-Wimplicit-int-conversion \
 	-Wshadow \
 	-Wstrict-prototypes \
-	-Wmissing-prototypes \
-	-Wpadded
+	-Wmissing-prototypes
 
 NAME=minic
 BUILD_DIR=out
