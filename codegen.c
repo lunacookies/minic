@@ -18,12 +18,21 @@ static u32 roundUpTo(u32 x, u32 multiple_of)
 static u32 calculateStackLayout(ctx *c, hirFunction function)
 {
 	u32 offset = 0;
+
 	for (u16 i = 0; i < function.locals_count; i++) {
 		hirLocal local = { .index = function.locals_start.index + i };
-		u32 size = hirTypeSize(c->hir, hirGetLocalType(c->hir, local));
+		hirType type = hirGetLocalType(c->hir, local);
+		u32 size = hirTypeSize(c->hir, type);
+
 		offset = roundUpTo(offset, size); // align
-		c->local_offsets[local.index] = offset;
+
+		// We step forward by the size of the type
+		// *before* storing this local’s offset
+		// because the offset is actually negative
+		// (from the stack top).
 		offset += size;
+
+		c->local_offsets[local.index] = offset;
 	}
 
 	// in AArch64 sp must always be aligned to 16
