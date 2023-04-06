@@ -190,6 +190,14 @@ static void gen(ctx *c, hirNode node)
 		break;
 	}
 
+	case HIR_INDEX:
+		internalError("not implemented");
+		break;
+
+	case HIR_ARRAY_LITERAL:
+		internalError("not implemented");
+		break;
+
 	case HIR_ASSIGN: {
 		hirAssign assign = hirGetNode(c->hir, node).assign;
 		genAddress(c, assign.lhs);

@@ -1,0 +1,16 @@
+func main
+	var x i64
+	var a [4]i64
+	{
+		set x = 0
+		set a = [
+			1,
+			<missing>,
+			<missing>,
+			2,
+		]
+	}
+tests_lower:30..32: error: expected “i64” but found “*i64”
+tests_lower:34..36: error: expected “i64” but found “[0]void”
+tests_lower:13..19: warning: unused variable
+tests_lower:21..40: warning: unused variable

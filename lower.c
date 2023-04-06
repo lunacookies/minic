@@ -237,13 +237,147 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 		break;
 	}
 
-	case AST_EXPR_INDEX:
-		internalError("not implemented");
-		break;
+	case AST_EXPR_INDEX: {
+		astIndex ast_index =
+			astGetExpression(c->ast, ast_expression).index;
 
-	case AST_EXPR_ARRAY_LITERAL:
-		internalError("not implemented");
+		hirNode array =
+			allocateNode(c, lowerExpression(c, ast_index.array, m));
+		hirNode index =
+			allocateNode(c, lowerExpression(c, ast_index.index, m));
+
+		hirType index_type = hirGetNodeType(c->hir, index);
+		if (hirGetTypeKind(c->hir, index_type) != HIR_TYPE_I64) {
+			u8 buffer[128];
+			bump b = bumpCreate(buffer, sizeof(buffer));
+			stringBuilder sb = stringBuilderCreate(&b);
+			stringBuilderPrintf(&sb, "index is non-integer type “");
+			hirTypeShow(c->hir, index_type, &sb);
+			stringBuilderPrintf(&sb, "”");
+			char *message = stringBuilderFinish(sb);
+			diagnosticsStorageRecord(c->diagnostics, DIAG_ERROR,
+						 hirGetNodeSpan(c->hir, array),
+						 message);
+
+			hirTypeData type_data;
+			memset(&type_data, 0, sizeof(type_data));
+
+			n.kind = HIR_MISSING;
+			n.type = allocateType(c, HIR_TYPE_VOID, type_data);
+			break;
+		}
+
+		hirType array_type = hirGetNodeType(c->hir, array);
+		if (hirGetTypeKind(c->hir, array_type) != HIR_TYPE_ARRAY) {
+			u8 buffer[128];
+			bump b = bumpCreate(buffer, sizeof(buffer));
+			stringBuilder sb = stringBuilderCreate(&b);
+			stringBuilderPrintf(
+				&sb, "cannot index into non-array type “");
+			hirTypeShow(c->hir, array_type, &sb);
+			stringBuilderPrintf(&sb, "”");
+			char *message = stringBuilderFinish(sb);
+			diagnosticsStorageRecord(c->diagnostics, DIAG_ERROR,
+						 hirGetNodeSpan(c->hir, array),
+						 message);
+
+			hirTypeData type_data;
+			memset(&type_data, 0, sizeof(type_data));
+
+			n.kind = HIR_MISSING;
+			n.type = allocateType(c, HIR_TYPE_VOID, type_data);
+			break;
+		}
+
+		hirType array_child_type =
+			hirGetType(c->hir, array_type).array.child_type;
+
+		n.kind = HIR_INDEX;
+		n.type = array_child_type;
+		n.data.index.array = array;
+		n.data.index.index = index;
 		break;
+	}
+
+	case AST_EXPR_ARRAY_LITERAL: {
+		astArrayLiteral ast_array_literal =
+			astGetExpression(c->ast, ast_expression).array_literal;
+
+		bumpMark mark = bumpCreateMark(&m->temp);
+		arrayBuilder nodes_builder =
+			bumpStartArrayBuilder(&m->temp, sizeof(fullNode));
+
+		hirTypeData child_type_data;
+		memset(&child_type_data, 0, sizeof(child_type_data));
+		hirType child_type =
+			allocateType(c, HIR_TYPE_VOID, child_type_data);
+
+		for (u16 i = 0; i < ast_array_literal.count; i++) {
+			astExpression ast_e = {
+				.index = ast_array_literal.start.index + i
+			};
+
+			fullNode node = lowerExpression(c, ast_e, m);
+
+			if (hirGetTypeKind(c->hir, child_type) ==
+			    HIR_TYPE_VOID) {
+				child_type = node.type;
+			} else if (node.type.index != child_type.index) {
+				u8 buffer[128];
+				bump b = bumpCreate(buffer, sizeof(buffer));
+				stringBuilder sb = stringBuilderCreate(&b);
+				stringBuilderPrintf(&sb, "expected “");
+				hirTypeShow(c->hir, child_type, &sb);
+				stringBuilderPrintf(&sb, "” but found “");
+				hirTypeShow(c->hir, node.type, &sb);
+				stringBuilderPrintf(&sb, "”");
+
+				char *message = stringBuilderFinish(sb);
+				diagnosticsStorageRecord(c->diagnostics,
+							 DIAG_ERROR, node.span,
+							 message);
+
+				hirTypeData type_data;
+				memset(&type_data, 0, sizeof(type_data));
+
+				// Since we’re reusing the faulty node
+				// instead of just creating a new missing node,
+				// we make sure to zero out the node data
+				// just to be on the safe side.
+				node.kind = HIR_MISSING;
+				memset(&node.data, 0, sizeof(node.data));
+				node.type = allocateType(c, HIR_TYPE_VOID,
+							 type_data);
+			}
+
+			arrayBuilderPush(&nodes_builder, &node);
+		}
+
+		fullNode *nodes =
+			bumpFinishArrayBuilder(&m->temp, &nodes_builder);
+
+		hirNode start = { .index = -1 };
+
+		for (u16 i = 0; i < ast_array_literal.count; i++) {
+			hirNode this = allocateNode(c, nodes[i]);
+			if (start.index == (u16)-1)
+				start = this;
+		}
+
+		bumpClearToMark(&m->temp, mark);
+
+		hirArray array_type = {
+			.child_type = child_type,
+			.count = ast_array_literal.count,
+		};
+
+		n.kind = HIR_ARRAY_LITERAL;
+		n.type = allocateType(c, HIR_TYPE_ARRAY,
+				      (hirTypeData){ .array = array_type });
+		n.data.array_literal.start = start;
+		n.data.array_literal.count = ast_array_literal.count;
+		break;
+	}
 	}
 
 	assert(n.kind != (hirNodeKind)-1);
@@ -490,6 +624,23 @@ static bool isLocalUsedInNode(hirRoot hir, hirNode node, hirLocal local)
 		return isLocalUsedInNode(hir, dereference.value, local);
 	}
 
+	case HIR_INDEX: {
+		hirIndex index = hirGetNode(hir, node).index;
+		return isLocalUsedInNode(hir, index.array, local) ||
+		       isLocalUsedInNode(hir, index.index, local);
+	}
+
+	case HIR_ARRAY_LITERAL: {
+		hirArrayLiteral array_literal =
+			hirGetNode(hir, node).array_literal;
+		for (u16 i = 0; i < array_literal.count; i++) {
+			hirNode n = { .index = array_literal.start.index + i };
+			if (isLocalUsedInNode(hir, n, local))
+				return true;
+		}
+		return false;
+	}
+
 	case HIR_ASSIGN: {
 		hirAssign assign = hirGetNode(hir, node).assign;
 		if (isLocalUsedInNode(hir, assign.rhs, local))
@@ -702,6 +853,10 @@ u32 hirTypeSize(hirRoot hir, hirType type)
 		return 8;
 	case HIR_TYPE_POINTER:
 		return 8;
+	case HIR_TYPE_ARRAY: {
+		hirArray array = hirGetType(hir, type).array;
+		return hirTypeSize(hir, array.child_type) * array.count;
+	}
 	}
 }
 
@@ -718,6 +873,12 @@ void hirTypeShow(hirRoot hir, hirType type, stringBuilder *sb)
 		hirPointer pointer = hirGetType(hir, type).pointer;
 		stringBuilderPrintf(sb, "*");
 		hirTypeShow(hir, pointer.child_type, sb);
+		break;
+	}
+	case HIR_TYPE_ARRAY: {
+		hirArray array = hirGetType(hir, type).array;
+		stringBuilderPrintf(sb, "[%u]", array.count);
+		hirTypeShow(hir, array.child_type, sb);
 		break;
 	}
 	}
@@ -817,6 +978,46 @@ static void debugNode(debugCtx *c, hirNode node)
 		stringBuilderPrintf(c->sb, "*(");
 		debugNode(c, dereference.value);
 		stringBuilderPrintf(c->sb, ")");
+		break;
+	}
+
+	case HIR_INDEX: {
+		hirIndex index = hirGetNode(c->hir, node).index;
+		stringBuilderPrintf(c->sb, "(");
+		debugNode(c, index.array);
+		stringBuilderPrintf(c->sb, ")[");
+		debugNode(c, index.index);
+		stringBuilderPrintf(c->sb, "]");
+		break;
+	}
+
+	case HIR_ARRAY_LITERAL: {
+		hirArrayLiteral array_literal =
+			hirGetNode(c->hir, node).array_literal;
+
+		if (array_literal.count == 0) {
+			stringBuilderPrintf(c->sb, "[]");
+			break;
+		}
+
+		if (array_literal.count == 1) {
+			stringBuilderPrintf(c->sb, "[");
+			debugNode(c, array_literal.start);
+			stringBuilderPrintf(c->sb, "]");
+			break;
+		}
+
+		stringBuilderPrintf(c->sb, "[");
+		c->indentation++;
+		for (u16 i = 0; i < array_literal.count; i++) {
+			hirNode n = { .index = array_literal.start.index + i };
+			newline(c);
+			debugNode(c, n);
+			stringBuilderPrintf(c->sb, ",");
+		}
+		c->indentation--;
+		newline(c);
+		stringBuilderPrintf(c->sb, "]");
 		break;
 	}
 

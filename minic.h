@@ -433,6 +433,8 @@ typedef enum hirNodeKind {
 	HIR_BINARY_OPERATION,
 	HIR_ADDRESS_OF,
 	HIR_DEREFERENCE,
+	HIR_INDEX,
+	HIR_ARRAY_LITERAL,
 	HIR_ASSIGN,
 	HIR_IF,
 	HIR_WHILE,
@@ -461,6 +463,16 @@ typedef struct hirAddressOf {
 typedef struct hirDereference {
 	hirNode value;
 } hirDereference;
+
+typedef struct hirIndex {
+	hirNode array;
+	hirNode index;
+} hirIndex;
+
+typedef struct hirArrayLiteral {
+	hirNode start;
+	u16 count;
+} hirArrayLiteral;
 
 typedef struct hirAssign {
 	hirNode lhs;
@@ -493,6 +505,8 @@ typedef union hirNodeData {
 	hirBinaryOperation binary_operation;
 	hirAddressOf address_of;
 	hirDereference dereference;
+	hirIndex index;
+	hirArrayLiteral array_literal;
 	hirAssign assign;
 	hirIf if_;
 	hirWhile while_;
@@ -503,15 +517,22 @@ typedef union hirNodeData {
 typedef enum hirTypeKind {
 	HIR_TYPE_VOID,
 	HIR_TYPE_I64,
-	HIR_TYPE_POINTER
+	HIR_TYPE_POINTER,
+	HIR_TYPE_ARRAY
 } hirTypeKind;
 
 typedef struct hirPointer {
 	hirType child_type;
 } hirPointer;
 
+typedef struct hirArray {
+	hirType child_type;
+	u32 count;
+} hirArray;
+
 typedef union hirTypeData {
 	hirPointer pointer;
+	hirArray array;
 } hirTypeData;
 
 typedef struct hirFunction {

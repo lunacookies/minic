@@ -1,0 +1,37 @@
+func main
+	var empty [0]void
+	var one [1]i64
+	var multi [3]i64
+	var nested [4][2]i64
+	var very_nested [1][1][1][1][1][0]void
+	{
+		set empty = []
+		set one = [1]
+		set multi = [
+			1,
+			2,
+			3,
+		]
+		set nested = [
+			[
+				1,
+				2,
+			],
+			[
+				3,
+				4,
+			],
+			[
+				5,
+				6,
+			],
+			<missing>,
+		]
+		set very_nested = [[[[[[]]]]]]
+	}
+tests_lower:93..96: error: expected “[2]i64” but found “[1]i64”
+tests_lower:13..24: warning: unused variable
+tests_lower:26..36: warning: unused variable
+tests_lower:38..56: warning: unused variable
+tests_lower:58..97: warning: unused variable
+tests_lower:99..126: warning: unused variable

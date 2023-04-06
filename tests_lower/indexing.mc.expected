@@ -1,0 +1,12 @@
+func main
+	var a [3]i64
+	var first i64
+	{
+		set a = [
+			1,
+			2,
+			3,
+		]
+		set first = (a)[0]
+	}
+tests_lower:29..42: warning: unused variable
