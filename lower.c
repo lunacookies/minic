@@ -33,7 +33,7 @@ static hirLocal lookupLocal(ctx *c, identifierId name)
 	hirLocal *local =
 		mapLookup(identifierId, hirLocal, &c->locals_by_name, &name);
 	if (local == NULL)
-		return (hirLocal){ .index = -1 };
+		return hirLocalMake(-1);
 	return *local;
 }
 
@@ -52,7 +52,7 @@ static hirNode allocateNode(ctx *c, fullNode node)
 	c->hir.node_kinds[i] = node.kind;
 	c->hir.node_types[i] = node.type;
 	c->hir.node_spans[i] = node.span;
-	return (hirNode){ .index = i };
+	return hirNodeMake(i);
 }
 
 static hirLocal allocateLocal(ctx *c, identifierId name, hirType type,
@@ -63,7 +63,7 @@ static hirLocal allocateLocal(ctx *c, identifierId name, hirType type,
 	u16 i = c->hir.local_count;
 	c->hir.local_count++;
 
-	hirLocal local = { .index = i };
+	hirLocal local = hirLocalMake(i);
 	mapInsert(identifierId, hirLocal, &c->locals_by_name, &name, &local);
 
 	c->hir.local_names[i] = name;
@@ -86,7 +86,7 @@ static hirType allocateType(ctx *c, hirTypeKind kind, hirTypeData data)
 
 	if (lookup_result == NULL) {
 		u16 i = c->hir.type_count;
-		hirType type = { .index = i };
+		hirType type = hirTypeMake(i);
 		c->hir.type_count++;
 		c->hir.types[i] = data;
 		c->hir.type_kinds[i] = kind;
@@ -103,7 +103,7 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 	fullNode n;
 	memset(&n, 0, sizeof(n));
 	n.kind = -1;
-	n.type = (hirType){ .index = -1 };
+	n.type = hirTypeMake(-1);
 	n.span = astGetExpressionSpan(c->ast, ast_expression);
 
 	switch (astGetExpressionKind(c->ast, ast_expression)) {
@@ -313,9 +313,8 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 			allocateType(c, HIR_TYPE_VOID, child_type_data);
 
 		for (u16 i = 0; i < ast_array_literal.count; i++) {
-			astExpression ast_e = {
-				.index = ast_array_literal.start.index + i
-			};
+			astExpression ast_e = astExpressionMake(
+				ast_array_literal.start.index + i);
 
 			fullNode node = lowerExpression(c, ast_e, m);
 
@@ -356,7 +355,7 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 		fullNode *nodes =
 			bumpFinishArrayBuilder(&m->temp, &nodes_builder);
 
-		hirNode start = { .index = -1 };
+		hirNode start = hirNodeMake(-1);
 
 		for (u16 i = 0; i < ast_array_literal.count; i++) {
 			hirNode this = allocateNode(c, nodes[i]);
@@ -390,7 +389,7 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 	fullNode n;
 	memset(&n, 0, sizeof(n));
 	n.kind = -1;
-	n.type = (hirType){ .index = -1 };
+	n.type = hirTypeMake(-1);
 	n.span = astGetStatementSpan(c->ast, ast_statement);
 
 	switch (astGetStatementKind(c->ast, ast_statement)) {
@@ -560,8 +559,8 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 			bumpStartArrayBuilder(&m->temp, sizeof(fullNode));
 
 		for (u16 i = 0; i < ast_block.count; i++) {
-			astStatement ast_s = { .index = ast_block.start.index +
-							i };
+			astStatement ast_s =
+				astStatementMake(ast_block.start.index + i);
 
 			fullNode node = lowerStatement(c, ast_s, m);
 			arrayBuilderPush(&nodes_builder, &node);
@@ -570,7 +569,7 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 		fullNode *nodes =
 			bumpFinishArrayBuilder(&m->temp, &nodes_builder);
 
-		hirNode start = { .index = -1 };
+		hirNode start = hirNodeMake(-1);
 
 		for (u16 i = 0; i < ast_block.count; i++) {
 			hirNode this = allocateNode(c, nodes[i]);
@@ -634,7 +633,7 @@ static bool isLocalUsedInNode(hirRoot hir, hirNode node, hirLocal local)
 		hirArrayLiteral array_literal =
 			hirGetNode(hir, node).array_literal;
 		for (u16 i = 0; i < array_literal.count; i++) {
-			hirNode n = { .index = array_literal.start.index + i };
+			hirNode n = hirNodeMake(array_literal.start.index + i);
 			if (isLocalUsedInNode(hir, n, local))
 				return true;
 		}
@@ -685,7 +684,7 @@ static bool isLocalUsedInNode(hirRoot hir, hirNode node, hirLocal local)
 	case HIR_BLOCK: {
 		hirBlock block = hirGetNode(hir, node).block;
 		for (u16 i = 0; i < block.count; i++) {
-			hirNode n = { .index = block.start.index + i };
+			hirNode n = hirNodeMake(block.start.index + i);
 			if (isLocalUsedInNode(hir, n, local))
 				return true;
 		}
@@ -716,7 +715,7 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 			.function_count = 0,
 			.node_count = 0,
 			.local_count = 0,
-			.current_function_locals_start = { .index = -1 },
+			.current_function_locals_start = hirLocalMake(-1),
 		},
 		.ast = ast,
 		.diagnostics = diagnostics,
@@ -732,7 +731,7 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 
 		mapClear(identifierId, hirLocal, &c.locals_by_name);
 
-		hirLocal locals_start = { .index = c.hir.local_count };
+		hirLocal locals_start = hirLocalMake(c.hir.local_count);
 		c.hir.current_function_locals_start = locals_start;
 		hirNode body = allocateNode(
 			&c, lowerStatement(&c, ast_function.body, m));
@@ -776,9 +775,8 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 	for (u16 i = 0; i < c.hir.function_count; i++) {
 		hirFunction function = c.hir.functions[i];
 		for (u16 j = 0; j < function.locals_count; j++) {
-			hirLocal local = {
-				.index = function.locals_start.index + j
-			};
+			hirLocal local =
+				hirLocalMake(function.locals_start.index + j);
 			if (!isLocalUsedInNode(c.hir, function.body, local))
 				diagnosticsStorageRecord(
 					c.diagnostics, DIAG_WARNING,
@@ -858,6 +856,21 @@ u32 hirTypeSize(hirRoot hir, hirType type)
 		return hirTypeSize(hir, array.child_type) * array.count;
 	}
 	}
+}
+
+hirNode hirNodeMake(u16 index)
+{
+	return (hirNode){ .index = index };
+}
+
+hirLocal hirLocalMake(u16 index)
+{
+	return (hirLocal){ .index = index };
+}
+
+hirType hirTypeMake(u16 index)
+{
+	return (hirType){ .index = index };
 }
 
 void hirTypeShow(hirRoot hir, hirType type, stringBuilder *sb)
@@ -1010,7 +1023,7 @@ static void debugNode(debugCtx *c, hirNode node)
 		stringBuilderPrintf(c->sb, "[");
 		c->indentation++;
 		for (u16 i = 0; i < array_literal.count; i++) {
-			hirNode n = { .index = array_literal.start.index + i };
+			hirNode n = hirNodeMake(array_literal.start.index + i);
 			newline(c);
 			debugNode(c, n);
 			stringBuilderPrintf(c->sb, ",");
@@ -1070,7 +1083,7 @@ static void debugNode(debugCtx *c, hirNode node)
 		stringBuilderPrintf(c->sb, "{");
 		c->indentation++;
 		for (u16 i = 0; i < block.count; i++) {
-			hirNode n = { .index = block.start.index + i };
+			hirNode n = hirNodeMake(block.start.index + i);
 			newline(c);
 			debugNode(c, n);
 		}
@@ -1089,7 +1102,7 @@ static void debugFunction(debugCtx *c, hirFunction function)
 
 	c->indentation++;
 	for (u16 i = 0; i < function.locals_count; i++) {
-		hirLocal local = { .index = function.locals_start.index + i };
+		hirLocal local = hirLocalMake(function.locals_start.index + i);
 		identifierId name = hirGetLocalName(c->hir, local);
 		newline(c);
 		stringBuilderPrintf(c->sb, "var %s ",

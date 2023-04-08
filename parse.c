@@ -40,7 +40,7 @@ static astExpression allocateExpression(parser *p, fullExpression expression)
 	p->ast.expressions[i] = expression.data;
 	p->ast.expression_kinds[i] = expression.kind;
 	p->ast.expression_spans[i] = expression.span;
-	return (astExpression){ .index = i };
+	return astExpressionMake(i);
 }
 
 static astStatement allocateStatement(parser *p, fullStatement statement)
@@ -57,7 +57,7 @@ static astStatement allocateStatement(parser *p, fullStatement statement)
 	p->ast.statements[i] = statement.data;
 	p->ast.statement_kinds[i] = statement.kind;
 	p->ast.statement_spans[i] = statement.span;
-	return (astStatement){ .index = i };
+	return astStatementMake(i);
 }
 
 static bool atEof(parser *p)
@@ -289,7 +289,7 @@ static fullExpression expressionLhs(parser *p, const char *error_name,
 		fullExpression *expressions =
 			bumpFinishArrayBuilder(&m->temp, &expressions_builder);
 
-		astExpression start = { .index = -1 };
+		astExpression start = astExpressionMake(-1);
 
 		for (u16 i = 0; i < count; i++) {
 			astExpression this =
@@ -479,7 +479,7 @@ static fullStatement blockStatement(parser *p, const char *error_name,
 	fullStatement *statements =
 		bumpFinishArrayBuilder(&m->temp, &statements_builder);
 
-	astStatement start = { .index = -1 };
+	astStatement start = astStatementMake(-1);
 
 	for (u16 i = 0; i < count; i++) {
 		astStatement this = allocateStatement(p, statements[i]);
@@ -535,7 +535,7 @@ static fullStatement statement(parser *p, const char *error_name, memory *m)
 			p, expression(p, "if statement condition", m));
 		astStatement true_block = allocateStatement(
 			p, blockStatement(p, "if statement true branch", m));
-		astStatement false_block = { .index = -1 };
+		astStatement false_block = astStatementMake(-1);
 		if (at(p, TOK_ELSE)) {
 			expect(p, TOK_ELSE, ERROR_RECOVER);
 			false_block = allocateStatement(
@@ -715,6 +715,16 @@ span astGetExpressionSpan(astRoot ast, astExpression expression)
 	return ast.expression_spans[expression.index];
 }
 
+astExpression astExpressionMake(u16 index)
+{
+	return (astExpression){ .index = index };
+}
+
+astStatement astStatementMake(u16 index)
+{
+	return (astStatement){ .index = index };
+}
+
 typedef struct ctx {
 	astRoot ast;
 	interner interner;
@@ -846,8 +856,8 @@ static void debugExpression(ctx *c, astExpression expression)
 		stringBuilderPrintf(c->sb, "[");
 		c->indentation++;
 		for (u16 i = 0; i < array_literal.count; i++) {
-			astExpression e = { .index = array_literal.start.index +
-						     i };
+			astExpression e = astExpressionMake(
+				array_literal.start.index + i);
 			newline(c);
 			debugExpression(c, e);
 			stringBuilderPrintf(c->sb, ",");
@@ -933,7 +943,8 @@ static void debugStatement(ctx *c, astStatement statement)
 		stringBuilderPrintf(c->sb, "{");
 		c->indentation++;
 		for (u16 i = 0; i < block.count; i++) {
-			astStatement s = { .index = block.start.index + i };
+			astStatement s =
+				astStatementMake(block.start.index + i);
 			newline(c);
 			debugStatement(c, s);
 		}

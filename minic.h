@@ -400,12 +400,17 @@ typedef struct astRoot {
 
 astRoot parse(tokenBuffer tokens, char *content,
 	      diagnosticsStorage *diagnostics, memory *m);
+
 astStatementData astGetStatement(astRoot ast, astStatement statement);
 astStatementKind astGetStatementKind(astRoot ast, astStatement statement);
 span astGetStatementSpan(astRoot ast, astStatement statement);
 astExpressionData astGetExpression(astRoot ast, astExpression expression);
 astExpressionKind astGetExpressionKind(astRoot ast, astExpression expression);
 span astGetExpressionSpan(astRoot ast, astExpression expression);
+
+astExpression astExpressionMake(u16 index);
+astStatement astStatementMake(u16 index);
+
 void astDebug(astRoot ast, interner interner, stringBuilder *sb);
 void astDebugPrint(astRoot ast, interner interner, bump *b);
 
@@ -566,6 +571,7 @@ typedef struct hirRoot {
 } hirRoot;
 
 hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m);
+
 hirNodeData hirGetNode(hirRoot hir, hirNode node);
 hirNodeKind hirGetNodeKind(hirRoot hir, hirNode node);
 hirType hirGetNodeType(hirRoot hir, hirNode node);
@@ -575,7 +581,13 @@ hirType hirGetLocalType(hirRoot hir, hirLocal local);
 span hirGetLocalSpan(hirRoot hir, hirLocal local);
 hirTypeData hirGetType(hirRoot hir, hirType type);
 hirTypeKind hirGetTypeKind(hirRoot hir, hirType type);
+
 u32 hirTypeSize(hirRoot hir, hirType type);
+
+hirNode hirNodeMake(u16 index);
+hirLocal hirLocalMake(u16 index);
+hirType hirTypeMake(u16 index);
+
 void hirTypeShow(hirRoot hir, hirType type, stringBuilder *sb);
 void hirDebug(hirRoot hir, interner interner, stringBuilder *sb);
 void hirDebugPrint(hirRoot hir, interner interner, bump *b);

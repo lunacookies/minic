@@ -19,7 +19,7 @@ static u32 calculateStackLayout(ctx *c, hirFunction function)
 	u32 offset = 0;
 
 	for (u16 i = 0; i < function.locals_count; i++) {
-		hirLocal local = { .index = function.locals_start.index + i };
+		hirLocal local = hirLocalMake(function.locals_start.index + i);
 		hirType type = hirGetLocalType(c->hir, local);
 		u32 size = hirTypeSize(c->hir, type);
 
@@ -248,7 +248,7 @@ static void gen(ctx *c, hirNode node)
 	case HIR_BLOCK: {
 		hirBlock block = hirGetNode(c->hir, node).block;
 		for (u16 i = 0; i < block.count; i++) {
-			hirNode n = { .index = block.start.index + i };
+			hirNode n = hirNodeMake(block.start.index + i);
 			gen(c, n);
 		}
 		break;
