@@ -181,14 +181,12 @@ static void instruction(ctx *c, const char *instruction_mnemonic,
 
 static void push(ctx *c)
 {
-	instruction(c, "sub", "sp, sp, #16");
-	instruction(c, "str", "x8, [sp]");
+	instruction(c, "str", "x8, [sp, #-16]!");
 }
 
 static void pop(ctx *c, const char *reg)
 {
-	instruction(c, "ldr", "%s, [sp]", reg);
-	instruction(c, "add", "sp, sp, #16");
+	instruction(c, "ldr", "%s, [sp], #16", reg);
 }
 
 static void emitMemcpy(ctx *c, const char *dst, const char *src, u32 num_bytes)
