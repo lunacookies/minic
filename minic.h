@@ -107,31 +107,6 @@ bump allocateFromOs(usize size);
 memory memoryCreate(void);
 
 // ----------------------------------------------------------------------------
-// map.c
-
-typedef struct map {
-	u64 *hashes;
-	bool *is_resident;
-	u8 *keys;
-	u8 *values;
-	usize slot_count;
-} map;
-
-map mapCreate_(usize slot_count, bump *b, usize key_size, usize value_size);
-void *mapLookup_(map *m, void *key, usize key_size, usize value_size);
-void mapInsert_(map *m, void *key, void *value, usize key_size,
-		usize value_size);
-void mapClear_(map *m);
-
-#define mapCreate(key_t, value_t, slot_count, b)                               \
-	(mapCreate_((slot_count), (b), sizeof(key_t), sizeof(value_t)))
-#define mapLookup(key_t, value_t, m, key)                                      \
-	((value_t *)(mapLookup_((m), (key), sizeof(key_t), sizeof(value_t))))
-#define mapInsert(key_t, value_t, m, key, value)                               \
-	(mapInsert_((m), (key), (value), sizeof(key_t), sizeof(value_t)))
-#define mapClear(key_t, value_t, m) (mapClear_((m)))
-
-// ----------------------------------------------------------------------------
 // test.c
 
 typedef char *(*transformer)(char *, memory *);

@@ -24,17 +24,15 @@ typedef struct ctx {
 	hirRoot hir;
 	astRoot ast;
 	diagnosticsStorage *diagnostics;
-	map locals_by_name;
-	map seen_types;
 } ctx;
 
 static hirLocal lookupLocal(ctx *c, identifierId name)
 {
-	hirLocal *local =
-		mapLookup(identifierId, hirLocal, &c->locals_by_name, &name);
-	if (local == NULL)
-		return hirLocalMake(-1);
-	return *local;
+	for (u16 i = c->hir.current_function_locals_start.index;
+	     i < c->hir.local_count; i++)
+		if (c->hir.local_names[i].raw == name.raw)
+			return hirLocalMake(i);
+	return hirLocalMake(-1);
 }
 
 static hirNode allocateNode(ctx *c, fullNode node)
@@ -63,39 +61,30 @@ static hirLocal allocateLocal(ctx *c, identifierId name, hirType type,
 	u16 i = c->hir.local_count;
 	c->hir.local_count++;
 
-	hirLocal local = hirLocalMake(i);
-	mapInsert(identifierId, hirLocal, &c->locals_by_name, &name, &local);
-
 	c->hir.local_names[i] = name;
 	c->hir.local_types[i] = type;
 	c->hir.local_spans[i] = span;
-	return local;
+	return hirLocalMake(i);
 }
 
 static hirType allocateType(ctx *c, hirTypeKind kind, hirTypeData data)
 {
 	assert(c->hir.type_count < MAX_TYPE_COUNT);
 
-	fullType full_type;
-	memset(&full_type, 0, sizeof(full_type));
-	full_type.kind = kind;
-	full_type.data = data;
-
-	hirType *lookup_result =
-		mapLookup(fullType, hirType, &c->seen_types, &full_type);
-
-	if (lookup_result == NULL) {
-		u16 i = c->hir.type_count;
-		hirType type = hirTypeMake(i);
-		c->hir.type_count++;
-		c->hir.types[i] = data;
-		c->hir.type_kinds[i] = kind;
-
-		mapInsert(fullType, hirType, &c->seen_types, &full_type, &type);
-		return type;
+	for (u16 i = 0; i < c->hir.type_count; i++) {
+		if (c->hir.type_kinds[i] != kind)
+			continue;
+		if (memcmp(&c->hir.types[i], &data, sizeof(hirTypeData)) != 0)
+			continue;
+		return hirTypeMake(i);
 	}
 
-	return *lookup_result;
+	u16 i = c->hir.type_count;
+	c->hir.type_count++;
+
+	c->hir.types[i] = data;
+	c->hir.type_kinds[i] = kind;
+	return hirTypeMake(i);
 }
 
 static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
@@ -719,8 +708,6 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 		},
 		.ast = ast,
 		.diagnostics = diagnostics,
-		.locals_by_name = mapCreate(identifierId, hirLocal, LOCALS_BY_NAME_SLOT_COUNT, &m->temp),
-		.seen_types = mapCreate(fullType, hirType, SEEN_TYPES_SLOT_COUNT, &m->temp),
 	};
 
 	for (u16 i = 0; i < c.ast.function_count; i++) {
@@ -728,8 +715,6 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 
 		if (ast_function.name.raw == (u32)-1)
 			continue;
-
-		mapClear(identifierId, hirLocal, &c.locals_by_name);
 
 		hirLocal locals_start = hirLocalMake(c.hir.local_count);
 		c.hir.current_function_locals_start = locals_start;
