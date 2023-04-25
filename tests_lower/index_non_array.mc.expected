@@ -6,5 +6,4 @@ func main
 		set a = <missing>
 	}
 tests_lower:27..28: error: cannot index into non-array type “i64”
-tests_lower:13..20: warning: unused variable
 tests_lower:22..32: warning: unused variable

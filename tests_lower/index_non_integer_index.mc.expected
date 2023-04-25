@@ -10,5 +10,3 @@ func main
 		return <missing>
 	}
 tests_lower:41..42: error: index is non-integer type “*i64”
-tests_lower:13..19: warning: unused variable
-tests_lower:21..32: warning: unused variable

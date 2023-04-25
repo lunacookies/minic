@@ -22,6 +22,7 @@ typedef struct ctx {
 	hirRoot hir;
 	astRoot ast;
 	diagnosticsStorage *diagnostics;
+	bool *local_used;
 } ctx;
 
 static hirLocal lookupLocal(ctx *c, identifierId name)
@@ -62,6 +63,9 @@ static hirLocal allocateLocal(ctx *c, identifierId name, hirType type,
 	c->hir.local_names[i] = name;
 	c->hir.local_types[i] = type;
 	c->hir.local_spans[i] = span;
+
+	c->local_used[i] = false;
+
 	return hirLocalMake(i);
 }
 
@@ -85,7 +89,11 @@ static hirType allocateType(ctx *c, hirTypeKind kind, hirTypeData data)
 	return hirTypeMake(i);
 }
 
-static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
+static fullNode lowerExpression(ctx *c, astExpression ast_expression,
+				memory *m);
+
+static fullNode lowerExpressionInner(ctx *c, astExpression ast_expression,
+				     bool should_modify_used, memory *m)
 {
 	fullNode n;
 	memset(&n, 0, sizeof(n));
@@ -142,6 +150,9 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 			n.type = allocateType(c, HIR_TYPE_VOID, type_data);
 			break;
 		}
+
+		if (should_modify_used)
+			c->local_used[local.index] = true;
 
 		n.kind = HIR_VARIABLE;
 		n.type = hirGetLocalType(c->hir, local);
@@ -371,6 +382,17 @@ static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
 	return n;
 }
 
+static fullNode lowerExpression(ctx *c, astExpression ast_expression, memory *m)
+{
+	return lowerExpressionInner(c, ast_expression, true, m);
+}
+
+static fullNode
+lowerExpressionNoModifyUsed(ctx *c, astExpression ast_expression, memory *m)
+{
+	return lowerExpressionInner(c, ast_expression, false, m);
+}
+
 static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 {
 	fullNode n;
@@ -461,7 +483,8 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 		astAssign ast_assign =
 			astGetStatement(c->ast, ast_statement).assign;
 
-		fullNode lhs = lowerExpression(c, ast_assign.lhs, m);
+		fullNode lhs =
+			lowerExpressionNoModifyUsed(c, ast_assign.lhs, m);
 		fullNode rhs = lowerExpression(c, ast_assign.rhs, m);
 
 		if (lhs.type.index != rhs.type.index) {
@@ -582,104 +605,6 @@ static fullNode lowerStatement(ctx *c, astStatement ast_statement, memory *m)
 	return n;
 }
 
-static bool isLocalUsedInNode(hirRoot hir, hirNode node, hirLocal local)
-{
-	switch (hirGetNodeKind(hir, node)) {
-	case HIR_MISSING:
-	case HIR_INT_LITERAL:
-		return false;
-
-	case HIR_VARIABLE:
-		return hirGetNode(hir, node).variable.local.index ==
-		       local.index;
-
-	case HIR_BINARY_OPERATION: {
-		hirBinaryOperation binary_operation =
-			hirGetNode(hir, node).binary_operation;
-		return isLocalUsedInNode(hir, binary_operation.lhs, local) ||
-		       isLocalUsedInNode(hir, binary_operation.rhs, local);
-	}
-
-	case HIR_ADDRESS_OF: {
-		hirAddressOf address_of = hirGetNode(hir, node).address_of;
-		return isLocalUsedInNode(hir, address_of.value, local);
-	}
-
-	case HIR_DEREFERENCE: {
-		hirDereference dereference = hirGetNode(hir, node).dereference;
-		return isLocalUsedInNode(hir, dereference.value, local);
-	}
-
-	case HIR_INDEX: {
-		hirIndex index = hirGetNode(hir, node).index;
-		return isLocalUsedInNode(hir, index.array, local) ||
-		       isLocalUsedInNode(hir, index.index, local);
-	}
-
-	case HIR_ARRAY_LITERAL: {
-		hirArrayLiteral array_literal =
-			hirGetNode(hir, node).array_literal;
-		for (u16 i = 0; i < array_literal.count; i++) {
-			hirNode n = hirNodeMake(array_literal.start.index + i);
-			if (isLocalUsedInNode(hir, n, local))
-				return true;
-		}
-		return false;
-	}
-
-	case HIR_ASSIGN: {
-		hirAssign assign = hirGetNode(hir, node).assign;
-		if (isLocalUsedInNode(hir, assign.rhs, local))
-			return true;
-		if (!isLocalUsedInNode(hir, assign.lhs, local))
-			return false;
-
-		assert(isLocalUsedInNode(hir, assign.lhs, local) &&
-		       !isLocalUsedInNode(hir, assign.rhs, local));
-
-		// Only assigning to a local and doing nothing else with it
-		// does not count as using it.
-		if (hirGetNodeKind(hir, assign.lhs) == HIR_VARIABLE)
-			return false;
-
-		return isLocalUsedInNode(hir, assign.lhs, local) ||
-		       isLocalUsedInNode(hir, assign.rhs, local);
-	}
-
-	case HIR_IF: {
-		hirIf if_ = hirGetNode(hir, node).if_;
-		bool is_used = isLocalUsedInNode(hir, if_.condition, local) ||
-			       isLocalUsedInNode(hir, if_.true_block, local);
-		if (is_used)
-			return true;
-		if (if_.false_block.index != (u16)-1)
-			return isLocalUsedInNode(hir, if_.false_block, local);
-		return false;
-	}
-
-	case HIR_WHILE: {
-		hirWhile while_ = hirGetNode(hir, node).while_;
-		return isLocalUsedInNode(hir, while_.condition, local) ||
-		       isLocalUsedInNode(hir, while_.true_block, local);
-	}
-
-	case HIR_RETURN: {
-		hirReturn retrn = hirGetNode(hir, node).retrn;
-		return isLocalUsedInNode(hir, retrn.value, local);
-	}
-
-	case HIR_BLOCK: {
-		hirBlock block = hirGetNode(hir, node).block;
-		for (u16 i = 0; i < block.count; i++) {
-			hirNode n = hirNodeMake(block.start.index + i);
-			if (isLocalUsedInNode(hir, n, local))
-				return true;
-		}
-		return false;
-	}
-	}
-}
-
 hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 {
 	bumpMark mark = bumpCreateMark(&m->temp);
@@ -706,6 +631,7 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 		},
 		.ast = ast,
 		.diagnostics = diagnostics,
+		.local_used = bumpAllocateArray(bool, &m->temp, MAX_LOCAL_COUNT),
 	};
 
 	for (u16 i = 0; i < c.ast.function_count; i++) {
@@ -753,20 +679,20 @@ hirRoot lower(astRoot ast, diagnosticsStorage *diagnostics, memory *m)
 	c.hir.type_kinds = bumpCopyArray(hirTypeKind, &m->general,
 					 c.hir.type_kinds, c.hir.type_count);
 
-	bumpClearToMark(&m->temp, mark);
-
 	for (u16 i = 0; i < c.hir.function_count; i++) {
 		hirFunction function = c.hir.functions[i];
 		for (u16 j = 0; j < function.locals_count; j++) {
 			hirLocal local =
 				hirLocalMake(function.locals_start.index + j);
-			if (!isLocalUsedInNode(c.hir, function.body, local))
+			if (!c.local_used[local.index])
 				diagnosticsStorageRecord(
 					c.diagnostics, DIAG_WARNING,
 					hirGetLocalSpan(c.hir, local),
 					"unused variable");
 		}
 	}
+
+	bumpClearToMark(&m->temp, mark);
 
 	return c.hir;
 }

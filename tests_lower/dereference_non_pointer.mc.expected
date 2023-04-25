@@ -6,5 +6,4 @@ func main
 		set y = <missing>
 	}
 tests_lower:28..29: error: cannot dereference non-pointer type “i64”
-tests_lower:13..20: warning: unused variable
 tests_lower:22..29: warning: unused variable
