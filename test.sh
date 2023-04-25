@@ -72,6 +72,12 @@ tests() {
 	assert 5 'func main { x:=5 return *&x }'
 	assert 40 'func main { a:=40 b:=&a return *b }'
 	assert 10 'func main { a:=1 b:=&a set *b = 10 return a }'
+
+	assert 4 'func main { a:=[4] return a[0] }'
+	assert 90 'func main { a:=[1,2,3,4,5,6,7,8,9,10] return a[8] * 10 }'
+	assert 5 'func main { a:=[[1,2],[3,4],[5,6]] return a[2][0] }'
+	assert 3 'func main { a:=[0,0,0] set a[1]=3 return a[1] }'
+	assert 6 'func main { a:=[1,2,3] b:=[2,4,6] set a=b return a[2] }'
 }
 
 mkdir test
