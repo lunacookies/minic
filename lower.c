@@ -4,8 +4,6 @@ enum {
 	MAX_NODE_COUNT = 63 * 1024,
 	MAX_LOCAL_COUNT = 63 * 1024,
 	MAX_TYPE_COUNT = 63 * 1024,
-	SEEN_TYPES_SLOT_COUNT = MAX_TYPE_COUNT * 4 / 3, // max 0.75 load factor
-	LOCALS_BY_NAME_SLOT_COUNT = MAX_LOCAL_COUNT * 4 / 3,
 };
 
 typedef struct fullNode {
