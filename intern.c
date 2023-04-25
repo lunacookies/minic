@@ -1,14 +1,10 @@
 #include "minic.h"
 
-typedef struct slot {
-	u32 length;
-	identifierId id;
-	char *ptr;
-	u64 hash;
-} slot;
-
 typedef struct ctx {
-	slot *map;
+	u64 *slot_hashes;
+	u32 *slot_lengths;
+	char **slot_ptrs;
+	identifierId *slot_ids;
 	usize slot_count;
 	char **identifier_contents;
 	identifierId ident_id;
@@ -28,45 +24,38 @@ static void processToken(tokenBuffer *buf, char *contents, usize token, ctx *c,
 	u64 hash = fxhash((u8 *)ptr, length);
 
 	usize slot_index = hash % c->slot_count;
-	slot *slot = &c->map[slot_index];
-	while (slot->ptr != NULL) {
-		if (slot->hash != hash)
+	while (c->slot_ptrs[slot_index] != NULL) {
+		if (c->slot_hashes[slot_index] != hash)
 			goto no_match;
 
-		if (slot->length != length)
+		if (c->slot_lengths[slot_index] != length)
 			goto no_match;
 
-		if (memcmp(ptr, slot->ptr, length) != 0)
+		if (memcmp(ptr, c->slot_ptrs[slot_index], length) != 0)
 			goto no_match;
 
-		// at this point we have compared
-		// every possible source of equality we could,
-		// and everything has come up as a match
-		//
-		// thus, we have a slot which contains
-		// the current identifier
-		//
-		// we link the current token to
+		// We’ve compared every possible source of equality we could,
+		// and everything has come up as a match.
+		// Thus, we have a slot which contains the current identifier.
+		// We link the current token to
 		// the identifier ID of the current slot,
 		// and then we’re done with this token!
-		buf->identifier_ids[token] = slot->id;
+		buf->identifier_ids[token] = c->slot_ids[slot_index];
 		return;
 
 	no_match:
 		slot_index++;
 		slot_index %= c->slot_count;
-		slot = &c->map[slot_index];
 	}
 
-	// at this point we’ve exited the loop
-	// because we found an empty slot
+	// At this point we’ve exited the loop because we found an empty slot
 	// and along the way didn’t stumble upon a slot
-	// which matches the current token
+	// which matches the current token.
 
-	slot->length = length;
-	slot->id = c->ident_id;
-	slot->ptr = ptr;
-	slot->hash = hash;
+	c->slot_hashes[slot_index] = hash;
+	c->slot_lengths[slot_index] = length;
+	c->slot_ptrs[slot_index] = ptr;
+	c->slot_ids[slot_index] = c->ident_id;
 
 	buf->identifier_ids[token] = c->ident_id;
 
@@ -90,18 +79,21 @@ interner intern(tokenBuffer *bufs, char **contents, usize buf_count, memory *m)
 	usize slot_count = identifier_count * 4 / 3;
 
 	bumpMark mark = bumpCreateMark(&m->temp);
-	slot *map = bumpAllocateArray(slot, &m->temp, slot_count);
-
-	// Zero everything out so that each ptr starts out as null.
-	memset(map, 0, slot_count * sizeof(slot));
 
 	ctx c = {
-		.map = map,
+		.slot_hashes = bumpAllocateArray(u64, &m->temp, slot_count),
+		.slot_lengths = bumpAllocateArray(u32, &m->temp, slot_count),
+		.slot_ptrs = bumpAllocateArray(char *, &m->temp, slot_count),
+		.slot_ids =
+			bumpAllocateArray(identifierId, &m->temp, slot_count),
 		.slot_count = slot_count,
 		.identifier_contents = bumpAllocateArray(char *, &m->general,
 							 identifier_count),
 		.ident_id = { .raw = 0 },
 	};
+
+	// Zero everything out so that each ptr starts out as null.
+	memset(c.slot_ptrs, 0, slot_count * sizeof(char *));
 
 	for (usize buf_index = 0; buf_index < buf_count; buf_index++) {
 		tokenBuffer *buf = &bufs[buf_index];
@@ -109,9 +101,8 @@ interner intern(tokenBuffer *bufs, char **contents, usize buf_count, memory *m)
 			processToken(buf, contents[buf_index], token, &c, m);
 	}
 
-	// we have no use for the map any longer
-	// now that identifier IDs have been allocated
-	// and identifier contents have been copied
+	// We have no use for the map any longer now that
+	// IDs have been allocated and contents have been copied.
 	bumpClearToMark(&m->temp, mark);
 
 	return (interner){
