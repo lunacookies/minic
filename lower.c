@@ -767,6 +767,20 @@ u32 hirTypeSize(hirRoot hir, hirType type)
 	}
 }
 
+u32 hirTypeAlign(hirRoot hir, hirType type)
+{
+	switch (hirGetTypeKind(hir, type)) {
+	case HIR_TYPE_VOID:
+	case HIR_TYPE_I64:
+	case HIR_TYPE_POINTER:
+		return hirTypeSize(hir, type);
+	case HIR_TYPE_ARRAY: {
+		hirArray array = hirGetType(hir, type).array;
+		return hirTypeSize(hir, array.child_type);
+	}
+	}
+}
+
 hirNode hirNodeMake(u16 index)
 {
 	return (hirNode){ .index = index };

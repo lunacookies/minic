@@ -558,6 +558,7 @@ hirTypeData hirGetType(hirRoot hir, hirType type);
 hirTypeKind hirGetTypeKind(hirRoot hir, hirType type);
 
 u32 hirTypeSize(hirRoot hir, hirType type);
+u32 hirTypeAlign(hirRoot hir, hirType type);
 
 hirNode hirNodeMake(u16 index);
 hirLocal hirLocalMake(u16 index);

@@ -20,15 +20,14 @@ static void allocateLocals(ctx *c, u32 *offset, hirFunction function)
 	for (u16 i = 0; i < function.locals_count; i++) {
 		hirLocal local = hirLocalMake(function.locals_start.index + i);
 		hirType type = hirGetLocalType(c->hir, local);
-		u32 size = hirTypeSize(c->hir, type);
 
-		*offset = roundUpTo(*offset, size); // align
+		*offset = roundUpTo(*offset, hirTypeAlign(c->hir, type));
 
 		// We step forward by the size of the type
 		// *before* storing this local’s offset
 		// because the offset is actually negative
 		// (from the stack top).
-		*offset += size;
+		*offset += hirTypeSize(c->hir, type);
 
 		c->local_offsets[local.index] = *offset;
 	}
@@ -81,17 +80,15 @@ static void allocateTemporaries(ctx *c, u32 *offset, hirNode node)
 			allocateTemporaries(c, offset, n);
 		}
 
-		hirType child_type = hirGetNodeType(c->hir, node);
-		u32 size =
-			hirTypeSize(c->hir, child_type) * array_literal.count;
+		hirType type = hirGetNodeType(c->hir, node);
 
-		*offset = roundUpTo(*offset, size); // align
+		*offset = roundUpTo(*offset, hirTypeAlign(c->hir, type));
 
 		// We step forward by the size of the type
 		// *before* storing this local’s offset
 		// because the offset is actually negative
 		// (from the stack top).
-		*offset += size;
+		*offset += hirTypeSize(c->hir, type);
 
 		c->temporary_offsets[node.index] = *offset;
 
